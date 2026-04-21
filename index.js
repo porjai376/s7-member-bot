@@ -200,33 +200,6 @@ async function downloadLineImage(messageId, savePath) {
   });
 }
 
-function menuCard(title, subtitle, color) {
-  return {
-    type: 'box',
-    layout: 'vertical',
-    backgroundColor: color,
-    cornerRadius: '12px',
-    paddingAll: '12px',
-    contents: [
-      {
-        type: 'text',
-        text: title,
-        weight: 'bold',
-        size: 'md',
-        color: '#111827'
-      },
-      {
-        type: 'text',
-        text: subtitle,
-        size: 'sm',
-        wrap: true,
-        color: '#374151',
-        margin: 'sm'
-      }
-    ]
-  };
-}
-
 function infoLine(label, value) {
   return {
     type: 'box',
@@ -252,73 +225,180 @@ function infoLine(label, value) {
   };
 }
 
-function buildMainMenuFlex() {
+function menuSection(title, lines) {
+  return {
+    type: 'box',
+    layout: 'vertical',
+    backgroundColor: '#F8FAFC',
+    cornerRadius: '12px',
+    paddingAll: '12px',
+    contents: [
+      {
+        type: 'text',
+        text: title,
+        weight: 'bold',
+        size: 'md',
+        color: '#111827',
+        wrap: true
+      },
+      ...lines.map((line) => ({
+        type: 'text',
+        text: line,
+        size: 'sm',
+        color: '#374151',
+        wrap: true,
+        margin: 'sm'
+      }))
+    ]
+  };
+}
+
+function buildMenuCarouselFlex() {
   return {
     type: 'flex',
-    altText: 'เมนูหลัก',
+    altText: 'เมนูคำสั่ง S7BOT',
     contents: {
-      type: 'bubble',
-      size: 'mega',
-      hero: {
-        type: 'box',
-        layout: 'vertical',
-        backgroundColor: '#0F172A',
-        paddingAll: '20px',
-        contents: [
-          {
-            type: 'text',
-            text: 'S7 BOT MENU',
-            color: '#FFFFFF',
-            weight: 'bold',
-            size: 'xl'
+      type: 'carousel',
+      contents: [
+        {
+          type: 'bubble',
+          size: 'mega',
+          header: {
+            type: 'box',
+            layout: 'vertical',
+            backgroundColor: '#0F172A',
+            paddingAll: '16px',
+            contents: [
+              {
+                type: 'text',
+                text: 'S7BOT MENU 1/3',
+                color: '#FFFFFF',
+                weight: 'bold',
+                size: 'lg'
+              },
+              {
+                type: 'text',
+                text: 'เครือข่าย / การจดทะเบียน',
+                color: '#CBD5E1',
+                size: 'sm',
+                margin: 'sm'
+              }
+            ]
           },
-          {
-            type: 'text',
-            text: 'ระบบสมัครและอนุมัติผู้ใช้งาน',
-            color: '#CBD5E1',
-            size: 'sm',
-            margin: 'md',
-            wrap: true
+          body: {
+            type: 'box',
+            layout: 'vertical',
+            spacing: 'md',
+            contents: [
+              menuSection('📲 เครือข่ายสถานะเบอร์', [
+                '┣ ╾ %66XXXXXXXXX',
+                '┗ ╾ who#เบอร์โทร'
+              ]),
+              menuSection('📗 เช็คจดทะเบียน AIS', [
+                '┗ ╾ a#เบอร์โทร หรือ 13หลัก'
+              ]),
+              menuSection('📘 เช็คจดทะเบียน DTAC', [
+                '┗ ╾ d#เบอร์โทร หรือ 13หลัก'
+              ]),
+              menuSection('📙 เช็คจดทะเบียน TRUE', [
+                '┣ ╾ t#เบอร์โทร',
+                '┣ ╾ tid#เลขบัตร',
+                '┗ ╾ tn#ชื่อ-นามสกุล'
+              ])
+            ]
           }
-        ]
-      },
-      body: {
-        type: 'box',
-        layout: 'vertical',
-        spacing: 'md',
-        contents: [
-          menuCard('🔐 สมัครสมาชิก', 'พิมพ์: ยินยอมรับข้อตกลง', '#E0F2FE'),
-          menuCard('📄 เช็กสถานะ', 'พิมพ์: สถานะการสมัคร', '#ECFCCB'),
-          menuCard('🪪 ส่งข้อมูลสมัคร', 'พิมพ์: regis%ยศ/ชื่อ-สกุล/ตำแหน่ง/สังกัด/เบอร์โทร', '#FEF3C7'),
-          menuCard('📬 เมนูหลัก', 'พิมพ์: menu%', '#FCE7F3')
-        ]
-      },
-      footer: {
-        type: 'box',
-        layout: 'vertical',
-        spacing: 'sm',
-        contents: [
-          {
-            type: 'button',
-            style: 'primary',
-            color: '#2563EB',
-            action: {
-              type: 'message',
-              label: 'สมัครสมาชิก',
-              text: 'ยินยอมรับข้อตกลง'
-            }
+        },
+        {
+          type: 'bubble',
+          size: 'mega',
+          header: {
+            type: 'box',
+            layout: 'vertical',
+            backgroundColor: '#1E293B',
+            paddingAll: '16px',
+            contents: [
+              {
+                type: 'text',
+                text: 'S7BOT MENU 2/3',
+                color: '#FFFFFF',
+                weight: 'bold',
+                size: 'lg'
+              },
+              {
+                type: 'text',
+                text: 'ขนส่ง / ธนาคาร / รักษา',
+                color: '#CBD5E1',
+                size: 'sm',
+                margin: 'sm'
+              }
+            ]
           },
-          {
-            type: 'button',
-            style: 'secondary',
-            action: {
-              type: 'message',
-              label: 'เช็กสถานะ',
-              text: 'สถานะการสมัคร'
-            }
+          body: {
+            type: 'box',
+            layout: 'vertical',
+            spacing: 'md',
+            contents: [
+              menuSection('📦 ขนส่ง', [
+                '┣ ╾ f#เบอร์โทร',
+                '┗ ╾ fx#เบอร์โทร/ชื่อสกุล'
+              ]),
+              menuSection('🏦 พิกัด ATM/ธนาคาร', [
+                '┣ ╾ bn%ชื่อธนาคาร',
+                '┣ ╾ bc%รหัสสาขา',
+                '┣ ╾ bk%เลขบัญชี',
+                '┗ ╾ atm%รหัสตู้'
+              ]),
+              menuSection('💊 ประวัติรักษา', [
+                '┗ ╾ h%เลขบัตร'
+              ])
+            ]
           }
-        ]
-      }
+        },
+        {
+          type: 'bubble',
+          size: 'mega',
+          header: {
+            type: 'box',
+            layout: 'vertical',
+            backgroundColor: '#334155',
+            paddingAll: '16px',
+            contents: [
+              {
+                type: 'text',
+                text: 'S7BOT MENU 3/3',
+                color: '#FFFFFF',
+                weight: 'bold',
+                size: 'lg'
+              },
+              {
+                type: 'text',
+                text: 'หมายจับ / ไฟฟ้า / อื่น ๆ',
+                color: '#CBD5E1',
+                size: 'sm',
+                margin: 'sm'
+              }
+            ]
+          },
+          body: {
+            type: 'box',
+            layout: 'vertical',
+            spacing: 'md',
+            contents: [
+              menuSection('⚖️ หมายจับ', [
+                '┗ ╾ c#เลขบัตร / doc#เลขบัตร'
+              ]),
+              menuSection('⚡ ไฟฟ้า / อื่นๆ', [
+                '┣ ╾ mea%ชื่อสกุล',
+                '┣ ╾ kru%เลขมิเตอร์',
+                '┣ ╾ peab%เลข CA เลขมิเตอร์',
+                '┣ ╾ peac%เลข CA',
+                '┣ ╾ pean%ชื่อสกุล',
+                '┗ ╾ se%รหัสสาขา7-11'
+              ])
+            ]
+          }
+        }
+      ]
     }
   };
 }
@@ -634,7 +714,13 @@ async function handleText(event) {
   const member = db.members[userId];
 
   if (text === 'menu%') {
-    return reply(event.replyToken, buildMainMenuFlex());
+    return reply(event.replyToken, [
+      {
+        type: 'text',
+        text: '📋 เมนูคำสั่ง S7BOT\nเลื่อนดูเมนูแต่ละหน้าได้เลย'
+      },
+      buildMenuCarouselFlex()
+    ]);
   }
 
   if (text === 'myid') {
@@ -885,9 +971,7 @@ async function handleImage(event) {
       text: 'รับรูปหลักฐานเรียบร้อยแล้ว\nขณะนี้อยู่ระหว่างรอการตรวจสอบจากผู้ดูแล'
     });
 
-    const adminMessages = [
-      buildAdminApproveFlex(member, userId)
-    ];
+    const adminMessages = [buildAdminApproveFlex(member, userId)];
 
     if (member.imageUrl) {
       adminMessages.push({
