@@ -60,7 +60,8 @@ function ensureStorage() {
   if (!fs.existsSync(DATA_FILE)) {
     const initData = {
       members: {},
-      processedEvents: {}
+      processedEvents: {},
+      topups: {}
     };
     fs.writeFileSync(DATA_FILE, JSON.stringify(initData, null, 2), 'utf8');
   }
@@ -69,13 +70,18 @@ function ensureStorage() {
 function loadDB() {
   ensureStorage();
   try {
-    return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+    const db = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+    if (!db.members) db.members = {};
+    if (!db.processedEvents) db.processedEvents = {};
+    if (!db.topups) db.topups = {};
+    return db;
   } catch (e) {
-    return { members: {}, processedEvents: {} };
+    return { members: {}, processedEvents: {}, topups: {} };
   }
 }
 
 function saveDB(db) {
+  if (!db.topups) db.topups = {};
   fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2), 'utf8');
 }
 
@@ -706,6 +712,183 @@ function buildMemberManageFlex(member, targetUserId) {
   };
 }
 
+function buildTopupFlex() {
+  return {
+    type: 'flex',
+    altText: 'TOPUP / แจ้งโอน',
+    contents: {
+      type: 'bubble',
+      size: 'mega',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        backgroundColor: '#0F172A',
+        paddingAll: '16px',
+        contents: [
+          {
+            type: 'text',
+            text: 'TOPUP / แจ้งโอน',
+            color: '#FFFFFF',
+            weight: 'bold',
+            size: 'lg'
+          },
+          {
+            type: 'text',
+            text: 'ส่งสลิปเพื่อให้แอดมินตรวจสอบ',
+            color: '#CBD5E1',
+            size: 'sm',
+            margin: 'sm'
+          }
+        ]
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'md',
+        contents: [
+          menuSection('💳 แพ็กเกจที่รองรับ', [
+            '┣ ╾ 30 วัน',
+            '┣ ╾ 90 วัน',
+            '┣ ╾ 180 วัน',
+            '┗ ╾ 365 วัน'
+          ]),
+          menuSection('📌 วิธีแจ้งโอน', [
+            '1) พิมพ์: topup30 หรือ topup90',
+            '2) หรือ topup180 / topup365',
+            '3) จากนั้นส่งสลิปเข้ามาในแชตนี้'
+          ]),
+          {
+            type: 'text',
+            text: 'หลังจากผู้ดูแลตรวจสอบแล้ว จะเป็นผู้กำหนดวันอนุมัติให้เอง',
+            wrap: true,
+            size: 'sm',
+            color: '#B45309'
+          }
+        ]
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'sm',
+        contents: [
+          {
+            type: 'button',
+            style: 'primary',
+            color: '#2563EB',
+            action: {
+              type: 'message',
+              label: 'เลือก 30 วัน',
+              text: 'topup30'
+            }
+          },
+          {
+            type: 'button',
+            style: 'secondary',
+            action: {
+              type: 'message',
+              label: 'เลือก 90 วัน',
+              text: 'topup90'
+            }
+          },
+          {
+            type: 'button',
+            style: 'secondary',
+            action: {
+              type: 'message',
+              label: 'เลือก 180 วัน',
+              text: 'topup180'
+            }
+          },
+          {
+            type: 'button',
+            style: 'secondary',
+            action: {
+              type: 'message',
+              label: 'เลือก 365 วัน',
+              text: 'topup365'
+            }
+          }
+        ]
+      }
+    }
+  };
+}
+
+function buildTopupAdminFlex(topup, userId) {
+  return {
+    type: 'flex',
+    altText: 'มีรายการ TOPUP ใหม่',
+    contents: {
+      type: 'bubble',
+      size: 'giga',
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'md',
+        contents: [
+          {
+            type: 'text',
+            text: '💰 รายการ TOPUP ใหม่',
+            weight: 'bold',
+            size: 'xl',
+            color: '#111827'
+          },
+          infoLine('ชื่อ', topup.fullname || topup.lineName || '-'),
+          infoLine('LINE', topup.lineName || '-'),
+          infoLine('UID', userId),
+          infoLine('เบอร์', topup.phone || '-'),
+          infoLine('แพ็กเกจ', topup.packageLabel || '-'),
+          infoLine('เวลาแจ้ง', topup.updatedAt || '-'),
+          {
+            type: 'text',
+            text: 'แอดมินตรวจสอบสลิปแล้วค่อยกำหนดวันอนุมัติเอง',
+            wrap: true,
+            size: 'sm',
+            color: '#B45309'
+          }
+        ]
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'sm',
+        contents: [
+          {
+            type: 'button',
+            style: 'primary',
+            color: '#16A34A',
+            action: {
+              type: 'postback',
+              label: 'อนุมัติ TOPUP แล้ว',
+              data: `topup_approved|${userId}`,
+              displayText: `อนุมัติ TOPUP ${topup.fullname || userId}`
+            }
+          },
+          {
+            type: 'button',
+            style: 'secondary',
+            action: {
+              type: 'postback',
+              label: 'ปฏิเสธ TOPUP',
+              data: `topup_rejected|${userId}`,
+              displayText: `ปฏิเสธ TOPUP ${topup.fullname || userId}`
+            }
+          }
+        ]
+      }
+    }
+  };
+}
+
+function mapTopupPackage(text) {
+  const cmd = text.toLowerCase().trim();
+  if (cmd === 'topup30') return { days: 30, label: '30 วัน' };
+  if (cmd === 'topup90') return { days: 90, label: '90 วัน' };
+  if (cmd === 'topup180') return { days: 180, label: '180 วัน' };
+  if (cmd === 'topup365') return { days: 365, label: '365 วัน' };
+  return null;
+}
+
 async function notifyAdmins(messages) {
   for (const adminId of ADMIN_IDS) {
     try {
@@ -876,6 +1059,113 @@ async function handleText(event) {
     });
   }
 
+  if (text === 'members_all') {
+    if (!isAdmin(userId)) {
+      return reply(event.replyToken, { type: 'text', text: 'คุณไม่มีสิทธิ์ใช้คำสั่งนี้' });
+    }
+
+    const allMembers = Object.entries(db.members);
+    if (!allMembers.length) {
+      return reply(event.replyToken, { type: 'text', text: 'ยังไม่มีสมาชิกในระบบ' });
+    }
+
+    const lines = allMembers.slice(0, 50).map(([uid, m], i) => {
+      const statusText =
+        m.status === 'approved'
+          ? (isExpired(m.expireAt) ? 'หมดอายุ' : 'อนุมัติ')
+          : m.status === 'waiting_card'
+            ? 'รอส่งรูป'
+            : m.status === 'pending'
+              ? 'รอตรวจสอบ'
+              : m.status === 'rejected'
+                ? 'ปฏิเสธ'
+                : m.status || '-';
+
+      return `${i + 1}. ${m.fullname || '-'} | ${m.phone || '-'} | ${statusText}`;
+    });
+
+    return reply(event.replyToken, {
+      type: 'text',
+      text: `สมาชิกทั้งหมด (${allMembers.length})\n\n${lines.join('\n')}`
+    });
+  }
+
+  if (text === 'members_expired') {
+    if (!isAdmin(userId)) {
+      return reply(event.replyToken, { type: 'text', text: 'คุณไม่มีสิทธิ์ใช้คำสั่งนี้' });
+    }
+
+    const expired = Object.entries(db.members).filter(([_, m]) =>
+      m.status === 'approved' && isExpired(m.expireAt)
+    );
+
+    if (!expired.length) {
+      return reply(event.replyToken, { type: 'text', text: 'ยังไม่มีสมาชิกที่หมดอายุ' });
+    }
+
+    const lines = expired.slice(0, 50).map(([uid, m], i) =>
+      `${i + 1}. ${m.fullname || '-'} | ${m.phone || '-'} | หมดอายุ: ${m.expireAt ? formatThaiDate(m.expireAt) : '-'}`
+    );
+
+    return reply(event.replyToken, {
+      type: 'text',
+      text: `สมาชิกหมดอายุ (${expired.length})\n\n${lines.join('\n')}`
+    });
+  }
+
+  if (text === 'members_pending') {
+    if (!isAdmin(userId)) {
+      return reply(event.replyToken, { type: 'text', text: 'คุณไม่มีสิทธิ์ใช้คำสั่งนี้' });
+    }
+
+    const pending = Object.entries(db.members).filter(([_, m]) => m.status === 'pending');
+
+    if (!pending.length) {
+      return reply(event.replyToken, { type: 'text', text: 'ไม่มีสมาชิกที่รอตรวจสอบ' });
+    }
+
+    const lines = pending.slice(0, 50).map(([uid, m], i) =>
+      `${i + 1}. ${m.fullname || '-'} | ${m.phone || '-'} | สมัครเมื่อ: ${m.registeredAt || '-'}`
+    );
+
+    return reply(event.replyToken, {
+      type: 'text',
+      text: `สมาชิกที่รอตรวจสอบ (${pending.length})\n\n${lines.join('\n')}`
+    });
+  }
+
+  if (text === 'TOPUP' || text === 'topup') {
+    return reply(event.replyToken, buildTopupFlex());
+  }
+
+  const topupPackage = mapTopupPackage(text);
+  if (topupPackage) {
+    const profile = await getProfile(userId);
+
+    db.topups[userId] = {
+      userId,
+      lineName: profile.displayName || member?.lineName || 'ไม่ทราบชื่อ',
+      fullname: member?.fullname || '',
+      phone: member?.phone || '',
+      packageDays: topupPackage.days,
+      packageLabel: topupPackage.label,
+      status: 'waiting_slip',
+      createdAt: nowThai(),
+      updatedAt: nowThai(),
+      slipImagePath: '',
+      slipImageUrl: ''
+    };
+
+    saveDB(db);
+
+    return reply(event.replyToken, {
+      type: 'text',
+      text:
+        `คุณเลือกแพ็กเกจ ${topupPackage.label} แล้ว\n` +
+        `กรุณาส่งสลิปเข้ามาในแชตนี้ได้เลย`
+    });
+  }
+
   if (text.startsWith('member#')) {
     if (!isAdmin(userId)) {
       return reply(event.replyToken, {
@@ -979,6 +1269,47 @@ async function handleImage(event) {
   const userId = event.source.userId;
   const db = loadDB();
   const member = db.members[userId];
+  const topup = db.topups?.[userId];
+
+  if (topup && topup.status === 'waiting_slip') {
+    try {
+      const fileName = `topup_${userId}_${Date.now()}.jpg`;
+      const savePath = path.join(UPLOAD_DIR, fileName);
+
+      await downloadLineImage(event.message.id, savePath);
+
+      topup.status = 'pending_review';
+      topup.updatedAt = nowThai();
+      topup.slipImagePath = savePath;
+      topup.slipImageUrl = BASE_URL ? `${BASE_URL}/uploads/${fileName}` : '';
+      db.topups[userId] = topup;
+      saveDB(db);
+
+      await reply(event.replyToken, {
+        type: 'text',
+        text: 'รับสลิปเรียบร้อยแล้ว ✅\nขณะนี้รอผู้ดูแลตรวจสอบ'
+      });
+
+      const adminMessages = [buildTopupAdminFlex(topup, userId)];
+
+      if (topup.slipImageUrl) {
+        adminMessages.push({
+          type: 'image',
+          originalContentUrl: topup.slipImageUrl,
+          previewImageUrl: topup.slipImageUrl
+        });
+      }
+
+      await notifyAdmins(adminMessages);
+      return null;
+    } catch (e) {
+      console.error('topup slip error:', e?.response?.data || e.message);
+      return reply(event.replyToken, {
+        type: 'text',
+        text: 'เกิดข้อผิดพลาดในการบันทึกสลิป กรุณาลองส่งใหม่อีกครั้ง'
+      });
+    }
+  }
 
   if (!member) {
     return reply(event.replyToken, {
@@ -1061,6 +1392,65 @@ async function handlePostback(event) {
   }
 
   const db = loadDB();
+
+  if (action === 'topup_approved') {
+    if (!db.topups || !db.topups[targetUserId]) {
+      return reply(event.replyToken, {
+        type: 'text',
+        text: 'ไม่พบรายการ TOPUP'
+      });
+    }
+
+    db.topups[targetUserId].status = 'approved';
+    db.topups[targetUserId].updatedAt = nowThai();
+    saveDB(db);
+
+    try {
+      await push(targetUserId, {
+        type: 'text',
+        text:
+          'แอดมินตรวจสอบ TOPUP ของคุณแล้ว ✅\n' +
+          'จากนี้ผู้ดูแลจะกำหนดจำนวนวันสมาชิกให้เอง'
+      });
+    } catch (e) {
+      console.error('push topup approved error:', e?.response?.data || e.message);
+    }
+
+    return reply(event.replyToken, {
+      type: 'text',
+      text:
+        `อนุมัติรายการ TOPUP ของ ${db.topups[targetUserId].fullname || targetUserId} แล้ว\n` +
+        `จากนี้กำหนดวันสมาชิกด้วยปุ่มอนุมัติหรือคำสั่งต่ออายุได้เลย`
+    });
+  }
+
+  if (action === 'topup_rejected') {
+    if (!db.topups || !db.topups[targetUserId]) {
+      return reply(event.replyToken, {
+        type: 'text',
+        text: 'ไม่พบรายการ TOPUP'
+      });
+    }
+
+    db.topups[targetUserId].status = 'rejected';
+    db.topups[targetUserId].updatedAt = nowThai();
+    saveDB(db);
+
+    try {
+      await push(targetUserId, {
+        type: 'text',
+        text: 'รายการ TOPUP ของคุณไม่ผ่านการตรวจสอบ ❌\nกรุณาติดต่อผู้ดูแล'
+      });
+    } catch (e) {
+      console.error('push topup rejected error:', e?.response?.data || e.message);
+    }
+
+    return reply(event.replyToken, {
+      type: 'text',
+      text: `ปฏิเสธรายการ TOPUP ของ ${db.topups[targetUserId].fullname || targetUserId} เรียบร้อยแล้ว`
+    });
+  }
+
   const member = db.members[targetUserId];
 
   if (!member) {
