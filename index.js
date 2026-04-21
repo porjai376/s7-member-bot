@@ -315,15 +315,21 @@ function formatInstallment(data) {
 
 function formatCrime(data, keyword = '') {
   try {
-    if (!data || data.status === false) {
+    if (!data || data.status === false || data.status === 'error' || data.success === false) {
       return '❌ ไม่พบข้อมูลหมายจับ';
     }
 
-    const list = data.data || data.result || [];
-
+    const list = Array.isArray(data.data) ? data.data : [];
     if (!list.length) {
       return '❌ ไม่พบข้อมูลหมายจับ';
     }
+
+    const pick = (text, label) => {
+      const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`${escaped}\\s*:\\s*(.*?)(?=\\n[A-Z ]+\\s*:|$)`, 's');
+      const match = text.match(regex);
+      return match ? match[1].trim() : '-';
+    };
 
     let msg = `⚖️ ผลตรวจสอบหมายจับ\n\n`;
     msg += `คำค้น: ${keyword}\n`;
@@ -331,22 +337,33 @@ function formatCrime(data, keyword = '') {
     msg += `====================\n`;
 
     list.forEach((item, index) => {
+      const text = String(item || '');
+
+      const warrant = pick(text, 'WARRANT');
+      const crimes = pick(text, 'CRIMES');
+      const charge = pick(text, 'CHARGE');
+      const id = pick(text, 'ID');
+      const fullname = pick(text, 'FULLNAME');
+      const police = pick(text, 'POLICE');
+      const tell = pick(text, 'TELL');
+      const status = pick(text, 'STATUS');
+
       msg += ` [${index + 1}]\n`;
-      msg += ` เลขหมายจับ: ${item.wno || item.warrant_no || '-'}\n`;
-      msg += ` คดี: ${item.case || item.case_no || '-'} ${item.station || item.police_station || ''}\n`;
-      msg += ` ข้อหา: ${item.accused || item.charge || '-'}\n`;
-      msg += ` เลขบัตร: ${item.idcard || keyword}\n`;
-      msg += ` ชื่อ-สกุล: ${item.name || item.fullname || '-'}\n`;
-      msg += ` เจ้าหน้าที่: ${item.staff || item.officer || '-'}\n`;
-      msg += ` เบอร์โทร: ${item.tel || item.phone || '-'}\n`;
-      msg += ` สถานะ: ${item.state || item.status || '-'}\n`;
+      msg += ` เลขหมายจับ: ${warrant}\n`;
+      msg += ` คดี: ${crimes}\n`;
+      msg += ` ข้อหา: ${charge}\n`;
+      msg += ` เลขบัตร: ${id !== '-' ? id : keyword}\n`;
+      msg += ` ชื่อ-สกุล: ${fullname}\n`;
+      msg += ` เจ้าหน้าที่: ${police}\n`;
+      msg += ` เบอร์โทร: ${tell}\n`;
+      msg += ` สถานะ: ${status}\n`;
       msg += `--------------------\n`;
     });
 
     return msg;
   } catch (err) {
     console.error('formatCrime error:', err);
-    return '❌ แปลงข้อมูลไม่สำเร็จ';
+    return '❌ แปลงข้อมูลหมายจับไม่สำเร็จ';
   }
 }
 function infoLine(label, value) {
