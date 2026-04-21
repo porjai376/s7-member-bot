@@ -253,6 +253,53 @@ function menuSection(title, lines) {
   };
 }
 
+function buildMenuFooter() {
+  return {
+    type: 'box',
+    layout: 'vertical',
+    spacing: 'sm',
+    contents: [
+      {
+        type: 'button',
+        style: 'primary',
+        color: '#2563EB',
+        action: {
+          type: 'message',
+          label: 'สมัครสมาชิก',
+          text: 'ยินยอมรับข้อตกลง'
+        }
+      },
+      {
+        type: 'button',
+        style: 'secondary',
+        action: {
+          type: 'message',
+          label: 'เช็กสถานะ',
+          text: 'สถานะการสมัคร'
+        }
+      },
+      {
+        type: 'button',
+        style: 'secondary',
+        action: {
+          type: 'message',
+          label: 'ส่งข้อมูลสมัคร',
+          text: 'regis%ยศ/ชื่อ-สกุล/ตำแหน่ง/สังกัด/เบอร์โทร'
+        }
+      },
+      {
+        type: 'button',
+        style: 'secondary',
+        action: {
+          type: 'message',
+          label: 'เมนูหลัก',
+          text: 'menu%'
+        }
+      }
+    ]
+  };
+}
+
 function buildMenuCarouselFlex() {
   return {
     type: 'flex',
@@ -306,7 +353,8 @@ function buildMenuCarouselFlex() {
                 '┗ ╾ tn#ชื่อ-นามสกุล'
               ])
             ]
-          }
+          },
+          footer: buildMenuFooter()
         },
         {
           type: 'bubble',
@@ -352,7 +400,8 @@ function buildMenuCarouselFlex() {
                 '┗ ╾ h%เลขบัตร'
               ])
             ]
-          }
+          },
+          footer: buildMenuFooter()
         },
         {
           type: 'bubble',
@@ -396,7 +445,8 @@ function buildMenuCarouselFlex() {
                 '┗ ╾ se%รหัสสาขา7-11'
               ])
             ]
-          }
+          },
+          footer: buildMenuFooter()
         }
       ]
     }
