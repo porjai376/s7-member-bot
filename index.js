@@ -234,24 +234,27 @@ async function fetchInstallment(nationId) {
   return resp.data;
 }
 
-// ===== MOCK c# =====
 async function fetchCrime(nationId) {
-  return {
-    status: true,
-    data: [
-      {
-        warrant_no: '93/2564',
-        case_no: '1349/2564',
-        police_station: 'สภ.เมืองสุรินทร์',
-        charge: 'ตัวอย่างข้อหา',
-        idcard: nationId,
-        fullname: 'ตัวอย่าง ชื่อสกุล',
-        officer: 'ตัวอย่าง เจ้าหน้าที่',
-        phone: '0800000000',
-        status_text: 'มีผลบังคับใช้'
-      }
-    ]
+  const url = 'https://kingkong-shark.com/KINGKONG/API_CRIMES.php';
+
+  const headers = {
+    Authorization: 'Bearer 80cca6be-acb2-4e33-8f91-a588a2e8a584',
+    'Content-Type': 'application/json'
   };
+
+  const resp = await axios.post(
+    url,
+    {
+      idcard: nationId
+    },
+    {
+      httpsAgent,
+      headers,
+      timeout: 30000
+    }
+  );
+
+  return resp.data;
 }
 
 function formatInstallment(data) {
@@ -310,45 +313,14 @@ function formatInstallment(data) {
   );
 }
 
-function formatCrime(data, keyword = '') {
-  try {
-    if (!data || data.status === false || data.success === false) {
-      return '❌ ไม่พบข้อมูลหมายจับ';
-    }
-
-    const list = Array.isArray(data.data)
-      ? data.data
-      : Array.isArray(data.result)
-        ? data.result
-        : [];
-
-    if (!list.length) {
-      return '❌ ไม่พบข้อมูลหมายจับ';
-    }
-
-    let msg = `⚖️ ผลตรวจสอบหมายจับ\n\n`;
-    msg += `คำค้น: ${keyword}\n`;
-    msg += `หน้า 1/1 | พบทั้งหมด ${list.length} รายการ\n`;
-    msg += `====================\n`;
-
-    list.forEach((item, index) => {
-      msg += ` [${index + 1}]\n`;
-      msg += ` เลขหมายจับ: ${item.warrant_no || '-'}\n`;
-      msg += ` คดี: ${item.case_no || '-'} ${item.police_station || ''}\n`;
-      msg += ` ข้อหา: ${item.charge || '-'}\n`;
-      msg += ` เลขบัตร: ${item.idcard || keyword || '-'}\n`;
-      msg += ` ชื่อ-สกุล: ${item.fullname || '-'}\n`;
-      msg += ` เจ้าหน้าที่: ${item.officer || '-'}\n`;
-      msg += ` เบอร์โทร: ${item.phone || '-'}\n`;
-      msg += ` สถานะ: ${item.status_text || item.status || '-'}\n`;
-      msg += `--------------------\n`;
-    });
-
-    return msg;
-  } catch (err) {
-    console.error('formatCrime error:', err);
-    return '❌ แปลงข้อมูลหมายจับไม่สำเร็จ';
+function formatCrime(data) {
+  if (!data || data.status === false || data.success === false) {
+    return '❌ ไม่พบข้อมูลหมายจับ';
   }
+
+  return `⚖️ ผลตรวจสอบหมายจับ
+
+${JSON.stringify(data, null, 2)}`;
 }
 
 function infoLine(label, value) {
@@ -1342,14 +1314,14 @@ async function handleText(event) {
 
     try {
       const result = await fetchCrime(nationId);
-      const msg = formatCrime(result, nationId);
+      const msg = formatCrime(result);
 
       return reply(event.replyToken, {
         type: 'text',
         text: msg
       });
     } catch (err) {
-      console.error('crime error:', err?.message || err);
+      console.error('crime error:', err?.response?.data || err.message);
 
       return reply(event.replyToken, {
         type: 'text',
