@@ -1335,26 +1335,31 @@ async function handleText(event) {
     }
   }
 
-  if (/^c#\d{13}$/.test(text)) {
-    const nationId = text.replace(/^c#/, '').trim();
+if (/^c#\d{13}$/.test(text)) {
+  const nationId = text.replace(/^c#/, '').trim();
 
-    try {
-      const result = await fetchCrime(nationId);
-      const msg = formatCrime(result, nationId);
+  try {
+    const result = await fetchCrime(nationId);
 
-      return reply(event.replyToken, {
-        type: 'text',
-        text: msg
-      });
-    } catch (err) {
-      console.error('crime error:', err?.response?.data || err.message);
+    console.log('===== CRIME FULL RESPONSE START =====');
+    console.log(JSON.stringify(result, null, 2));
+    console.log('===== CRIME FULL RESPONSE END =====');
 
-      return reply(event.replyToken, {
-        type: 'text',
-        text: '❌ ดึงข้อมูลหมายจับไม่สำเร็จ'
-      });
-    }
+    const msg = formatCrime(result, nationId);
+
+    return reply(event.replyToken, {
+      type: 'text',
+      text: msg
+    });
+  } catch (err) {
+    console.error('crime error:', err?.response?.data || err.message);
+
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ ดึงข้อมูลหมายจับไม่สำเร็จ'
+    });
   }
+}
 
   if (text.startsWith('regis%')) {
     const raw = text.replace(/^regis%/i, '').trim();
