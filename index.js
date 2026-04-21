@@ -440,6 +440,9 @@ function buildMenuCarouselFlex() {
                 '┣ ╾ peac%เลข CA',
                 '┣ ╾ pean%ชื่อสกุล',
                 '┗ ╾ se%รหัสสาขา7-11'
+              ]),
+              menuSection('📺 ผ่อนสินค้า', [
+                '┗ ╾ s%เลขบัตร'
               ])
             ]
           },
