@@ -512,6 +512,107 @@ function buildRegisterGuideFlex() {
   };
 }
 
+function buildAdminMenuFlex() {
+  return {
+    type: 'flex',
+    altText: 'เมนูแอดมิน',
+    contents: {
+      type: 'bubble',
+      size: 'mega',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        backgroundColor: '#7C2D12',
+        paddingAll: '16px',
+        contents: [
+          {
+            type: 'text',
+            text: 'HADMIN MENU',
+            color: '#FFFFFF',
+            weight: 'bold',
+            size: 'lg'
+          },
+          {
+            type: 'text',
+            text: 'คำสั่งสำหรับผู้ดูแลระบบ',
+            color: '#FED7AA',
+            size: 'sm',
+            margin: 'sm'
+          }
+        ]
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'md',
+        contents: [
+          menuSection('👥 จัดการสมาชิก', [
+            'กดปุ่มเพื่อดูผลลัพธ์ได้ทันที'
+          ]),
+          menuSection('💰 จัดการ TOPUP', [
+            'ดูรายการ TOPUP ที่รอตรวจสอบ'
+          ]),
+          menuSection('🔎 คำสั่งค้นหาเพิ่มเติม', [
+            'member#เบอร์โทร = ดูข้อมูลสมาชิก',
+            'renew30#เบอร์โทร',
+            'renew90#เบอร์โทร',
+            'renew180#เบอร์โทร',
+            'renew365#เบอร์โทร'
+          ])
+        ]
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'sm',
+        contents: [
+          {
+            type: 'button',
+            style: 'primary',
+            color: '#B45309',
+            action: {
+              type: 'postback',
+              label: 'สมาชิกทั้งหมด',
+              data: 'admin_members_all',
+              displayText: 'ดูสมาชิกทั้งหมด'
+            }
+          },
+          {
+            type: 'button',
+            style: 'secondary',
+            action: {
+              type: 'postback',
+              label: 'สมาชิกรอตรวจสอบ',
+              data: 'admin_members_pending',
+              displayText: 'ดูสมาชิกรอตรวจสอบ'
+            }
+          },
+          {
+            type: 'button',
+            style: 'secondary',
+            action: {
+              type: 'postback',
+              label: 'สมาชิกหมดอายุ',
+              data: 'admin_members_expired',
+              displayText: 'ดูสมาชิกหมดอายุ'
+            }
+          },
+          {
+            type: 'button',
+            style: 'secondary',
+            action: {
+              type: 'postback',
+              label: 'TOPUP รอตรวจสอบ',
+              data: 'admin_topup_pending',
+              displayText: 'ดู TOPUP รอตรวจสอบ'
+            }
+          }
+        ]
+      }
+    }
+  };
+}
+
 function buildAdminApproveFlex(member, targetUserId) {
   return {
     type: 'flex',
@@ -889,6 +990,68 @@ function mapTopupPackage(text) {
   return null;
 }
 
+function buildMembersAllText(db) {
+  const allMembers = Object.entries(db.members);
+  if (!allMembers.length) return 'ยังไม่มีสมาชิกในระบบ';
+
+  const lines = allMembers.slice(0, 50).map(([uid, m], i) => {
+    const statusText =
+      m.status === 'approved'
+        ? (isExpired(m.expireAt) ? 'หมดอายุ' : 'อนุมัติ')
+        : m.status === 'waiting_card'
+          ? 'รอส่งรูป'
+          : m.status === 'pending'
+            ? 'รอตรวจสอบ'
+            : m.status === 'rejected'
+              ? 'ปฏิเสธ'
+              : m.status || '-';
+
+    return `${i + 1}. ${m.fullname || '-'} | ${m.phone || '-'} | ${statusText}`;
+  });
+
+  return `สมาชิกทั้งหมด (${allMembers.length})\n\n${lines.join('\n')}`;
+}
+
+function buildMembersExpiredText(db) {
+  const expired = Object.entries(db.members).filter(([_, m]) =>
+    m.status === 'approved' && isExpired(m.expireAt)
+  );
+
+  if (!expired.length) return 'ยังไม่มีสมาชิกที่หมดอายุ';
+
+  const lines = expired.slice(0, 50).map(([uid, m], i) =>
+    `${i + 1}. ${m.fullname || '-'} | ${m.phone || '-'} | หมดอายุ: ${m.expireAt ? formatThaiDate(m.expireAt) : '-'}`
+  );
+
+  return `สมาชิกหมดอายุ (${expired.length})\n\n${lines.join('\n')}`;
+}
+
+function buildMembersPendingText(db) {
+  const pending = Object.entries(db.members).filter(([_, m]) => m.status === 'pending');
+
+  if (!pending.length) return 'ไม่มีสมาชิกที่รอตรวจสอบ';
+
+  const lines = pending.slice(0, 50).map(([uid, m], i) =>
+    `${i + 1}. ${m.fullname || '-'} | ${m.phone || '-'} | สมัครเมื่อ: ${m.registeredAt || '-'}`
+  );
+
+  return `สมาชิกที่รอตรวจสอบ (${pending.length})\n\n${lines.join('\n')}`;
+}
+
+function buildTopupPendingText(db) {
+  const pendingTopups = Object.entries(db.topups || {}).filter(([_, t]) =>
+    t.status === 'pending_review'
+  );
+
+  if (!pendingTopups.length) return 'ไม่มีรายการ TOPUP ที่รอตรวจสอบ';
+
+  const lines = pendingTopups.slice(0, 50).map(([uid, t], i) =>
+    `${i + 1}. ${t.fullname || t.lineName || '-'} | ${t.phone || '-'} | ${t.packageLabel || '-'} | ${t.updatedAt || '-'}`
+  );
+
+  return `รายการ TOPUP รอตรวจสอบ (${pendingTopups.length})\n\n${lines.join('\n')}`;
+}
+
 async function notifyAdmins(messages) {
   for (const adminId of ADMIN_IDS) {
     try {
@@ -945,6 +1108,17 @@ async function handleText(event) {
       },
       buildMenuCarouselFlex()
     ]);
+  }
+
+  if (text === 'hadmin') {
+    if (!isAdmin(userId)) {
+      return reply(event.replyToken, {
+        type: 'text',
+        text: 'คุณไม่มีสิทธิ์ใช้คำสั่งนี้'
+      });
+    }
+
+    return reply(event.replyToken, buildAdminMenuFlex());
   }
 
   if (text === 'myid') {
@@ -1063,75 +1237,28 @@ async function handleText(event) {
     if (!isAdmin(userId)) {
       return reply(event.replyToken, { type: 'text', text: 'คุณไม่มีสิทธิ์ใช้คำสั่งนี้' });
     }
-
-    const allMembers = Object.entries(db.members);
-    if (!allMembers.length) {
-      return reply(event.replyToken, { type: 'text', text: 'ยังไม่มีสมาชิกในระบบ' });
-    }
-
-    const lines = allMembers.slice(0, 50).map(([uid, m], i) => {
-      const statusText =
-        m.status === 'approved'
-          ? (isExpired(m.expireAt) ? 'หมดอายุ' : 'อนุมัติ')
-          : m.status === 'waiting_card'
-            ? 'รอส่งรูป'
-            : m.status === 'pending'
-              ? 'รอตรวจสอบ'
-              : m.status === 'rejected'
-                ? 'ปฏิเสธ'
-                : m.status || '-';
-
-      return `${i + 1}. ${m.fullname || '-'} | ${m.phone || '-'} | ${statusText}`;
-    });
-
-    return reply(event.replyToken, {
-      type: 'text',
-      text: `สมาชิกทั้งหมด (${allMembers.length})\n\n${lines.join('\n')}`
-    });
+    return reply(event.replyToken, { type: 'text', text: buildMembersAllText(db) });
   }
 
   if (text === 'members_expired') {
     if (!isAdmin(userId)) {
       return reply(event.replyToken, { type: 'text', text: 'คุณไม่มีสิทธิ์ใช้คำสั่งนี้' });
     }
-
-    const expired = Object.entries(db.members).filter(([_, m]) =>
-      m.status === 'approved' && isExpired(m.expireAt)
-    );
-
-    if (!expired.length) {
-      return reply(event.replyToken, { type: 'text', text: 'ยังไม่มีสมาชิกที่หมดอายุ' });
-    }
-
-    const lines = expired.slice(0, 50).map(([uid, m], i) =>
-      `${i + 1}. ${m.fullname || '-'} | ${m.phone || '-'} | หมดอายุ: ${m.expireAt ? formatThaiDate(m.expireAt) : '-'}`
-    );
-
-    return reply(event.replyToken, {
-      type: 'text',
-      text: `สมาชิกหมดอายุ (${expired.length})\n\n${lines.join('\n')}`
-    });
+    return reply(event.replyToken, { type: 'text', text: buildMembersExpiredText(db) });
   }
 
   if (text === 'members_pending') {
     if (!isAdmin(userId)) {
       return reply(event.replyToken, { type: 'text', text: 'คุณไม่มีสิทธิ์ใช้คำสั่งนี้' });
     }
+    return reply(event.replyToken, { type: 'text', text: buildMembersPendingText(db) });
+  }
 
-    const pending = Object.entries(db.members).filter(([_, m]) => m.status === 'pending');
-
-    if (!pending.length) {
-      return reply(event.replyToken, { type: 'text', text: 'ไม่มีสมาชิกที่รอตรวจสอบ' });
+  if (text === 'topup_pending') {
+    if (!isAdmin(userId)) {
+      return reply(event.replyToken, { type: 'text', text: 'คุณไม่มีสิทธิ์ใช้คำสั่งนี้' });
     }
-
-    const lines = pending.slice(0, 50).map(([uid, m], i) =>
-      `${i + 1}. ${m.fullname || '-'} | ${m.phone || '-'} | สมัครเมื่อ: ${m.registeredAt || '-'}`
-    );
-
-    return reply(event.replyToken, {
-      type: 'text',
-      text: `สมาชิกที่รอตรวจสอบ (${pending.length})\n\n${lines.join('\n')}`
-    });
+    return reply(event.replyToken, { type: 'text', text: buildTopupPendingText(db) });
   }
 
   if (text === 'TOPUP' || text === 'topup') {
@@ -1380,6 +1507,36 @@ async function handlePostback(event) {
     });
   }
 
+  const db = loadDB();
+
+  if (data === 'admin_members_all') {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: buildMembersAllText(db)
+    });
+  }
+
+  if (data === 'admin_members_pending') {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: buildMembersPendingText(db)
+    });
+  }
+
+  if (data === 'admin_members_expired') {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: buildMembersExpiredText(db)
+    });
+  }
+
+  if (data === 'admin_topup_pending') {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: buildTopupPendingText(db)
+    });
+  }
+
   const parts = data.split('|');
   const action = parts[0];
   const targetUserId = parts[1];
@@ -1390,8 +1547,6 @@ async function handlePostback(event) {
       text: 'ข้อมูลคำสั่งไม่ถูกต้อง'
     });
   }
-
-  const db = loadDB();
 
   if (action === 'topup_approved') {
     if (!db.topups || !db.topups[targetUserId]) {
