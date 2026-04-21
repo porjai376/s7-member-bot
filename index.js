@@ -259,7 +259,7 @@ async function fetchCrime(nationId) {
 
 // ===== REAL %66 LOOKUP =====
 async function fetchHlr(msisdn) {
-  const url = process.env.HLR_API_URL;
+  const url = 'https://www.hlr-lookups.com/api/v2/hlr-lookup';
   const apiKey = process.env.HLR_API_KEY;
 
   const payload = {
@@ -271,7 +271,7 @@ async function fetchHlr(msisdn) {
   const resp = await axios.post(url, payload, {
     headers: {
       'Content-Type': 'application/json',
-      'X-Api-Key': apiKey
+      'X-Api-Key': fcd01b61e422
     },
     timeout: 30000
   });
