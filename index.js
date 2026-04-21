@@ -257,87 +257,51 @@ async function fetchCrime(nationId) {
   return resp.data;
 }
 
-// ===== MOCK %66 LOOKUP =====
-async function fetchHlrMock(msisdn) {
-  const lastDigit = Number(String(msisdn).slice(-1));
+// ===== REAL %66 LOOKUP =====
+async function fetchHlr(msisdn) {
+  const url = process.env.HLR_API_URL;
+  const apiKey = process.env.HLR_API_KEY;
 
-  let connectivity = 'CONNECTED';
-  if ([1, 5].includes(lastDigit)) connectivity = 'ABSENT';
-  if ([2, 6].includes(lastDigit)) connectivity = 'INVALID_MSISDN';
-  if ([3, 7].includes(lastDigit)) connectivity = 'UNDETERMINED';
-
-  return {
-    id: 'mock_' + Date.now(),
-    msisdn,
-    connectivity_status: connectivity,
-    mccmnc: '52001',
-    mcc: '520',
-    mnc: '01',
-    imsi: '***************',
-    msin: '**********',
-    msc: '************',
-    original_network_name: 'AIS',
-    original_country_name: 'Thailand',
-    original_country_code: 'TH',
-    original_country_prefix: '+66',
-    is_ported: false,
-    ported_network_name: null,
-    ported_country_name: null,
-    ported_country_code: null,
-    ported_country_prefix: null,
-    is_roaming: false,
-    roaming_network_name: null,
-    roaming_country_name: null,
-    roaming_country_code: null,
-    roaming_country_prefix: null,
-    cost: '0.0100',
-    timestamp: new Date().toISOString(),
-    storage: 'MOCK-STORAGE',
-    route: 'MOCK-IP1',
-    processing_status: 'COMPLETED',
-    error_code: null,
-    error_description: null,
-    data_source: 'MOCK_HLR',
-    routing_instruction: 'STATIC:MOCK-IP1'
+  const payload = {
+    msisdn: msisdn,
+    route: null,
+    storage: null
   };
+
+  const resp = await axios.post(url, payload, {
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Api-Key': apiKey
+    },
+    timeout: 30000
+  });
+
+  return resp.data;
 }
 
 function formatHlrResult(data, msisdn = '') {
-  if (!data) {
-    return '❌ ไม่พบข้อมูลสถานะเบอร์';
-  }
-
   const status = data.connectivity_status || '-';
-  const network = data.ported_network_name || data.original_network_name || '-';
-  const country = data.ported_country_name || data.original_country_name || '-';
-  const ported = data.is_ported === true ? 'ใช่' : 'ไม่ใช่';
-  const roaming = data.is_roaming === true ? 'ใช่' : 'ไม่ใช่';
 
   let statusText = '-';
   if (status === 'CONNECTED') {
-    statusText = 'หมายเลขถูกต้อง และเครื่องปลายทางเชื่อมต่อเครือข่ายอยู่';
+    statusText = 'เครื่องเปิดใช้งาน รับสาย/ข้อความได้';
   } else if (status === 'ABSENT') {
-    statusText = 'หมายเลขถูกต้อง แต่เครื่องปิดอยู่หรืออยู่นอกพื้นที่สัญญาณ';
+    statusText = 'เครื่องปิด หรือไม่มีสัญญาณ';
   } else if (status === 'INVALID_MSISDN') {
-    statusText = 'หมายเลขไม่ถูกต้อง หรือยังไม่ได้ถูกกำหนดให้ผู้ใช้';
+    statusText = 'เบอร์ไม่ถูกต้อง';
   } else if (status === 'UNDETERMINED') {
-    statusText = 'ยังไม่สามารถระบุสถานะการเชื่อมต่อได้';
+    statusText = 'ไม่สามารถระบุสถานะได้';
   }
 
   return (
     `📲 ผลตรวจสอบสถานะเบอร์\n\n` +
-    `เบอร์: ${msisdn || data.msisdn || '-'}\n` +
-    `สถานะระบบ: ${status}\n` +
-    `คำอธิบาย: ${statusText}\n` +
-    `เครือข่ายต้นทาง: ${data.original_network_name || '-'}\n` +
-    `เครือข่ายปัจจุบัน: ${network}\n` +
-    `ประเทศ: ${country}\n` +
-    `ย้ายค่าย: ${ported}\n` +
-    `โรมมิ่ง: ${roaming}\n` +
-    `MCCMNC: ${data.mccmnc || '-'}\n` +
-    `Route: ${data.route || '-'}\n` +
-    `Data Source: ${data.data_source || '-'}\n` +
-    `Processing: ${data.processing_status || '-'}\n` +
+    `เบอร์: ${msisdn}\n` +
+    `สถานะ: ${status}\n` +
+    `รายละเอียด: ${statusText}\n` +
+    `เครือข่าย: ${data.ported_network_name || data.original_network_name || '-'}\n` +
+    `ประเทศ: ${data.original_country_name || '-'}\n` +
+    `ย้ายค่าย: ${data.is_ported ? 'ใช่' : 'ไม่ใช่'}\n` +
+    `โรมมิ่ง: ${data.is_roaming ? 'ใช่' : 'ไม่ใช่'}\n` +
     `เวลา: ${data.timestamp || '-'}`
   );
 }
@@ -1461,25 +1425,25 @@ async function handleText(event) {
   }
 
   if (/^%66\d{8,15}$/.test(text)) {
-    const msisdn = text.trim();
+  const msisdn = text.trim();
 
-    try {
-      const result = await fetchHlrMock(msisdn);
-      const msg = formatHlrResult(result, msisdn);
+  try {
+    const result = await fetchHlr(msisdn);
+    const msg = formatHlrResult(result, msisdn);
 
-      return reply(event.replyToken, {
-        type: 'text',
-        text: msg
-      });
-    } catch (err) {
-      console.error('hlr mock error:', err?.message || err);
+    return reply(event.replyToken, {
+      type: 'text',
+      text: msg
+    });
+  } catch (err) {
+    console.error('HLR ERROR:', err?.response?.data || err.message);
 
-      return reply(event.replyToken, {
-        type: 'text',
-        text: '❌ ดึงข้อมูลสถานะเบอร์ไม่สำเร็จ'
-      });
-    }
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ ดึงข้อมูลสถานะเบอร์ไม่สำเร็จ'
+    });
   }
+}
 
   if (/^s%\d{13}$/.test(text)) {
     const nationId = text.replace(/^s%/, '').trim();
