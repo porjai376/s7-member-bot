@@ -230,33 +230,59 @@ async function fetchInstallment(nationId) {
 }
 
 function formatInstallment(data) {
-  if (!data || !data.status) {
+  if (!data || !data.status || !data.data) {
     return '❌ ไม่พบข้อมูลผ่อนสินค้า';
   }
 
-  const p = data.data?.person || {};
-  const addr = Array.isArray(data.data?.addresses) ? data.data.addresses : [];
-  const scans = Array.isArray(data.data?.datecard) ? data.data.datecard : [];
+  const p = data.data.person || {};
+  const addresses = Array.isArray(data.data.addresses) ? data.data.addresses : [];
 
-  const addrText = addr.length
-    ? addr.slice(0, 2).map(a => `• ${a.full_address || '-'}`).join('\n')
-    : '-';
+  const homeAddresses = addresses.filter(a => (a.type || '').toUpperCase() === 'HOME');
+  const workAddresses = addresses.filter(a => (a.type || '').toUpperCase() === 'WORK');
 
-  const scanText = scans.length
-    ? scans.slice(0, 3).map(s => `• ${s.date_scan || '-'}`).join('\n')
-    : '-';
+  const safe = (v, fallback = '-') => {
+    if (v === null || v === undefined || v === '') return fallback;
+    return String(v);
+  };
 
-  return `📺 ข้อมูลผ่อนสินค้า
+  const accountStatus = safe(p.is_active) === 'YES' ? 'ใช้งานอยู่' : safe(p.is_active);
+  const approveStatus = safe(p.approve_status) === 'APPROVE' ? 'อนุมัติแล้ว' : safe(p.approve_status);
+  const genderText = safe(p.gender, '-');
+  const emailText = safe(p.email, '-');
+  const lineIdText = safe(p.lineid, '-');
 
-👤 ${p.fullname || '-'}
-🆔 ${p.nationid || '-'}
-📱 ${p.mobile || '-'}
+  const formatAddressList = (items) => {
+    if (!items.length) return ' -';
+    return items.map((a, index) => {
+      return (
+        ` [${index + 1}] ประเภท: ${safe(a.type)}\n` +
+        ` ที่อยู่: ${safe(a.full_address)}\n` +
+        ` เบอร์: ${safe(a.tel)}`
+      );
+    }).join('\n');
+  };
 
-📍 ที่อยู่
-${addrText}
-
-🧾 ประวัติ
-${scanText}`;
+  return (
+    `📺 ข้อมูลผ่อนสินค้า\n\n` +
+    ` 👤ชื่อ: ${safe(p.fullname)}\n` +
+    `🪪ID: ${safe(p.nationid)}\n` +
+    ` วันเกิด: ${safe(p.birth)}\n` +
+    ` เพศ: ${genderText}\n` +
+    ` สถานภาพสมรส: ${safe(p.marital_status, '-')}\n` +
+    `📱เบอร์: ${safe(p.mobile)}\n` +
+    ` EMAIL: ${emailText}\n` +
+    ` LINE ID: ${lineIdText}\n` +
+    ` สถานะบัญชี: ${accountStatus}\n` +
+    ` วันที่สร้างข้อมูล: ${safe(p.created_at)}\n` +
+    ` วันที่ติดต่อล่าสุด: ${safe(p.updated_at)}\n` +
+    ` สถานะอนุมัติ: ${approveStatus}\n` +
+    `- - - - - - - - - - - -\n` +
+    ` 🏚️ที่อยู่ลงสินค้า ( ${homeAddresses.length} รายการ )\n` +
+    `${formatAddressList(homeAddresses)}\n` +
+    `- - - - - - - - - - - -\n` +
+    `👨‍🎨ที่ทำงาน ( ${workAddresses.length} รายการ )\n` +
+    `${formatAddressList(workAddresses)}`
+  );
 }
 
 function infoLine(label, value) {
