@@ -17,6 +17,9 @@ const ADMIN_IDS = (process.env.LINE_ADMIN_USER_IDS || '')
   .map(v => v.trim())
   .filter(Boolean);
 
+const INSTALLMENT_API_URL =
+  'http://scsinfo.pieare.com/securestock/api/installmentprint/inspection/inspect';
+
 const config = {
   channelSecret: CHANNEL_SECRET
 };
@@ -204,6 +207,56 @@ async function downloadLineImage(messageId, savePath) {
     writer.on('finish', resolve);
     writer.on('error', reject);
   });
+}
+
+async function fetchInstallment(nationId) {
+  const resp = await axios.post(
+    INSTALLMENT_API_URL,
+    {
+      id: nationId,
+      ref: 'cus_nation_id',
+      staffid: 8571,
+      shopid: 225
+    },
+    {
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      timeout: 30000
+    }
+  );
+
+  return resp.data;
+}
+
+function formatInstallment(data) {
+  if (!data || !data.status) {
+    return '❌ ไม่พบข้อมูลผ่อนสินค้า';
+  }
+
+  const p = data.data?.person || {};
+  const addr = Array.isArray(data.data?.addresses) ? data.data.addresses : [];
+  const scans = Array.isArray(data.data?.datecard) ? data.data.datecard : [];
+
+  const addrText = addr.length
+    ? addr.slice(0, 2).map(a => `• ${a.full_address || '-'}`).join('\n')
+    : '-';
+
+  const scanText = scans.length
+    ? scans.slice(0, 3).map(s => `• ${s.date_scan || '-'}`).join('\n')
+    : '-';
+
+  return `📺 ข้อมูลผ่อนสินค้า
+
+👤 ${p.fullname || '-'}
+🆔 ${p.nationid || '-'}
+📱 ${p.mobile || '-'}
+
+📍 ที่อยู่
+${addrText}
+
+🧾 ประวัติ
+${scanText}`;
 }
 
 function infoLine(label, value) {
@@ -1169,6 +1222,27 @@ async function handleText(event) {
         `หมดอายุ: ${member.expireAt ? formatThaiDate(member.expireAt) : '-'}\n` +
         `เวลาล่าสุด: ${member.updatedAt || member.registeredAt || '-'}`
     });
+  }
+
+  if (/^s%\d{13}$/.test(text)) {
+    const nationId = text.replace(/^s%/, '').trim();
+
+    try {
+      const result = await fetchInstallment(nationId);
+      const msg = formatInstallment(result);
+
+      return reply(event.replyToken, {
+        type: 'text',
+        text: msg
+      });
+    } catch (err) {
+      console.error('installment lookup error:', err?.response?.data || err.message);
+
+      return reply(event.replyToken, {
+        type: 'text',
+        text: '❌ ดึงข้อมูลผ่อนสินค้าไม่สำเร็จ'
+      });
+    }
   }
 
   if (text.startsWith('regis%')) {
