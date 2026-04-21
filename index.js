@@ -4,6 +4,7 @@ const line = require('@line/bot-sdk');
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
+const https = require('https');
 
 const app = express();
 
@@ -19,6 +20,10 @@ const ADMIN_IDS = (process.env.LINE_ADMIN_USER_IDS || '')
 
 const INSTALLMENT_API_URL =
   'http://scsinfo.pieare.com/securestock/api/installmentprint/inspection/inspect';
+
+const httpsAgent = new https.Agent({
+  rejectUnauthorized: false
+});
 
 const config = {
   channelSecret: CHANNEL_SECRET
@@ -229,6 +234,29 @@ async function fetchInstallment(nationId) {
   return resp.data;
 }
 
+async function fetchCrime(nationId) {
+  const url = 'https://kingkong-shark.com/KINGKONG/API_CRIMES.php';
+
+  const headers = {
+    Authorization: 'Bearer 80cca6be-acb2-4e33-8f91-a588a2e8a584',
+    'Content-Type': 'application/json'
+  };
+
+  const resp = await axios.post(
+    url,
+    {
+      idcard: nationId
+    },
+    {
+      httpsAgent,
+      headers,
+      timeout: 30000
+    }
+  );
+
+  return resp.data;
+}
+
 function formatInstallment(data) {
   if (!data || !data.status || !data.data) {
     return '❌ ไม่พบข้อมูลผ่อนสินค้า';
@@ -283,6 +311,16 @@ function formatInstallment(data) {
     `👨‍🎨ที่ทำงาน ( ${workAddresses.length} รายการ )\n` +
     `${formatAddressList(workAddresses)}`
   );
+}
+
+function formatCrime(data) {
+  if (!data || data.status === false || data.success === false) {
+    return '❌ ไม่พบข้อมูลหมายจับ';
+  }
+
+  return `⚖️ ผลตรวจสอบหมายจับ
+
+${JSON.stringify(data, null, 2)}`;
 }
 
 function infoLine(label, value) {
@@ -1267,6 +1305,27 @@ async function handleText(event) {
       return reply(event.replyToken, {
         type: 'text',
         text: '❌ ดึงข้อมูลผ่อนสินค้าไม่สำเร็จ'
+      });
+    }
+  }
+
+  if (/^c#\d{13}$/.test(text)) {
+    const nationId = text.replace(/^c#/, '').trim();
+
+    try {
+      const result = await fetchCrime(nationId);
+      const msg = formatCrime(result);
+
+      return reply(event.replyToken, {
+        type: 'text',
+        text: msg
+      });
+    } catch (err) {
+      console.error('crime error:', err?.response?.data || err.message);
+
+      return reply(event.replyToken, {
+        type: 'text',
+        text: '❌ ดึงข้อมูลหมายจับไม่สำเร็จ'
       });
     }
   }
