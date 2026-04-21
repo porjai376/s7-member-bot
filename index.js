@@ -283,15 +283,6 @@ function buildMenuFooter() {
         style: 'secondary',
         action: {
           type: 'message',
-          label: 'ส่งข้อมูลสมัคร',
-          text: 'regis%ยศ/ชื่อ-สกุล/ตำแหน่ง/สังกัด/เบอร์โทร'
-        }
-      },
-      {
-        type: 'button',
-        style: 'secondary',
-        action: {
-          type: 'message',
           label: 'เมนูหลัก',
           text: 'menu%'
         }
@@ -303,7 +294,7 @@ function buildMenuFooter() {
 function buildMenuCarouselFlex() {
   return {
     type: 'flex',
-    altText: 'เมนูคำสั่ง S7BOT',
+    altText: 'เมนูคำสั่ง MEGABOT',
     contents: {
       type: 'carousel',
       contents: [
@@ -318,7 +309,7 @@ function buildMenuCarouselFlex() {
             contents: [
               {
                 type: 'text',
-                text: 'S7BOT MENU 1/3',
+                text: 'MEGABOT 1/3',
                 color: '#FFFFFF',
                 weight: 'bold',
                 size: 'lg'
@@ -367,7 +358,7 @@ function buildMenuCarouselFlex() {
             contents: [
               {
                 type: 'text',
-                text: 'S7BOT MENU 2/3',
+                text: 'MEGABOT 2/3',
                 color: '#FFFFFF',
                 weight: 'bold',
                 size: 'lg'
@@ -414,7 +405,7 @@ function buildMenuCarouselFlex() {
             contents: [
               {
                 type: 'text',
-                text: 'S7BOT MENU 3/3',
+                text: 'MEGABOT 3/3',
                 color: '#FFFFFF',
                 weight: 'bold',
                 size: 'lg'
@@ -767,7 +758,7 @@ async function handleText(event) {
     return reply(event.replyToken, [
       {
         type: 'text',
-        text: '📋 เมนูคำสั่ง S7BOT\nเลื่อนดูเมนูแต่ละหน้าได้เลย'
+        text: '📋 เมนูคำสั่ง MEGABOT\nเลื่อนดูเมนูแต่ละหน้าได้เลย'
       },
       buildMenuCarouselFlex()
     ]);
