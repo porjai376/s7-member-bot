@@ -363,6 +363,7 @@ function formatCrime(data, keyword = '') {
     return '❌ แปลงข้อมูลหมายจับไม่สำเร็จ';
   }
 }
+
 function infoLine(label, value) {
   return {
     type: 'box',
@@ -1222,6 +1223,21 @@ async function notifyAdmins(messages) {
   }
 }
 
+function canUseBotCommands(userId, member, text) {
+  if (isAdmin(userId)) return true;
+
+  const publicCommands = [
+    'menu%',
+    'ยินยอมรับข้อตกลง',
+    'สถานะการสมัคร'
+  ];
+
+  if (publicCommands.includes(text)) return true;
+  if (text.startsWith('regis%')) return true;
+
+  return isActiveMember(member);
+}
+
 async function handleEvent(event) {
   const db = loadDB();
 
@@ -1259,6 +1275,37 @@ async function handleText(event) {
   const text = (event.message.text || '').trim();
   const db = loadDB();
   const member = db.members[userId];
+
+  if (!canUseBotCommands(userId, member, text)) {
+    if (!member) {
+      return reply(event.replyToken, {
+        type: 'text',
+        text: '❌ ยังไม่มีสิทธิ์ใช้งาน\nกรุณาสมัครสมาชิกก่อน โดยพิมพ์: ยินยอมรับข้อตกลง'
+      });
+    }
+
+    if (member.status !== 'approved') {
+      return reply(event.replyToken, {
+        type: 'text',
+        text: '⏳ บัญชีของคุณยังไม่ได้รับการอนุมัติจากแอดมิน'
+      });
+    }
+
+    if (isExpired(member.expireAt)) {
+      return reply(event.replyToken, {
+        type: 'text',
+        text:
+          '❌ สมาชิกของคุณหมดอายุแล้ว\n' +
+          `หมดอายุเมื่อ: ${member.expireAt ? formatThaiDate(member.expireAt) : '-'}\n` +
+          'กรุณาติดต่อแอดมินเพื่อต่ออายุ'
+      });
+    }
+
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ คุณไม่มีสิทธิ์ใช้งานคำสั่งนี้'
+    });
+  }
 
   if (text === 'menu%') {
     return reply(event.replyToken, [
@@ -1349,31 +1396,31 @@ async function handleText(event) {
     }
   }
 
-if (/^c#\d{13}$/.test(text)) {
-  const nationId = text.replace(/^c#/, '').trim();
+  if (/^c#\d{13}$/.test(text)) {
+    const nationId = text.replace(/^c#/, '').trim();
 
-  try {
-    const result = await fetchCrime(nationId);
+    try {
+      const result = await fetchCrime(nationId);
 
-    console.log('===== CRIME FULL RESPONSE START =====');
-    console.log(JSON.stringify(result, null, 2));
-    console.log('===== CRIME FULL RESPONSE END =====');
+      console.log('===== CRIME FULL RESPONSE START =====');
+      console.log(JSON.stringify(result, null, 2));
+      console.log('===== CRIME FULL RESPONSE END =====');
 
-    const msg = formatCrime(result, nationId);
+      const msg = formatCrime(result, nationId);
 
-    return reply(event.replyToken, {
-      type: 'text',
-      text: msg
-    });
-  } catch (err) {
-    console.error('crime error:', err?.response?.data || err.message);
+      return reply(event.replyToken, {
+        type: 'text',
+        text: msg
+      });
+    } catch (err) {
+      console.error('crime error:', err?.response?.data || err.message);
 
-    return reply(event.replyToken, {
-      type: 'text',
-      text: '❌ ดึงข้อมูลหมายจับไม่สำเร็จ'
-    });
+      return reply(event.replyToken, {
+        type: 'text',
+        text: '❌ ดึงข้อมูลหมายจับไม่สำเร็จ'
+      });
+    }
   }
-}
 
   if (text.startsWith('regis%')) {
     const raw = text.replace(/^regis%/i, '').trim();
