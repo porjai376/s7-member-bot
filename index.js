@@ -315,7 +315,7 @@ function formatInstallment(data) {
 
 function formatCrime(data, keyword = '') {
   try {
-    if (!data || data.status === false || data.status === 'error' || data.success === false) {
+    if (!data || data.status === false || data.status === 'error') {
       return '❌ ไม่พบข้อมูลหมายจับ';
     }
 
@@ -326,38 +326,37 @@ function formatCrime(data, keyword = '') {
 
     const pick = (text, label) => {
       const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const regex = new RegExp(`${escaped}\\s*:\\s*(.*?)(?=\\n[A-Z ]+\\s*:|$)`, 's');
+      const regex = new RegExp(`${escaped}\\s*:\\s*(.*?)(?=\\n[A-Z ]+\\s*:|\\\\|$)`, 's');
       const match = text.match(regex);
       return match ? match[1].trim() : '-';
     };
 
-    let msg = `⚖️ ผลตรวจสอบหมายจับ\n\n`;
-    msg += `คำค้น: ${keyword}\n`;
-    msg += `หน้า 1/1 | พบทั้งหมด ${list.length} รายการ\n`;
-    msg += `====================\n`;
+    // 🔥 เรียงใหม่ (ล่าสุดขึ้นก่อน)
+    const sorted = [...list].reverse();
 
-    list.forEach((item, index) => {
+    let msg = `🚨พบข้อมูลหมายจับ🚨\n`;
+
+    sorted.forEach((item, index) => {
       const text = String(item || '');
 
       const warrant = pick(text, 'WARRANT');
       const crimes = pick(text, 'CRIMES');
       const charge = pick(text, 'CHARGE');
       const id = pick(text, 'ID');
-      const fullname = pick(text, 'FULLNAME');
+      const fullname = pick(text, 'FULLNAME').replace(/\\.*$/, ''); // 🔥 ตัด \POLICE
       const police = pick(text, 'POLICE');
       const tell = pick(text, 'TELL');
       const status = pick(text, 'STATUS');
 
-      msg += ` [${index + 1}]\n`;
-      msg += ` เลขหมายจับ: ${warrant}\n`;
-      msg += ` คดี: ${crimes}\n`;
-      msg += ` ข้อหา: ${charge}\n`;
-      msg += ` เลขบัตร: ${id !== '-' ? id : keyword}\n`;
-      msg += ` ชื่อ-สกุล: ${fullname}\n`;
-      msg += ` เจ้าหน้าที่: ${police}\n`;
-      msg += ` เบอร์โทร: ${tell}\n`;
-      msg += ` สถานะ: ${status}\n`;
-      msg += `--------------------\n`;
+      msg += `\n${index + 1}️⃣\n`;
+      msg += `┌● เลขหมายจับ : ${warrant}\n`;
+      msg += `├● เลขคดี : ${crimes}\n`;
+      msg += `├● เลขบัตรประชาชน : ${id !== '-' ? id : keyword}\n`;
+      msg += `├● ชื่อ : ${fullname}\n`;
+      msg += `├● ข้อหา : ${charge}\n`;
+      msg += `├● เจ้าของคดี : ${police}\n`;
+      msg += `├● เบอร์ติดต่อ : ${tell}\n`;
+      msg += `└● สถานะหมาย : ${status}\n`;
     });
 
     return msg;
