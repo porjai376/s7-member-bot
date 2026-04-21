@@ -271,7 +271,7 @@ async function fetchHlr(msisdn) {
   const resp = await axios.post(url, payload, {
     headers: {
       'Content-Type': 'application/json',
-      'X-Api-Key': fcd01b61e422
+      'X-Api-Key': 'X-Api-Key': 'fcd01b61e422'
     },
     timeout: 30000
   });
