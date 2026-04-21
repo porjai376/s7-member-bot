@@ -245,7 +245,7 @@ async function fetchCrime(nationId) {
   const resp = await axios.post(
     url,
     {
-      idcard: nationId
+      keyword: nationId
     },
     {
       httpsAgent,
@@ -313,16 +313,46 @@ function formatInstallment(data) {
   );
 }
 
-function formatCrime(data) {
-  if (!data || data.status === false || data.success === false) {
-    return '❌ ไม่พบข้อมูลหมายจับ';
+function formatCrime(data, keyword = '') {
+  try {
+    if (!data || data.status === false || data.success === false) {
+      return '❌ ไม่พบข้อมูลหมายจับ';
+    }
+
+    const list = Array.isArray(data.data)
+      ? data.data
+      : Array.isArray(data.result)
+        ? data.result
+        : [];
+
+    if (!list.length) {
+      return '❌ ไม่พบข้อมูลหมายจับ';
+    }
+
+    let msg = `⚖️ ผลตรวจสอบหมายจับ\n\n`;
+    msg += `คำค้น: ${keyword}\n`;
+    msg += `หน้า 1/1 | พบทั้งหมด ${list.length} รายการ\n`;
+    msg += `====================\n`;
+
+    list.forEach((item, index) => {
+      msg += ` [${index + 1}]\n`;
+      msg += ` เลขหมายจับ: ${item.warrant_no || item.wno || '-'}\n`;
+      msg += ` คดี: ${item.case_no || item.case || '-'} ${item.police_station || item.station || ''}\n`;
+      msg += ` ข้อหา: ${item.charge || item.accused || '-'}\n`;
+      msg += ` เลขบัตร: ${item.idcard || keyword || '-'}\n`;
+      msg += ` ชื่อ-สกุล: ${item.fullname || item.name || '-'}\n`;
+      msg += ` เจ้าหน้าที่: ${item.officer || item.staff || '-'}\n`;
+      msg += ` เบอร์โทร: ${item.phone || item.tel || '-'}\n`;
+      msg += ` สถานะ: ${item.status || item.state || '-'}\n`;
+      msg += `--------------------\n`;
+    });
+
+    return msg;
+  } catch (err) {
+    console.error('formatCrime error:', err);
+    return '❌ แปลงข้อมูลหมายจับไม่สำเร็จ';
   }
-
-  return `⚖️ ผลตรวจสอบหมายจับ
-
-${JSON.stringify(data, null, 2)}`;
 }
-
 function infoLine(label, value) {
   return {
     type: 'box',
@@ -1314,7 +1344,7 @@ async function handleText(event) {
 
     try {
       const result = await fetchCrime(nationId);
-      const msg = formatCrime(result);
+      const msg = formatCrime(result, nationId);
 
       return reply(event.replyToken, {
         type: 'text',
