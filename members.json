@@ -1,0 +1,35 @@
+{
+  "members": {
+    "Ud6e470bfa8ab137a3aa246c53a9a384d": {
+      "userId": "Ud6e470bfa8ab137a3aa246c53a9a384d",
+      "lineName": "Plagiarism ®️4",
+      "rank": "ยศ",
+      "fullname": "ชื่อ-สกุล",
+      "position": "ตำแหน่ง",
+      "department": "สังกัด",
+      "phone": "เบอร์โทร",
+      "status": "approved",
+      "registeredAt": "21/04/2569 12:55:55",
+      "updatedAt": "21/04/2569 13:08:56",
+      "imagePath": "C:\\Users\\User\\linebot\\uploads\\Ud6e470bfa8ab137a3aa246c53a9a384d_1776750963398.jpg",
+      "imageUrl": "https://decent-cheaply-crane.ngrok-free.app/uploads/Ud6e470bfa8ab137a3aa246c53a9a384d_1776750963398.jpg",
+      "approvedDays": 365,
+      "expireAt": "2027-04-21T06:08:56.490Z",
+      "renewCount": 1
+    }
+  },
+  "processedEvents": {
+    "01KPQ9QVSPHDWC4S5A92EBYVQ1": 1776750948061,
+    "01KPQ9QZ5GGYEGEJS92S686NWG": 1776750951390,
+    "01KPQ9R36C59NM6Z1388Z2T7EA": 1776750955579,
+    "01KPQ9RASVDA08KHE13DWNEDA4": 1776750963397,
+    "01KPQ9RFX4MNFW1QEZ35YH6N9B": 1776750968621,
+    "01KPQ9RQBNX7HS37AYJE3899CM": 1776750976269,
+    "01KPQACPY5QSNVWADZB6GDM2F9": 1776751631140,
+    "01KPQACZ30NDQ0FRAY1C72G1PB": 1776751639522,
+    "01KPQAEAPT1YCW230RH2P169F2": 1776751684186,
+    "01KPQAEERZ29F62E7Y60XFA79B": 1776751688377,
+    "01KPQAFRSVEYV39HXGTB9K5K66": 1776751731375,
+    "01KPQAFXSXTF6VQ2PD56WX6GG3": 1776751736489
+  }
+}

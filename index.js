@@ -1,0 +1,1063 @@
+require('dotenv').config();
+const express = require('express');
+const line = require('@line/bot-sdk');
+const fs = require('fs');
+const path = require('path');
+const axios = require('axios');
+
+const app = express();
+
+const CHANNEL_ACCESS_TOKEN = process.env.CHANNEL_ACCESS_TOKEN;
+const CHANNEL_SECRET = process.env.CHANNEL_SECRET;
+const PORT = process.env.PORT || 3000;
+const BASE_URL = (process.env.BASE_URL || '').replace(/\/$/, '');
+
+const ADMIN_IDS = (process.env.LINE_ADMIN_USER_IDS || '')
+  .split(',')
+  .map(v => v.trim())
+  .filter(Boolean);
+
+const config = {
+  channelSecret: CHANNEL_SECRET
+};
+
+const client = new line.messagingApi.MessagingApiClient({
+  channelAccessToken: CHANNEL_ACCESS_TOKEN
+});
+
+const DATA_FILE = path.join(__dirname, 'members.json');
+const UPLOAD_DIR = path.join(__dirname, 'uploads');
+
+ensureStorage();
+
+app.use('/uploads', express.static(UPLOAD_DIR));
+
+app.get('/', (req, res) => {
+  res.send('LINE BOT RUNNING');
+});
+
+app.post('/webhook', line.middleware(config), async (req, res) => {
+  try {
+    for (const event of req.body.events) {
+      await handleEvent(event);
+    }
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Webhook error:', err?.response?.data || err.message || err);
+    res.status(500).end();
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
+
+function ensureStorage() {
+  if (!fs.existsSync(UPLOAD_DIR)) {
+    fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+  }
+
+  if (!fs.existsSync(DATA_FILE)) {
+    const initData = {
+      members: {},
+      processedEvents: {}
+    };
+    fs.writeFileSync(DATA_FILE, JSON.stringify(initData, null, 2), 'utf8');
+  }
+}
+
+function loadDB() {
+  ensureStorage();
+  try {
+    return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+  } catch (e) {
+    return { members: {}, processedEvents: {} };
+  }
+}
+
+function saveDB(db) {
+  fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2), 'utf8');
+}
+
+function nowThai() {
+  return new Date().toLocaleString('th-TH', {
+    timeZone: 'Asia/Bangkok',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
+}
+
+function formatThaiDate(date) {
+  return new Date(date).toLocaleString('th-TH', {
+    timeZone: 'Asia/Bangkok',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
+}
+
+function addDaysFromNow(days) {
+  const d = new Date();
+  d.setDate(d.getDate() + Number(days));
+  return d;
+}
+
+function isExpired(expireAt) {
+  if (!expireAt) return true;
+  return new Date(expireAt).getTime() < Date.now();
+}
+
+function isActiveMember(member) {
+  return !!(
+    member &&
+    member.status === 'approved' &&
+    member.expireAt &&
+    !isExpired(member.expireAt)
+  );
+}
+
+function isAdmin(userId) {
+  return ADMIN_IDS.includes(userId);
+}
+
+function cleanupProcessedEvents(db) {
+  const now = Date.now();
+  const ttl = 24 * 60 * 60 * 1000;
+
+  for (const key of Object.keys(db.processedEvents || {})) {
+    if (now - db.processedEvents[key] > ttl) {
+      delete db.processedEvents[key];
+    }
+  }
+}
+
+function markEventProcessed(db, eventId) {
+  db.processedEvents[eventId] = Date.now();
+  cleanupProcessedEvents(db);
+}
+
+function isEventProcessed(db, eventId) {
+  cleanupProcessedEvents(db);
+  return !!db.processedEvents[eventId];
+}
+
+async function reply(replyToken, messages) {
+  const arr = Array.isArray(messages) ? messages : [messages];
+  return client.replyMessage({
+    replyToken,
+    messages: arr
+  });
+}
+
+async function push(to, messages) {
+  const arr = Array.isArray(messages) ? messages : [messages];
+  return client.pushMessage({
+    to,
+    messages: arr
+  });
+}
+
+async function getProfile(userId) {
+  try {
+    const resp = await axios.get(`https://api.line.me/v2/bot/profile/${userId}`, {
+      headers: {
+        Authorization: `Bearer ${CHANNEL_ACCESS_TOKEN}`
+      }
+    });
+    return resp.data;
+  } catch (e) {
+    console.error('getProfile error:', e?.response?.data || e.message);
+    return {
+      userId,
+      displayName: 'ไม่ทราบชื่อ'
+    };
+  }
+}
+
+async function downloadLineImage(messageId, savePath) {
+  const resp = await axios.get(
+    `https://api-data.line.me/v2/bot/message/${messageId}/content`,
+    {
+      responseType: 'stream',
+      headers: {
+        Authorization: `Bearer ${CHANNEL_ACCESS_TOKEN}`
+      }
+    }
+  );
+
+  await new Promise((resolve, reject) => {
+    const writer = fs.createWriteStream(savePath);
+    resp.data.pipe(writer);
+    writer.on('finish', resolve);
+    writer.on('error', reject);
+  });
+}
+
+function menuCard(title, subtitle, color) {
+  return {
+    type: 'box',
+    layout: 'vertical',
+    backgroundColor: color,
+    cornerRadius: '12px',
+    paddingAll: '12px',
+    contents: [
+      {
+        type: 'text',
+        text: title,
+        weight: 'bold',
+        size: 'md',
+        color: '#111827'
+      },
+      {
+        type: 'text',
+        text: subtitle,
+        size: 'sm',
+        wrap: true,
+        color: '#374151',
+        margin: 'sm'
+      }
+    ]
+  };
+}
+
+function infoLine(label, value) {
+  return {
+    type: 'box',
+    layout: 'baseline',
+    spacing: 'sm',
+    contents: [
+      {
+        type: 'text',
+        text: label,
+        size: 'sm',
+        color: '#6B7280',
+        flex: 3
+      },
+      {
+        type: 'text',
+        text: String(value || '-'),
+        size: 'sm',
+        color: '#111827',
+        wrap: true,
+        flex: 7
+      }
+    ]
+  };
+}
+
+function buildMainMenuFlex() {
+  return {
+    type: 'flex',
+    altText: 'เมนูหลัก',
+    contents: {
+      type: 'bubble',
+      size: 'mega',
+      hero: {
+        type: 'box',
+        layout: 'vertical',
+        backgroundColor: '#0F172A',
+        paddingAll: '20px',
+        contents: [
+          {
+            type: 'text',
+            text: 'S7 BOT MENU',
+            color: '#FFFFFF',
+            weight: 'bold',
+            size: 'xl'
+          },
+          {
+            type: 'text',
+            text: 'ระบบสมัครและอนุมัติผู้ใช้งาน',
+            color: '#CBD5E1',
+            size: 'sm',
+            margin: 'md',
+            wrap: true
+          }
+        ]
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'md',
+        contents: [
+          menuCard('🔐 สมัครสมาชิก', 'พิมพ์: ยินยอมรับข้อตกลง', '#E0F2FE'),
+          menuCard('📄 เช็กสถานะ', 'พิมพ์: สถานะการสมัคร', '#ECFCCB'),
+          menuCard('🪪 ส่งข้อมูลสมัคร', 'พิมพ์: regis%ยศ/ชื่อ-สกุล/ตำแหน่ง/สังกัด/เบอร์โทร', '#FEF3C7'),
+          menuCard('📬 เมนูหลัก', 'พิมพ์: menu%', '#FCE7F3')
+        ]
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'sm',
+        contents: [
+          {
+            type: 'button',
+            style: 'primary',
+            color: '#2563EB',
+            action: {
+              type: 'message',
+              label: 'สมัครสมาชิก',
+              text: 'ยินยอมรับข้อตกลง'
+            }
+          },
+          {
+            type: 'button',
+            style: 'secondary',
+            action: {
+              type: 'message',
+              label: 'เช็กสถานะ',
+              text: 'สถานะการสมัคร'
+            }
+          }
+        ]
+      }
+    }
+  };
+}
+
+function buildRegisterGuideFlex() {
+  return {
+    type: 'flex',
+    altText: 'วิธีสมัครสมาชิก',
+    contents: {
+      type: 'bubble',
+      size: 'mega',
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'md',
+        contents: [
+          {
+            type: 'text',
+            text: 'ลงทะเบียนสมาชิก',
+            size: 'xl',
+            weight: 'bold',
+            color: '#111827'
+          },
+          {
+            type: 'text',
+            text: 'กรุณาส่งข้อมูลตามรูปแบบด้านล่าง',
+            size: 'sm',
+            color: '#6B7280',
+            wrap: true
+          },
+          {
+            type: 'box',
+            layout: 'vertical',
+            backgroundColor: '#F3F4F6',
+            cornerRadius: '12px',
+            paddingAll: '12px',
+            contents: [
+              {
+                type: 'text',
+                text: 'regis%ยศ/ชื่อ-สกุล/ตำแหน่ง/สังกัด/เบอร์โทร',
+                wrap: true,
+                size: 'sm',
+                color: '#111827'
+              }
+            ]
+          },
+          {
+            type: 'text',
+            text: 'ตัวอย่าง:\nregis%ร.ต.อ./สมชาย ใจดี/รอง สว.สส./สภ.เมือง/0812345678',
+            wrap: true,
+            size: 'sm',
+            color: '#374151'
+          },
+          {
+            type: 'text',
+            text: 'หลังจากส่งข้อมูลแล้ว กรุณาส่งรูปบัตรหรือภาพหลักฐานต่อทันที',
+            wrap: true,
+            size: 'sm',
+            color: '#DC2626'
+          }
+        ]
+      }
+    }
+  };
+}
+
+function buildAdminApproveFlex(member, targetUserId) {
+  return {
+    type: 'flex',
+    altText: 'มีผู้สมัครใหม่รออนุมัติ',
+    contents: {
+      type: 'bubble',
+      size: 'giga',
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'md',
+        contents: [
+          {
+            type: 'text',
+            text: '📥 ผู้สมัครใหม่',
+            weight: 'bold',
+            size: 'xl',
+            color: '#111827'
+          },
+          infoLine('LINE', member.lineName || '-'),
+          infoLine('UID', targetUserId),
+          infoLine('ยศ', member.rank || '-'),
+          infoLine('ชื่อ', member.fullname || '-'),
+          infoLine('ตำแหน่ง', member.position || '-'),
+          infoLine('สังกัด', member.department || '-'),
+          infoLine('เบอร์โทร', member.phone || '-'),
+          infoLine('เวลาสมัคร', member.registeredAt || '-'),
+          {
+            type: 'text',
+            text: 'เลือกจำนวนวันที่ต้องการอนุมัติสมาชิก',
+            wrap: true,
+            size: 'sm',
+            color: '#B45309'
+          }
+        ]
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'sm',
+        contents: [
+          {
+            type: 'button',
+            style: 'primary',
+            color: '#16A34A',
+            action: {
+              type: 'postback',
+              label: 'อนุมัติ 30 วัน',
+              data: `approve_days|${targetUserId}|30`,
+              displayText: `อนุมัติ 30 วัน ${member.fullname || targetUserId}`
+            }
+          },
+          {
+            type: 'button',
+            style: 'primary',
+            color: '#15803D',
+            action: {
+              type: 'postback',
+              label: 'อนุมัติ 90 วัน',
+              data: `approve_days|${targetUserId}|90`,
+              displayText: `อนุมัติ 90 วัน ${member.fullname || targetUserId}`
+            }
+          },
+          {
+            type: 'button',
+            style: 'primary',
+            color: '#0F766E',
+            action: {
+              type: 'postback',
+              label: 'อนุมัติ 180 วัน',
+              data: `approve_days|${targetUserId}|180`,
+              displayText: `อนุมัติ 180 วัน ${member.fullname || targetUserId}`
+            }
+          },
+          {
+            type: 'button',
+            style: 'primary',
+            color: '#1D4ED8',
+            action: {
+              type: 'postback',
+              label: 'อนุมัติ 365 วัน',
+              data: `approve_days|${targetUserId}|365`,
+              displayText: `อนุมัติ 365 วัน ${member.fullname || targetUserId}`
+            }
+          },
+          {
+            type: 'button',
+            style: 'secondary',
+            action: {
+              type: 'postback',
+              label: 'ปฏิเสธ',
+              data: `reject|${targetUserId}`,
+              displayText: `ปฏิเสธ ${member.fullname || targetUserId}`
+            }
+          }
+        ]
+      }
+    }
+  };
+}
+
+function buildMemberManageFlex(member, targetUserId) {
+  const expiredText = member.expireAt
+    ? formatThaiDate(member.expireAt)
+    : '-';
+
+  const statusText =
+    member.status === 'approved'
+      ? (isExpired(member.expireAt) ? 'หมดอายุแล้ว' : 'อนุมัติแล้ว')
+      : member.status === 'waiting_card'
+        ? 'รอส่งรูปหลักฐาน'
+        : member.status === 'pending'
+          ? 'รอตรวจสอบ'
+          : member.status === 'rejected'
+            ? 'ถูกปฏิเสธ'
+            : member.status || '-';
+
+  return {
+    type: 'flex',
+    altText: 'จัดการสมาชิก',
+    contents: {
+      type: 'bubble',
+      size: 'giga',
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'md',
+        contents: [
+          {
+            type: 'text',
+            text: '👮 จัดการสมาชิก',
+            weight: 'bold',
+            size: 'xl',
+            color: '#111827'
+          },
+          infoLine('ชื่อ', member.fullname || '-'),
+          infoLine('LINE', member.lineName || '-'),
+          infoLine('UID', targetUserId),
+          infoLine('เบอร์', member.phone || '-'),
+          infoLine('สถานะ', statusText),
+          infoLine('อายุล่าสุด', member.approvedDays || 0),
+          infoLine('หมดอายุ', expiredText),
+          infoLine('ต่ออายุแล้ว', member.renewCount || 0)
+        ]
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'sm',
+        contents: [
+          {
+            type: 'button',
+            style: 'primary',
+            color: '#16A34A',
+            action: {
+              type: 'postback',
+              label: 'ต่ออายุ 30 วัน',
+              data: `renew_days|${targetUserId}|30`,
+              displayText: `ต่ออายุ 30 วัน ${member.fullname || targetUserId}`
+            }
+          },
+          {
+            type: 'button',
+            style: 'primary',
+            color: '#15803D',
+            action: {
+              type: 'postback',
+              label: 'ต่ออายุ 90 วัน',
+              data: `renew_days|${targetUserId}|90`,
+              displayText: `ต่ออายุ 90 วัน ${member.fullname || targetUserId}`
+            }
+          },
+          {
+            type: 'button',
+            style: 'primary',
+            color: '#0F766E',
+            action: {
+              type: 'postback',
+              label: 'ต่ออายุ 180 วัน',
+              data: `renew_days|${targetUserId}|180`,
+              displayText: `ต่ออายุ 180 วัน ${member.fullname || targetUserId}`
+            }
+          },
+          {
+            type: 'button',
+            style: 'primary',
+            color: '#1D4ED8',
+            action: {
+              type: 'postback',
+              label: 'ต่ออายุ 365 วัน',
+              data: `renew_days|${targetUserId}|365`,
+              displayText: `ต่ออายุ 365 วัน ${member.fullname || targetUserId}`
+            }
+          }
+        ]
+      }
+    }
+  };
+}
+
+async function notifyAdmins(messages) {
+  for (const adminId of ADMIN_IDS) {
+    try {
+      await push(adminId, messages);
+    } catch (e) {
+      console.error(`notify admin error (${adminId}):`, e?.response?.data || e.message);
+    }
+  }
+}
+
+async function handleEvent(event) {
+  const db = loadDB();
+
+  const eventId = event.webhookEventId;
+  if (eventId && isEventProcessed(db, eventId)) {
+    return null;
+  }
+
+  if (eventId) {
+    markEventProcessed(db, eventId);
+    saveDB(db);
+  }
+
+  if (event.type === 'postback') {
+    return handlePostback(event);
+  }
+
+  if (event.type !== 'message') {
+    return null;
+  }
+
+  if (event.message.type === 'text') {
+    return handleText(event);
+  }
+
+  if (event.message.type === 'image') {
+    return handleImage(event);
+  }
+
+  return null;
+}
+
+async function handleText(event) {
+  const userId = event.source.userId;
+  const text = (event.message.text || '').trim();
+  const db = loadDB();
+  const member = db.members[userId];
+
+  if (text === 'menu%') {
+    return reply(event.replyToken, buildMainMenuFlex());
+  }
+
+  if (text === 'myid') {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: `Your userId:\n${userId}`
+    });
+  }
+
+  if (text === 'ยินยอมรับข้อตกลง') {
+    return reply(event.replyToken, buildRegisterGuideFlex());
+  }
+
+  if (text === 'สถานะการสมัคร') {
+    if (!member) {
+      return reply(event.replyToken, {
+        type: 'text',
+        text: 'คุณยังไม่ได้สมัครสมาชิก\nกรุณาพิมพ์: ยินยอมรับข้อตกลง'
+      });
+    }
+
+    let statusText = '';
+    if (member.status === 'approved') {
+      statusText = isExpired(member.expireAt)
+        ? 'หมดอายุแล้ว'
+        : 'อนุมัติแล้ว';
+    } else if (member.status === 'waiting_card') {
+      statusText = 'รอส่งรูปหลักฐาน';
+    } else if (member.status === 'pending') {
+      statusText = 'รอตรวจสอบ';
+    } else if (member.status === 'rejected') {
+      statusText = 'ถูกปฏิเสธ';
+    } else {
+      statusText = member.status;
+    }
+
+    return reply(event.replyToken, {
+      type: 'text',
+      text:
+        `สถานะการสมัคร\n` +
+        `ชื่อ: ${member.fullname || '-'}\n` +
+        `สถานะ: ${statusText}\n` +
+        `อนุมัติ: ${member.approvedAt || '-'}\n` +
+        `อายุสมาชิก: ${member.approvedDays || 0} วัน\n` +
+        `หมดอายุ: ${member.expireAt ? formatThaiDate(member.expireAt) : '-'}\n` +
+        `เวลาล่าสุด: ${member.updatedAt || member.registeredAt || '-'}`
+    });
+  }
+
+  if (text.startsWith('regis%')) {
+    const raw = text.replace(/^regis%/i, '').trim();
+    const parts = raw.split('/').map(v => v.trim());
+
+    if (parts.length < 5) {
+      return reply(event.replyToken, {
+        type: 'text',
+        text:
+          'รูปแบบไม่ถูกต้อง\n' +
+          'กรุณาส่งแบบนี้:\n' +
+          'regis%ยศ/ชื่อ-สกุล/ตำแหน่ง/สังกัด/เบอร์โทร'
+      });
+    }
+
+    const [rank, fullname, position, department, phone] = parts;
+
+    const duplicatePhone = Object.entries(db.members).find(([id, m]) => {
+      return id !== userId && m.phone === phone && ['pending', 'approved', 'waiting_card'].includes(m.status);
+    });
+
+    if (duplicatePhone) {
+      return reply(event.replyToken, {
+        type: 'text',
+        text: 'เบอร์โทรนี้มีอยู่ในระบบแล้ว กรุณาติดต่อผู้ดูแล'
+      });
+    }
+
+    if (db.members[userId] && ['pending', 'approved'].includes(db.members[userId].status)) {
+      return reply(event.replyToken, {
+        type: 'text',
+        text: 'คุณเคยสมัครแล้ว ระบบมีข้อมูลของคุณอยู่แล้ว'
+      });
+    }
+
+    const profile = await getProfile(userId);
+
+    db.members[userId] = {
+      userId,
+      lineName: profile.displayName || 'ไม่ทราบชื่อ',
+      rank,
+      fullname,
+      position,
+      department,
+      phone,
+      status: 'waiting_card',
+      registeredAt: nowThai(),
+      updatedAt: nowThai(),
+      imagePath: '',
+      imageUrl: '',
+      approvedAt: '',
+      approvedDays: 0,
+      expireAt: '',
+      renewCount: 0
+    };
+
+    saveDB(db);
+
+    return reply(event.replyToken, {
+      type: 'text',
+      text:
+        'บันทึกข้อมูลสมัครเรียบร้อยแล้ว\n' +
+        'กรุณาส่งรูปบัตรหรือภาพหลักฐานต่อได้เลย'
+    });
+  }
+
+  if (text.startsWith('member#')) {
+    if (!isAdmin(userId)) {
+      return reply(event.replyToken, {
+        type: 'text',
+        text: 'คุณไม่มีสิทธิ์ใช้คำสั่งนี้'
+      });
+    }
+
+    const phone = text.replace('member#', '').trim();
+    const foundEntry = Object.entries(db.members).find(([_, m]) => m.phone === phone);
+
+    if (!foundEntry) {
+      return reply(event.replyToken, {
+        type: 'text',
+        text: 'ไม่พบสมาชิกจากเบอร์นี้'
+      });
+    }
+
+    const [targetUserId, found] = foundEntry;
+    return reply(event.replyToken, [
+      buildMemberManageFlex(found, targetUserId),
+      {
+        type: 'text',
+        text:
+          `ข้อมูลสมาชิก\n` +
+          `ชื่อ: ${found.fullname || '-'}\n` +
+          `LINE: ${found.lineName || '-'}\n` +
+          `UID: ${targetUserId}\n` +
+          `เบอร์: ${found.phone || '-'}`
+      }
+    ]);
+  }
+
+  if (/^renew(30|90|180|365)#/.test(text)) {
+    if (!isAdmin(userId)) {
+      return reply(event.replyToken, {
+        type: 'text',
+        text: 'คุณไม่มีสิทธิ์ใช้คำสั่งนี้'
+      });
+    }
+
+    const match = text.match(/^renew(30|90|180|365)#(.+)$/);
+    const days = Number(match[1]);
+    const phone = match[2].trim();
+
+    const foundEntry = Object.entries(db.members).find(([_, m]) => m.phone === phone);
+
+    if (!foundEntry) {
+      return reply(event.replyToken, {
+        type: 'text',
+        text: 'ไม่พบสมาชิกจากเบอร์นี้'
+      });
+    }
+
+    const [targetUserId, found] = foundEntry;
+
+    let baseDate = new Date();
+    if (found.expireAt && !isExpired(found.expireAt)) {
+      baseDate = new Date(found.expireAt);
+    }
+
+    baseDate.setDate(baseDate.getDate() + days);
+
+    found.status = 'approved';
+    found.updatedAt = nowThai();
+    found.approvedDays = days;
+    found.expireAt = baseDate.toISOString();
+    found.renewCount = Number(found.renewCount || 0) + 1;
+
+    db.members[targetUserId] = found;
+    saveDB(db);
+
+    try {
+      await push(targetUserId, {
+        type: 'text',
+        text:
+          `สมาชิกของคุณได้รับการต่ออายุแล้ว ✅\n` +
+          `ต่อเพิ่ม: ${days} วัน\n` +
+          `วันหมดอายุใหม่: ${formatThaiDate(baseDate)}`
+      });
+    } catch (e) {
+      console.error('push renew error:', e?.response?.data || e.message);
+    }
+
+    return reply(event.replyToken, {
+      type: 'text',
+      text:
+        `ต่ออายุ ${found.fullname || targetUserId} เรียบร้อยแล้ว\n` +
+        `เพิ่ม: ${days} วัน\n` +
+        `หมดอายุใหม่: ${formatThaiDate(baseDate)}`
+    });
+  }
+
+  return reply(event.replyToken, {
+    type: 'text',
+    text: 'พิมพ์ menu% เพื่อดูเมนู หรือพิมพ์ ยินยอมรับข้อตกลง เพื่อสมัครสมาชิก'
+  });
+}
+
+async function handleImage(event) {
+  const userId = event.source.userId;
+  const db = loadDB();
+  const member = db.members[userId];
+
+  if (!member) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: 'กรุณาสมัครสมาชิกก่อน โดยพิมพ์: ยินยอมรับข้อตกลง'
+    });
+  }
+
+  if (member.status !== 'waiting_card') {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: 'ระบบไม่ได้รอรับรูปหลักฐานจากคุณในขณะนี้'
+    });
+  }
+
+  try {
+    const fileName = `${userId}_${Date.now()}.jpg`;
+    const savePath = path.join(UPLOAD_DIR, fileName);
+
+    await downloadLineImage(event.message.id, savePath);
+
+    member.status = 'pending';
+    member.updatedAt = nowThai();
+    member.imagePath = savePath;
+    member.imageUrl = BASE_URL ? `${BASE_URL}/uploads/${fileName}` : '';
+    db.members[userId] = member;
+    saveDB(db);
+
+    await reply(event.replyToken, {
+      type: 'text',
+      text: 'รับรูปหลักฐานเรียบร้อยแล้ว\nขณะนี้อยู่ระหว่างรอการตรวจสอบจากผู้ดูแล'
+    });
+
+    const adminMessages = [
+      buildAdminApproveFlex(member, userId)
+    ];
+
+    if (member.imageUrl) {
+      adminMessages.push({
+        type: 'image',
+        originalContentUrl: member.imageUrl,
+        previewImageUrl: member.imageUrl
+      });
+    } else {
+      adminMessages.push({
+        type: 'text',
+        text: `ผู้สมัคร ${member.fullname || userId} ส่งรูปแล้ว แต่ยังไม่มี BASE_URL สำหรับแสดงภาพ`
+      });
+    }
+
+    await notifyAdmins(adminMessages);
+    return null;
+  } catch (e) {
+    console.error('handleImage error:', e?.response?.data || e.message);
+    return reply(event.replyToken, {
+      type: 'text',
+      text: 'เกิดข้อผิดพลาดในการบันทึกรูป กรุณาลองส่งใหม่อีกครั้ง'
+    });
+  }
+}
+
+async function handlePostback(event) {
+  const adminUserId = event.source.userId;
+  const data = event.postback.data || '';
+
+  if (!isAdmin(adminUserId)) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: 'คุณไม่มีสิทธิ์ใช้งานคำสั่งนี้'
+    });
+  }
+
+  const parts = data.split('|');
+  const action = parts[0];
+  const targetUserId = parts[1];
+
+  if (!action || !targetUserId) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: 'ข้อมูลคำสั่งไม่ถูกต้อง'
+    });
+  }
+
+  const db = loadDB();
+  const member = db.members[targetUserId];
+
+  if (!member) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: 'ไม่พบข้อมูลผู้สมัคร'
+    });
+  }
+
+  if (action === 'approve_days') {
+    const days = Number(parts[2] || 0);
+
+    if (![30, 90, 180, 365].includes(days)) {
+      return reply(event.replyToken, {
+        type: 'text',
+        text: 'จำนวนวันไม่ถูกต้อง'
+      });
+    }
+
+    const expireDate = addDaysFromNow(days);
+
+    member.status = 'approved';
+    member.updatedAt = nowThai();
+    member.approvedAt = nowThai();
+    member.approvedDays = days;
+    member.expireAt = expireDate.toISOString();
+    member.renewCount = Number(member.renewCount || 0);
+
+    db.members[targetUserId] = member;
+    saveDB(db);
+
+    try {
+      await push(targetUserId, {
+        type: 'text',
+        text:
+          `บัญชีของคุณได้รับการอนุมัติแล้ว ✅\n` +
+          `อายุสมาชิก: ${days} วัน\n` +
+          `วันหมดอายุ: ${formatThaiDate(expireDate)}`
+      });
+    } catch (e) {
+      console.error('push approved error:', e?.response?.data || e.message);
+    }
+
+    return reply(event.replyToken, {
+      type: 'text',
+      text:
+        `อนุมัติ ${member.fullname || targetUserId} เรียบร้อยแล้ว\n` +
+        `อายุสมาชิก: ${days} วัน\n` +
+        `หมดอายุ: ${formatThaiDate(expireDate)}`
+    });
+  }
+
+  if (action === 'renew_days') {
+    const days = Number(parts[2] || 0);
+
+    if (![30, 90, 180, 365].includes(days)) {
+      return reply(event.replyToken, {
+        type: 'text',
+        text: 'จำนวนวันไม่ถูกต้อง'
+      });
+    }
+
+    let baseDate = new Date();
+    if (member.expireAt && !isExpired(member.expireAt)) {
+      baseDate = new Date(member.expireAt);
+    }
+
+    baseDate.setDate(baseDate.getDate() + days);
+
+    member.status = 'approved';
+    member.updatedAt = nowThai();
+    member.approvedDays = days;
+    member.expireAt = baseDate.toISOString();
+    member.renewCount = Number(member.renewCount || 0) + 1;
+
+    db.members[targetUserId] = member;
+    saveDB(db);
+
+    try {
+      await push(targetUserId, {
+        type: 'text',
+        text:
+          `สมาชิกของคุณได้รับการต่ออายุแล้ว ✅\n` +
+          `ต่อเพิ่ม: ${days} วัน\n` +
+          `วันหมดอายุใหม่: ${formatThaiDate(baseDate)}`
+      });
+    } catch (e) {
+      console.error('push renew error:', e?.response?.data || e.message);
+    }
+
+    return reply(event.replyToken, {
+      type: 'text',
+      text:
+        `ต่ออายุ ${member.fullname || targetUserId} เรียบร้อยแล้ว\n` +
+        `เพิ่ม: ${days} วัน\n` +
+        `หมดอายุใหม่: ${formatThaiDate(baseDate)}`
+    });
+  }
+
+  if (action === 'reject') {
+    member.status = 'rejected';
+    member.updatedAt = nowThai();
+    db.members[targetUserId] = member;
+    saveDB(db);
+
+    try {
+      await push(targetUserId, {
+        type: 'text',
+        text: 'การสมัครของคุณถูกปฏิเสธ ❌'
+      });
+    } catch (e) {
+      console.error('push rejected error:', e?.response?.data || e.message);
+    }
+
+    return reply(event.replyToken, {
+      type: 'text',
+      text: `ปฏิเสธ ${member.fullname || targetUserId} เรียบร้อยแล้ว`
+    });
+  }
+
+  return reply(event.replyToken, {
+    type: 'text',
+    text: 'ไม่รู้จักคำสั่งนี้'
+  });
+}
