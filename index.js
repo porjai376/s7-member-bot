@@ -324,14 +324,12 @@ function formatCrime(data, keyword = '') {
       return '❌ ไม่พบข้อมูลหมายจับ';
     }
 
-    const pick = (text, label) => {
-      const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const regex = new RegExp(`${escaped}\\s*:\\s*(.*?)(?=\\n[A-Z ]+\\s*:|\\\\|$)`, 's');
-      const match = text.match(regex);
+    const pickLine = (text, label) => {
+      const regex = new RegExp(`${label}\\s*:\\s*([^\\n\\\\]+)`, 'i');
+      const match = String(text).match(regex);
       return match ? match[1].trim() : '-';
     };
 
-    // 🔥 เรียงใหม่ (ล่าสุดขึ้นก่อน)
     const sorted = [...list].reverse();
 
     let msg = `🚨พบข้อมูลหมายจับ🚨\n`;
@@ -339,14 +337,14 @@ function formatCrime(data, keyword = '') {
     sorted.forEach((item, index) => {
       const text = String(item || '');
 
-      const warrant = pick(text, 'WARRANT');
-      const crimes = pick(text, 'CRIMES');
-      const charge = pick(text, 'CHARGE');
-      const id = pick(text, 'ID');
-      const fullname = pick(text, 'FULLNAME').replace(/\\.*$/, ''); // 🔥 ตัด \POLICE
-      const police = pick(text, 'POLICE');
-      const tell = pick(text, 'TELL');
-      const status = pick(text, 'STATUS');
+      const warrant = pickLine(text, 'WARRANT');
+      const crimes = pickLine(text, 'CRIMES');
+      const charge = pickLine(text, 'CHARGE');
+      const id = pickLine(text, 'ID');
+      const fullname = pickLine(text, 'FULLNAME');
+      const police = pickLine(text, 'POLICE');
+      const tell = pickLine(text, 'TELL');
+      const status = pickLine(text, 'STATUS');
 
       msg += `\n${index + 1}️⃣\n`;
       msg += `┌● เลขหมายจับ : ${warrant}\n`;
