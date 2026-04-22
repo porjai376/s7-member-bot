@@ -5,6 +5,34 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 const https = require('https');
+const crypto = require('crypto');
+
+async function fetchHlrLookup(msisdn) {
+  const key = 'fcd01b61e422';
+  const secret = 's7hE-jh43-C4hN-F!49-B!eC-e*7C';
+  const timestamp = Math.floor(Date.now() / 1000);
+  const endpoint = '/hlr-lookup';
+  const data = { msisdn: msisdn };
+  
+  const signatureString = endpoint + timestamp.toString() + 'POST' + JSON.stringify(data);
+  const signature = crypto.createHmac('sha256', secret).update(signatureString).digest('hex');
+
+  const headers = {
+    'User-Agent': 'node-sdk 2.0.2 (' + key + ')',
+    'Accept': 'application/json',
+    'Content-Type': 'application/json',
+    'X-Digest-Key': key,
+    'X-Digest-Signature': signature,
+    'X-Digest-Timestamp': timestamp.toString()
+  };
+
+  try {
+    return await axios.post('https://www.hlr-lookups.com/api/v2' + endpoint, data, { headers });
+  } catch (error) {
+    if (error.response) return error.response;
+    throw error;
+  }
+}
 
 const app = express();
 
@@ -19,7 +47,6 @@ const ADMIN_IDS = (process.env.LINE_ADMIN_USER_IDS || '')
   .filter(Boolean);
 
 const INSTALLMENT_API_URL =
-  process.env.INSTALLMENT_API_URL ||
   'http://scsinfo.pieare.com/securestock/api/installmentprint/inspection/inspect';
 
 const httpsAgent = new https.Agent({
@@ -34,10 +61,8 @@ const client = new line.messagingApi.MessagingApiClient({
   channelAccessToken: CHANNEL_ACCESS_TOKEN
 });
 
-// ===== PERSISTENT STORAGE =====
-const STORAGE_ROOT = process.env.STORAGE_ROOT || '/var/data';
-const DATA_FILE = path.join(STORAGE_ROOT, 'members.json');
-const UPLOAD_DIR = path.join(STORAGE_ROOT, 'uploads');
+const DATA_FILE = path.join(__dirname, 'members.json');
+const UPLOAD_DIR = path.join(__dirname, 'uploads');
 
 ensureStorage();
 
@@ -61,16 +86,9 @@ app.post('/webhook', line.middleware(config), async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  console.log(`STORAGE_ROOT: ${STORAGE_ROOT}`);
-  console.log(`DATA_FILE: ${DATA_FILE}`);
-  console.log(`UPLOAD_DIR: ${UPLOAD_DIR}`);
 });
 
 function ensureStorage() {
-  if (!fs.existsSync(STORAGE_ROOT)) {
-    fs.mkdirSync(STORAGE_ROOT, { recursive: true });
-  }
-
   if (!fs.existsSync(UPLOAD_DIR)) {
     fs.mkdirSync(UPLOAD_DIR, { recursive: true });
   }
@@ -267,25 +285,6 @@ async function fetchCrime(nationId) {
   return resp.data;
 }
 
-async function fetchCellTower(mcc, mnc, lac, cellId) {
-  const url = 'https://opencellid.org/ajax/searchCell.php';
-
-  const resp = await axios.get(url, {
-    params: {
-      mcc,
-      mnc,
-      lac,
-      cell_id: cellId
-    },
-    timeout: 15000,
-    headers: {
-      'User-Agent': 'Mozilla/5.0'
-    }
-  });
-
-  return resp.data;
-}
-
 function formatInstallment(data) {
   if (!data || !data.status || !data.data) {
     return '❌ ไม่พบข้อมูลผ่อนสินค้า';
@@ -294,65 +293,52 @@ function formatInstallment(data) {
   const p = data.data.person || {};
   const addresses = Array.isArray(data.data.addresses) ? data.data.addresses : [];
 
-  const safe = (v, fallback = 'N/A') => {
+  const homeAddresses = addresses.filter(a => (a.type || '').toUpperCase() === 'HOME');
+  const workAddresses = addresses.filter(a => (a.type || '').toUpperCase() === 'WORK');
+
+  const safe = (v, fallback = '-') => {
     if (v === null || v === undefined || v === '') return fallback;
     return String(v);
   };
 
-  const accountStatus = safe(p.is_active) === 'YES'
-    ? '🟢 ใช้งานอยู่'
-    : '🔴 ไม่ใช้งาน';
+  const accountStatus = safe(p.is_active) === 'YES' ? 'ใช้งานอยู่' : safe(p.is_active);
+  const approveStatus = safe(p.approve_status) === 'APPROVE' ? 'อนุมัติแล้ว' : safe(p.approve_status);
+  const genderText = safe(p.gender, '-');
+  const emailText = safe(p.email, '-');
+  const lineIdText = safe(p.lineid, '-');
 
-  const formatThaiBirth = (dateStr) => {
-    if (!dateStr) return 'N/A';
-    const d = new Date(dateStr);
-    const th = d.toLocaleDateString('th-TH', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-    return `${th} (${dateStr})`;
+  const formatAddressList = (items) => {
+    if (!items.length) return ' -';
+    return items.map((a, index) => {
+      return (
+        ` [${index + 1}] ประเภท: ${safe(a.type)}\n` +
+        ` ที่อยู่: ${safe(a.full_address)}\n` +
+        ` เบอร์: ${safe(a.tel)}`
+      );
+    }).join('\n');
   };
-
-  const homes = addresses.filter(a => (a.type || '').toUpperCase() === 'HOME');
-  const works = addresses.filter(a => (a.type || '').toUpperCase() === 'WORK');
-
-  const shortAddr = (a) => {
-    if (!a || !a.full_address) return '-';
-    return a.full_address
-      .replace(/ตำบล/g, 'ต.')
-      .replace(/อำเภอ/g, 'อ.')
-      .replace(/จังหวัด/g, 'จ.');
-  };
-
-  let addrBlock = '';
-  const totalAddr = homes.length + works.length;
-
-  if (totalAddr > 0) {
-    addrBlock += `\n\n🏚️ [ที่อยู่ ${totalAddr} รายการ]\n\n`;
-
-    homes.forEach((h, i) => {
-      addrBlock += `┌● HOME [${i + 1}]:\n${shortAddr(h)}\n\n`;
-    });
-
-    works.forEach((w, i) => {
-      addrBlock += `└● WORK [${i + 1}]:\n${shortAddr(w)}\n\n`;
-    });
-  }
 
   return (
-`🔎[${safe(p.nationid)}] MEGABOT🤖
-┌● Name: ${safe(p.fullname)}
-├● ID: ${safe(p.nationid)}
-├● วันเกิด: ${formatThaiBirth(p.birth)}
-├● สถานะสมรส: ${safe(p.marital_status)}
-├● สถานะบัญชี: ${accountStatus}
-├● เบอร์โทรศัพท์: ${safe(p.mobile)}
-├● อีเมล: ${safe(p.email)}
-├● Line ID: ${safe(p.lineid)}
-├● วันที่สร้างข้อมูล: ${safe(p.created_at)}
-└● ติดต่อล่าสุดเมื่อ: ${safe(p.updated_at)}`
-  ) + addrBlock;
+    `📺 ข้อมูลผ่อนสินค้า\n\n` +
+    ` 👤ชื่อ: ${safe(p.fullname)}\n` +
+    `🪪ID: ${safe(p.nationid)}\n` +
+    ` วันเกิด: ${safe(p.birth)}\n` +
+    ` เพศ: ${genderText}\n` +
+    ` สถานภาพสมรส: ${safe(p.marital_status, '-')}\n` +
+    `📱เบอร์: ${safe(p.mobile)}\n` +
+    ` EMAIL: ${emailText}\n` +
+    ` LINE ID: ${lineIdText}\n` +
+    ` สถานะบัญชี: ${accountStatus}\n` +
+    ` วันที่สร้างข้อมูล: ${safe(p.created_at)}\n` +
+    ` วันที่ติดต่อล่าสุด: ${safe(p.updated_at)}\n` +
+    ` สถานะอนุมัติ: ${approveStatus}\n` +
+    `- - - - - - - - - - - -\n` +
+    ` 🏚️ที่อยู่ลงสินค้า ( ${homeAddresses.length} รายการ )\n` +
+    `${formatAddressList(homeAddresses)}\n` +
+    `- - - - - - - - - - - -\n` +
+    `👨‍🎨ที่ทำงาน ( ${workAddresses.length} รายการ )\n` +
+    `${formatAddressList(workAddresses)}`
+  );
 }
 
 function formatCrime(data, keyword = '') {
@@ -536,8 +522,7 @@ function buildMenuCarouselFlex() {
             contents: [
               menuSection('📲 เครือข่ายสถานะเบอร์', [
                 '┣ ╾ %66XXXXXXXXX',
-                '┗ ╾ who#เบอร์โทร',
-                '┗ ╾ cell#234,15,24708,2561566'
+                '┗ ╾ who#เบอร์โทร'
               ]),
               menuSection('📗 เช็คจดทะเบียน AIS', [
                 '┗ ╾ a#เบอร์โทร หรือ 13หลัก'
@@ -1418,73 +1403,61 @@ async function handleText(event) {
     });
   }
 
-  if (/^%66\d{8,15}$/.test(text)) {
-    return reply(event.replyToken, {
-      type: 'text',
-      text: '⚠️ คำสั่ง %66 ยังไม่เปิดใช้งานในระบบนี้'
-    });
-  }
-
-  if (text.toLowerCase().startsWith('cell#')) {
-    try {
-      const raw = text.replace(/^cell#/i, '').trim();
-      const parts = raw.split(',').map(v => v.trim());
-
-      if (parts.length !== 4) {
-        return reply(event.replyToken, {
-          type: 'text',
-          text: 'รูปแบบไม่ถูกต้อง\nตัวอย่าง:\ncell#234,15,24708,2561566'
-        });
-      }
-
-      const [mcc, mnc, lac, cellId] = parts;
-
-      if (![mcc, mnc, lac, cellId].every(v => /^\d+$/.test(v))) {
-        return reply(event.replyToken, {
-          type: 'text',
-          text: 'กรุณากรอกเป็นตัวเลขทั้งหมด'
-        });
-      }
-
-      const data = await fetchCellTower(mcc, mnc, lac, cellId);
-
-      if (!data || !data.lat || !data.lon) {
-        return reply(event.replyToken, {
-          type: 'text',
-          text: 'ไม่พบพิกัด Cell Tower นี้'
-        });
-      }
-
-      const mapUrl = `https://www.google.com/maps?q=${data.lat},${data.lon}`;
-
-      return reply(event.replyToken, [
-        {
-          type: 'text',
-          text:
-            `📡 CELL TOWER RESULT\n` +
-            `MCC: ${mcc}\n` +
-            `MNC: ${mnc}\n` +
-            `LAC: ${lac}\n` +
-            `CELL ID: ${cellId}\n\n` +
-            `LAT: ${data.lat}\n` +
-            `LON: ${data.lon}\n` +
-            `RANGE: ${data.range || '-'} m\n\n` +
-            `📍 ${mapUrl}`
-        },
-        {
-          type: 'location',
-          title: '📡 Cell Tower Location',
-          address: `MCC:${mcc} MNC:${mnc} LAC:${lac} CELL:${cellId}`,
-          latitude: parseFloat(data.lat),
-          longitude: parseFloat(data.lon)
-        }
-      ]);
-    } catch (err) {
-      console.error('cell lookup error:', err?.response?.data || err.message);
-
+  if (text.startsWith('%')) {
+    const msisdn = text.substring(1).trim();
+    if (!msisdn) {
       return reply(event.replyToken, {
         type: 'text',
-        text: '❌ เกิดข้อผิดพลาดในการค้นหา Cell Tower'
+        text: '❌ กรุณาระบุหมายเลขโทรศัพท์ เช่น %+66987654321'
+      });
+    }
+    try {
+      const response = await fetchHlrLookup(msisdn);
+
+      if (response.status === 200) {
+        const data = response.data;
+
+        let resultMsg = `MSISDN: ${data.msisdn || msisdn}\n`;
+        resultMsg += `SUBSCRIBER STATUS: ${(data.connectivity_status || 'N/A').toString().toUpperCase()}\n`;
+        resultMsg += `MCCMNC: ${data.mccmnc || 'N/A'}\n`;
+        resultMsg += `MCC: ${data.mcc || 'N/A'}\n`;
+        resultMsg += `MNC: ${data.mnc || 'N/A'}\n`;
+        resultMsg += `IMSI: ${data.imsi || 'N/A'}\n`;
+        resultMsg += `MSIN: ${data.msin || 'N/A'}\n`;
+        resultMsg += `MSC: ${data.msc || 'N/A'}\n`;
+        resultMsg += `ORIGINAL_NETWORK_NAME: ${data.original_network_name || 'N/A'}\n`;
+        resultMsg += `ORIGINAL_COUNTRY_NAME: ${data.original_country_name || 'N/A'}\n`;
+        resultMsg += `ORIGINAL_COUNTRY_CODE: ${data.original_country_code || 'N/A'}\n`;
+        resultMsg += `ORIGINAL_COUNTRY_PREFIX: ${data.original_country_prefix || 'N/A'}\n`;
+        resultMsg += `IS_PORTED: ${data.is_ported ? 'TRUE' : 'FALSE'}\n`;
+        resultMsg += `PORTED_NETWORK_NAME: ${data.ported_network_name || 'NULL'}\n`;
+        resultMsg += `PORTED_COUNTRY_NAME: ${data.ported_country_name || 'NULL'}\n`;
+        resultMsg += `PORTED_COUNTRY_CODE: ${data.ported_country_code || 'NULL'}\n`;
+        resultMsg += `PORTED_COUNTRY_PREFIX: ${data.ported_country_prefix || 'NULL'}\n`;
+        resultMsg += `Roaming: ${data.is_roaming ? 'Yes' : 'No'}\n`;
+        resultMsg += `ROAMING_NETWORK_NAME: ${data.roaming_network_name || 'NULL'}\n`;
+        resultMsg += `ROAMING_COUNTRY_NAME: ${data.roaming_country_name || 'NULL'}\n`;
+        resultMsg += `ROAMING_COUNTRY_CODE: ${data.roaming_country_code || 'NULL'}\n`;
+        resultMsg += `ROAMING_COUNTRY_PREFIX: ${data.roaming_country_prefix || 'NULL'}\n`;
+        resultMsg += `DATE: ${data.timestamp || 'N/A'}`;
+
+        console.log(`success HLR Lookup: ${msisdn}`);
+        return reply(event.replyToken, {
+          type: 'text',
+          text: resultMsg
+        });
+      } else {
+        console.error(`error HLR Lookup failed: ${msisdn} - Status: ${response.status}`);
+        return reply(event.replyToken, {
+          type: 'text',
+          text: `Error: Could not retrieve data (Status: ${response.status})`
+        });
+      }
+    } catch (error) {
+      console.error(`error HLR Lookup Error: ${error.message}`);
+      return reply(event.replyToken, {
+        type: 'text',
+        text: 'Error: HLR lookup failed - ' + error.message
       });
     }
   }
