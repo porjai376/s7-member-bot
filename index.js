@@ -267,6 +267,25 @@ async function fetchCrime(nationId) {
   return resp.data;
 }
 
+async function fetchCellTower(mcc, mnc, lac, cellId) {
+  const url = 'https://opencellid.org/ajax/searchCell.php';
+
+  const resp = await axios.get(url, {
+    params: {
+      mcc,
+      mnc,
+      lac,
+      cell_id: cellId
+    },
+    timeout: 15000,
+    headers: {
+      'User-Agent': 'Mozilla/5.0'
+    }
+  });
+
+  return resp.data;
+}
+
 function formatInstallment(data) {
   if (!data || !data.status || !data.data) {
     return '❌ ไม่พบข้อมูลผ่อนสินค้า';
@@ -517,7 +536,8 @@ function buildMenuCarouselFlex() {
             contents: [
               menuSection('📲 เครือข่ายสถานะเบอร์', [
                 '┣ ╾ %66XXXXXXXXX',
-                '┗ ╾ who#เบอร์โทร'
+                '┗ ╾ who#เบอร์โทร',
+                '┗ ╾ cell#234,15,24708,2561566'
               ]),
               menuSection('📗 เช็คจดทะเบียน AIS', [
                 '┗ ╾ a#เบอร์โทร หรือ 13หลัก'
@@ -1403,6 +1423,70 @@ async function handleText(event) {
       type: 'text',
       text: '⚠️ คำสั่ง %66 ยังไม่เปิดใช้งานในระบบนี้'
     });
+  }
+
+  if (text.toLowerCase().startsWith('cell#')) {
+    try {
+      const raw = text.replace(/^cell#/i, '').trim();
+      const parts = raw.split(',').map(v => v.trim());
+
+      if (parts.length !== 4) {
+        return reply(event.replyToken, {
+          type: 'text',
+          text: 'รูปแบบไม่ถูกต้อง\nตัวอย่าง:\ncell#234,15,24708,2561566'
+        });
+      }
+
+      const [mcc, mnc, lac, cellId] = parts;
+
+      if (![mcc, mnc, lac, cellId].every(v => /^\d+$/.test(v))) {
+        return reply(event.replyToken, {
+          type: 'text',
+          text: 'กรุณากรอกเป็นตัวเลขทั้งหมด'
+        });
+      }
+
+      const data = await fetchCellTower(mcc, mnc, lac, cellId);
+
+      if (!data || !data.lat || !data.lon) {
+        return reply(event.replyToken, {
+          type: 'text',
+          text: 'ไม่พบพิกัด Cell Tower นี้'
+        });
+      }
+
+      const mapUrl = `https://www.google.com/maps?q=${data.lat},${data.lon}`;
+
+      return reply(event.replyToken, [
+        {
+          type: 'text',
+          text:
+            `📡 CELL TOWER RESULT\n` +
+            `MCC: ${mcc}\n` +
+            `MNC: ${mnc}\n` +
+            `LAC: ${lac}\n` +
+            `CELL ID: ${cellId}\n\n` +
+            `LAT: ${data.lat}\n` +
+            `LON: ${data.lon}\n` +
+            `RANGE: ${data.range || '-'} m\n\n` +
+            `📍 ${mapUrl}`
+        },
+        {
+          type: 'location',
+          title: '📡 Cell Tower Location',
+          address: `MCC:${mcc} MNC:${mnc} LAC:${lac} CELL:${cellId}`,
+          latitude: parseFloat(data.lat),
+          longitude: parseFloat(data.lon)
+        }
+      ]);
+    } catch (err) {
+      console.error('cell lookup error:', err?.response?.data || err.message);
+
+      return reply(event.replyToken, {
+        type: 'text',
+        text: '❌ เกิดข้อผิดพลาดในการค้นหา Cell Tower'
+      });
+    }
   }
 
   if (/^s%\d{13}$/.test(text)) {
