@@ -5,12 +5,6 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 const https = require('https');
-const HlrLookupClient = require('node-hlr-client');
-
-const hlrClient = new HlrLookupClient(
-    'fcd01b61e422',
-    's7hE-jh43-C4hN-F!49-B!eC-e*7C'
-);
 
 const app = express();
 
@@ -261,6 +255,55 @@ async function fetchCrime(nationId) {
   );
 
   return resp.data;
+}
+
+// ===== REAL %66 LOOKUP =====
+async function fetchHlr(msisdn) {
+  const url = 'https://www.hlr-lookups.com/api/v2/hlr-lookup';
+  const apiKey = process.env.HLR_API_KEY;
+
+  const payload = {
+    msisdn: msisdn,
+    route: null,
+    storage: null
+  };
+
+  const resp = await axios.post(url, payload, {
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Api-Key': apiKey
+    },
+    timeout: 30000
+  });
+
+  return resp.data;
+}
+
+function formatHlrResult(data, msisdn = '') {
+  const status = data.connectivity_status || '-';
+
+  let statusText = '-';
+  if (status === 'CONNECTED') {
+    statusText = 'เครื่องเปิดใช้งาน รับสาย/ข้อความได้';
+  } else if (status === 'ABSENT') {
+    statusText = 'เครื่องปิด หรือไม่มีสัญญาณ';
+  } else if (status === 'INVALID_MSISDN') {
+    statusText = 'เบอร์ไม่ถูกต้อง';
+  } else if (status === 'UNDETERMINED') {
+    statusText = 'ไม่สามารถระบุสถานะได้';
+  }
+
+  return (
+    `📲 ผลตรวจสอบสถานะเบอร์\n\n` +
+    `เบอร์: ${msisdn}\n` +
+    `สถานะ: ${status}\n` +
+    `รายละเอียด: ${statusText}\n` +
+    `เครือข่าย: ${data.ported_network_name || data.original_network_name || '-'}\n` +
+    `ประเทศ: ${data.original_country_name || '-'}\n` +
+    `ย้ายค่าย: ${data.is_ported ? 'ใช่' : 'ไม่ใช่'}\n` +
+    `โรมมิ่ง: ${data.is_roaming ? 'ใช่' : 'ไม่ใช่'}\n` +
+    `เวลา: ${data.timestamp || '-'}`
+  );
 }
 
 function formatInstallment(data) {
@@ -1381,64 +1424,26 @@ async function handleText(event) {
     });
   }
 
-  if (text.startsWith('%')) {
-    const msisdn = text.substring(1).trim();
-    if (!msisdn) {
-      return reply(event.replyToken, {
-        type: 'text',
-        text: '❌ กรุณาระบุหมายเลขโทรศัพท์ เช่น %+66987654321'
-      });
-    }
-    try {
-      const response = await hlrClient.post('/hlr-lookup', { msisdn: msisdn });
+  if (/^%66\d{8,15}$/.test(text)) {
+  const msisdn = text.trim();
 
-      if (response.status === 200) {
-        const data = response.data;
+  try {
+    const result = await fetchHlr(msisdn);
+    const msg = formatHlrResult(result, msisdn);
 
-        let resultMsg = `MSISDN: ${data.msisdn || msisdn}\n`;
-        resultMsg += `SUBSCRIBER STATUS: ${(data.connectivity_status || 'N/A').toString().toUpperCase()}\n`;
-        resultMsg += `MCCMNC: ${data.mccmnc || 'N/A'}\n`;
-        resultMsg += `MCC: ${data.mcc || 'N/A'}\n`;
-        resultMsg += `MNC: ${data.mnc || 'N/A'}\n`;
-        resultMsg += `IMSI: ${data.imsi || 'N/A'}\n`;
-        resultMsg += `MSIN: ${data.msin || 'N/A'}\n`;
-        resultMsg += `MSC: ${data.msc || 'N/A'}\n`;
-        resultMsg += `ORIGINAL_NETWORK_NAME: ${data.original_network_name || 'N/A'}\n`;
-        resultMsg += `ORIGINAL_COUNTRY_NAME: ${data.original_country_name || 'N/A'}\n`;
-        resultMsg += `ORIGINAL_COUNTRY_CODE: ${data.original_country_code || 'N/A'}\n`;
-        resultMsg += `ORIGINAL_COUNTRY_PREFIX: ${data.original_country_prefix || 'N/A'}\n`;
-        resultMsg += `IS_PORTED: ${data.is_ported ? 'TRUE' : 'FALSE'}\n`;
-        resultMsg += `PORTED_NETWORK_NAME: ${data.ported_network_name || 'NULL'}\n`;
-        resultMsg += `PORTED_COUNTRY_NAME: ${data.ported_country_name || 'NULL'}\n`;
-        resultMsg += `PORTED_COUNTRY_CODE: ${data.ported_country_code || 'NULL'}\n`;
-        resultMsg += `PORTED_COUNTRY_PREFIX: ${data.ported_country_prefix || 'NULL'}\n`;
-        resultMsg += `Roaming: ${data.is_roaming ? 'Yes' : 'No'}\n`;
-        resultMsg += `ROAMING_NETWORK_NAME: ${data.roaming_network_name || 'NULL'}\n`;
-        resultMsg += `ROAMING_COUNTRY_NAME: ${data.roaming_country_name || 'NULL'}\n`;
-        resultMsg += `ROAMING_COUNTRY_CODE: ${data.roaming_country_code || 'NULL'}\n`;
-        resultMsg += `ROAMING_COUNTRY_PREFIX: ${data.roaming_country_prefix || 'NULL'}\n`;
-        resultMsg += `DATE: ${data.timestamp || 'N/A'}`;
+    return reply(event.replyToken, {
+      type: 'text',
+      text: msg
+    });
+  } catch (err) {
+    console.error('HLR ERROR:', err?.response?.data || err.message);
 
-        console.log(`success HLR Lookup: ${msisdn}`);
-        return reply(event.replyToken, {
-          type: 'text',
-          text: resultMsg
-        });
-      } else {
-        console.error(`error HLR Lookup failed: ${msisdn} - Status: ${response.status}`);
-        return reply(event.replyToken, {
-          type: 'text',
-          text: `Error: Could not retrieve data (Status: ${response.status})`
-        });
-      }
-    } catch (error) {
-      console.error(`error HLR Lookup Error: ${error.message}`);
-      return reply(event.replyToken, {
-        type: 'text',
-        text: 'Error: HLR lookup failed - ' + error.message
-      });
-    }
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ ดึงข้อมูลสถานะเบอร์ไม่สำเร็จ'
+    });
   }
+}
 
   if (/^s%\d{13}$/.test(text)) {
     const nationId = text.replace(/^s%/, '').trim();
