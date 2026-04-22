@@ -275,52 +275,65 @@ function formatInstallment(data) {
   const p = data.data.person || {};
   const addresses = Array.isArray(data.data.addresses) ? data.data.addresses : [];
 
-  const homeAddresses = addresses.filter(a => (a.type || '').toUpperCase() === 'HOME');
-  const workAddresses = addresses.filter(a => (a.type || '').toUpperCase() === 'WORK');
-
-  const safe = (v, fallback = '-') => {
+  const safe = (v, fallback = 'N/A') => {
     if (v === null || v === undefined || v === '') return fallback;
     return String(v);
   };
 
-  const accountStatus = safe(p.is_active) === 'YES' ? 'ใช้งานอยู่' : safe(p.is_active);
-  const approveStatus = safe(p.approve_status) === 'APPROVE' ? 'อนุมัติแล้ว' : safe(p.approve_status);
-  const genderText = safe(p.gender, '-');
-  const emailText = safe(p.email, '-');
-  const lineIdText = safe(p.lineid, '-');
+  const accountStatus = safe(p.is_active) === 'YES'
+    ? '🟢 ใช้งานอยู่'
+    : '🔴 ไม่ใช้งาน';
 
-  const formatAddressList = (items) => {
-    if (!items.length) return ' -';
-    return items.map((a, index) => {
-      return (
-        ` [${index + 1}] ประเภท: ${safe(a.type)}\n` +
-        ` ที่อยู่: ${safe(a.full_address)}\n` +
-        ` เบอร์: ${safe(a.tel)}`
-      );
-    }).join('\n');
+  const formatThaiBirth = (dateStr) => {
+    if (!dateStr) return 'N/A';
+    const d = new Date(dateStr);
+    const th = d.toLocaleDateString('th-TH', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    return `${th} (${dateStr})`;
   };
 
+  const homes = addresses.filter(a => (a.type || '').toUpperCase() === 'HOME');
+  const works = addresses.filter(a => (a.type || '').toUpperCase() === 'WORK');
+
+  const shortAddr = (a) => {
+    if (!a || !a.full_address) return '-';
+    return a.full_address
+      .replace(/ตำบล/g, 'ต.')
+      .replace(/อำเภอ/g, 'อ.')
+      .replace(/จังหวัด/g, 'จ.');
+  };
+
+  let addrBlock = '';
+  const totalAddr = homes.length + works.length;
+
+  if (totalAddr > 0) {
+    addrBlock += `\n\n🏚️ [ที่อยู่ ${totalAddr} รายการ]\n\n`;
+
+    homes.forEach((h, i) => {
+      addrBlock += `┌● HOME [${i + 1}]:\n${shortAddr(h)}\n\n`;
+    });
+
+    works.forEach((w, i) => {
+      addrBlock += `└● WORK [${i + 1}]:\n${shortAddr(w)}\n\n`;
+    });
+  }
+
   return (
-    `📺 ข้อมูลผ่อนสินค้า\n\n` +
-    ` 👤ชื่อ: ${safe(p.fullname)}\n` +
-    `🪪ID: ${safe(p.nationid)}\n` +
-    ` วันเกิด: ${safe(p.birth)}\n` +
-    ` เพศ: ${genderText}\n` +
-    ` สถานภาพสมรส: ${safe(p.marital_status, '-')}\n` +
-    `📱เบอร์: ${safe(p.mobile)}\n` +
-    ` EMAIL: ${emailText}\n` +
-    ` LINE ID: ${lineIdText}\n` +
-    ` สถานะบัญชี: ${accountStatus}\n` +
-    ` วันที่สร้างข้อมูล: ${safe(p.created_at)}\n` +
-    ` วันที่ติดต่อล่าสุด: ${safe(p.updated_at)}\n` +
-    ` สถานะอนุมัติ: ${approveStatus}\n` +
-    `- - - - - - - - - - - -\n` +
-    ` 🏚️ที่อยู่ลงสินค้า ( ${homeAddresses.length} รายการ )\n` +
-    `${formatAddressList(homeAddresses)}\n` +
-    `- - - - - - - - - - - -\n` +
-    `👨‍🎨ที่ทำงาน ( ${workAddresses.length} รายการ )\n` +
-    `${formatAddressList(workAddresses)}`
-  );
+`🔎[${safe(p.nationid)}] MEGABOT🤖
+┌● Name: ${safe(p.fullname)}
+├● ID: ${safe(p.nationid)}
+├● วันเกิด: ${formatThaiBirth(p.birth)}
+├● สถานะสมรส: ${safe(p.marital_status)}
+├● สถานะบัญชี: ${accountStatus}
+├● เบอร์โทรศัพท์: ${safe(p.mobile)}
+├● อีเมล: ${safe(p.email)}
+├● Line ID: ${safe(p.lineid)}
+├● วันที่สร้างข้อมูล: ${safe(p.created_at)}
+└● ติดต่อล่าสุดเมื่อ: ${safe(p.updated_at)}`
+  ) + addrBlock;
 }
 
 function formatCrime(data, keyword = '') {
