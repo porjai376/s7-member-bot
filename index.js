@@ -1432,27 +1432,21 @@ async function handleText(event) {
         const data = response.data;
 
         let resultMsg = `MSISDN: ${data.msisdn || msisdn}\n`;
-        resultMsg += `SUBSCRIBER STATUS: ${(data.connectivity_status || 'N/A').toString().toUpperCase()}\n`;
-        resultMsg += `MCCMNC: ${data.mccmnc || 'N/A'}\n`;
+        resultMsg += `Subscriber Status: ${(data.connectivity_status || 'N/A').toString().toUpperCase()}\n`;
         resultMsg += `MCC: ${data.mcc || 'N/A'}\n`;
         resultMsg += `MNC: ${data.mnc || 'N/A'}\n`;
         resultMsg += `IMSI: ${data.imsi || 'N/A'}\n`;
         resultMsg += `MSIN: ${data.msin || 'N/A'}\n`;
         resultMsg += `MSC: ${data.msc || 'N/A'}\n`;
-        resultMsg += `ORIGINAL_NETWORK_NAME: ${data.original_network_name || 'N/A'}\n`;
-        resultMsg += `ORIGINAL_COUNTRY_NAME: ${data.original_country_name || 'N/A'}\n`;
-        resultMsg += `ORIGINAL_COUNTRY_CODE: ${data.original_country_code || 'N/A'}\n`;
-        resultMsg += `ORIGINAL_COUNTRY_PREFIX: ${data.original_country_prefix || 'N/A'}\n`;
-        resultMsg += `IS_PORTED: ${data.is_ported ? 'TRUE' : 'FALSE'}\n`;
-        resultMsg += `PORTED_NETWORK_NAME: ${data.ported_network_name || 'NULL'}\n`;
-        resultMsg += `PORTED_COUNTRY_NAME: ${data.ported_country_name || 'NULL'}\n`;
-        resultMsg += `PORTED_COUNTRY_CODE: ${data.ported_country_code || 'NULL'}\n`;
-        resultMsg += `PORTED_COUNTRY_PREFIX: ${data.ported_country_prefix || 'NULL'}\n`;
+        resultMsg += `Network Name: ${data.original_network_name || 'N/A'}\n`;
+        resultMsg += `Country Name: ${data.original_country_name || 'N/A'}\n`;
+        resultMsg += `Country Code: ${data.original_country_code || 'N/A'}\n`;
+        resultMsg += `Country PREFIX: ${data.original_country_prefix || 'N/A'}\n`;
+        resultMsg += `PORTED: ${data.is_ported ? 'TRUE' : 'FALSE'}\n`;
+        resultMsg += `PORTED NETWORK Name: ${data.ported_network_name || 'NULL'}\n`;
+        resultMsg += `PORTED Country Name: ${data.ported_country_name || 'NULL'}\n`;
+        resultMsg += `PORTED Country Code: ${data.ported_country_code || 'NULL'}\n`;
         resultMsg += `Roaming: ${data.is_roaming ? 'Yes' : 'No'}\n`;
-        resultMsg += `ROAMING_NETWORK_NAME: ${data.roaming_network_name || 'NULL'}\n`;
-        resultMsg += `ROAMING_COUNTRY_NAME: ${data.roaming_country_name || 'NULL'}\n`;
-        resultMsg += `ROAMING_COUNTRY_CODE: ${data.roaming_country_code || 'NULL'}\n`;
-        resultMsg += `ROAMING_COUNTRY_PREFIX: ${data.roaming_country_prefix || 'NULL'}\n`;
         resultMsg += `DATE: ${data.timestamp || 'N/A'}`;
 
         console.log(`success HLR Lookup: ${msisdn}`);
