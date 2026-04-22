@@ -260,7 +260,12 @@ async function fetchCrime(nationId) {
 // ===== REAL %66 LOOKUP =====
 async function fetchHlr(msisdn) {
   const url = 'https://www.hlr-lookups.com/api/v2/hlr-lookup';
+
   const apiKey = process.env.HLR_API_KEY;
+  const apiSecret = process.env.HLR_API_SECRET;
+
+  // 🔥 แปลงเป็น Basic Auth
+  const auth = Buffer.from(`${apiKey}:${apiSecret}`).toString('base64');
 
   const payload = {
     msisdn: msisdn,
@@ -271,7 +276,7 @@ async function fetchHlr(msisdn) {
   const resp = await axios.post(url, payload, {
     headers: {
       'Content-Type': 'application/json',
-      'X-Api-Key': apiKey
+      'Authorization': `Basic ${auth}`   // 👈 สำคัญ
     },
     timeout: 30000
   });
