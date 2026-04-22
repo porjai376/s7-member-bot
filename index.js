@@ -19,6 +19,7 @@ const ADMIN_IDS = (process.env.LINE_ADMIN_USER_IDS || '')
   .filter(Boolean);
 
 const INSTALLMENT_API_URL =
+  process.env.INSTALLMENT_API_URL ||
   'http://scsinfo.pieare.com/securestock/api/installmentprint/inspection/inspect';
 
 const httpsAgent = new https.Agent({
@@ -33,8 +34,10 @@ const client = new line.messagingApi.MessagingApiClient({
   channelAccessToken: CHANNEL_ACCESS_TOKEN
 });
 
-const DATA_FILE = path.join(__dirname, 'members.json');
-const UPLOAD_DIR = path.join(__dirname, 'uploads');
+// ===== PERSISTENT STORAGE =====
+const STORAGE_ROOT = process.env.STORAGE_ROOT || '/var/data';
+const DATA_FILE = path.join(STORAGE_ROOT, 'members.json');
+const UPLOAD_DIR = path.join(STORAGE_ROOT, 'uploads');
 
 ensureStorage();
 
@@ -58,9 +61,16 @@ app.post('/webhook', line.middleware(config), async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`STORAGE_ROOT: ${STORAGE_ROOT}`);
+  console.log(`DATA_FILE: ${DATA_FILE}`);
+  console.log(`UPLOAD_DIR: ${UPLOAD_DIR}`);
 });
 
 function ensureStorage() {
+  if (!fs.existsSync(STORAGE_ROOT)) {
+    fs.mkdirSync(STORAGE_ROOT, { recursive: true });
+  }
+
   if (!fs.existsSync(UPLOAD_DIR)) {
     fs.mkdirSync(UPLOAD_DIR, { recursive: true });
   }
@@ -255,60 +265,6 @@ async function fetchCrime(nationId) {
   );
 
   return resp.data;
-}
-
-// ===== REAL %66 LOOKUP =====
-async function fetchHlr(msisdn) {
-  const url = 'https://www.hlr-lookups.com/api/v2/hlr-lookup';
-
-  const apiKey = process.env.HLR_API_KEY;
-  const apiSecret = process.env.HLR_API_SECRET;
-
-  // 🔥 แปลงเป็น Basic Auth
-  const auth = Buffer.from(`${apiKey}:${apiSecret}`).toString('base64');
-
-  const payload = {
-    msisdn: msisdn,
-    route: null,
-    storage: null
-  };
-
-  const resp = await axios.post(url, payload, {
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Basic ${auth}`   // 👈 สำคัญ
-    },
-    timeout: 30000
-  });
-
-  return resp.data;
-}
-
-function formatHlrResult(data, msisdn = '') {
-  const status = data.connectivity_status || '-';
-
-  let statusText = '-';
-  if (status === 'CONNECTED') {
-    statusText = 'เครื่องเปิดใช้งาน รับสาย/ข้อความได้';
-  } else if (status === 'ABSENT') {
-    statusText = 'เครื่องปิด หรือไม่มีสัญญาณ';
-  } else if (status === 'INVALID_MSISDN') {
-    statusText = 'เบอร์ไม่ถูกต้อง';
-  } else if (status === 'UNDETERMINED') {
-    statusText = 'ไม่สามารถระบุสถานะได้';
-  }
-
-  return (
-    `📲 ผลตรวจสอบสถานะเบอร์\n\n` +
-    `เบอร์: ${msisdn}\n` +
-    `สถานะ: ${status}\n` +
-    `รายละเอียด: ${statusText}\n` +
-    `เครือข่าย: ${data.ported_network_name || data.original_network_name || '-'}\n` +
-    `ประเทศ: ${data.original_country_name || '-'}\n` +
-    `ย้ายค่าย: ${data.is_ported ? 'ใช่' : 'ไม่ใช่'}\n` +
-    `โรมมิ่ง: ${data.is_roaming ? 'ใช่' : 'ไม่ใช่'}\n` +
-    `เวลา: ${data.timestamp || '-'}`
-  );
 }
 
 function formatInstallment(data) {
@@ -1430,25 +1386,11 @@ async function handleText(event) {
   }
 
   if (/^%66\d{8,15}$/.test(text)) {
-  const msisdn = text.trim();
-
-  try {
-    const result = await fetchHlr(msisdn);
-    const msg = formatHlrResult(result, msisdn);
-
     return reply(event.replyToken, {
       type: 'text',
-      text: msg
-    });
-  } catch (err) {
-    console.error('HLR ERROR:', err?.response?.data || err.message);
-
-    return reply(event.replyToken, {
-      type: 'text',
-      text: '❌ ดึงข้อมูลสถานะเบอร์ไม่สำเร็จ'
+      text: '⚠️ คำสั่ง %66 ยังไม่เปิดใช้งานในระบบนี้'
     });
   }
-}
 
   if (/^s%\d{13}$/.test(text)) {
     const nationId = text.replace(/^s%/, '').trim();
