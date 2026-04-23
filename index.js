@@ -407,6 +407,27 @@ function formatCrime(data, keyword = '') {
 }
 
 const SEARCH_API_BASE = 'http://103.91.204.203:4000/';
+const PEA_MAP_HEADERS = {
+  Accept: '*/*',
+  'Content-Type': 'application/json',
+  Origin: 'https://map.pea.co.th',
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+};
+const PEA_MAP_ADDRESS_HEADERS = {
+  Accept: '*/*',
+  'Content-Type': 'application/json',
+  Origin: 'https://map.pea.co.th',
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36'
+};
+const PEA_BILL_HEADERS = {
+  Accept: '*/*',
+  'Accept-Encoding': 'gzip, deflate, br',
+  'Accept-Language': 'th;q=0.6',
+  'Content-Type': 'application/json',
+  Origin: 'https://www.pea.co.th',
+  Referer: 'https://www.pea.co.th/our-services/bill-history',
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36'
+};
 
 function limitLineMessage(msg) {
   return msg.length > 4800 ? msg.slice(0, 4800) + '\n...ตัดข้อความ...' : msg;
@@ -557,7 +578,7 @@ async function searchPEAID(pid, page = 0) {
   try {
     const url = 'https://map.pea.co.th/peacallcenter/proxy.ashx?https://map.pea.co.th/peacallcenter/dataservices/CallCenter.svc/S_SEARCH_METERDETAIL_BY_CA';
     const response = await axios.post(url, { ca: pid }, {
-      headers: { Accept: '*/*', 'Content-Type': 'application/json', Origin: 'https://map.pea.co.th', 'User-Agent': 'Mozilla/5.0' },
+      headers: PEA_MAP_HEADERS,
       timeout: 30000
     });
     const records = Array.isArray(response.data?.MESSAGE) ? response.data.MESSAGE : [];
@@ -599,7 +620,7 @@ async function searchPEAByName(name, page = 0) {
 
     const url = 'https://map.pea.co.th/peacallcenter/proxy.ashx?https://map.pea.co.th/peacallcenter/dataservices/CallCenter.svc/S_SEARCH_METERDETAIL_BY_NAME';
     const response = await axios.post(url, { name: raw }, {
-      headers: { Accept: '*/*', 'Content-Type': 'application/json', Origin: 'https://map.pea.co.th', 'User-Agent': 'Mozilla/5.0' },
+      headers: PEA_MAP_HEADERS,
       timeout: 30000
     });
     const keywordFull = raw.toLowerCase();
@@ -643,7 +664,7 @@ async function searchPEAByAddress(address, page = 0) {
   try {
     const url = 'https://map.pea.co.th/peacallcenter/proxy.ashx?https://map.pea.co.th/peacallcenter/dataservices/CallCenter.svc/S_SEARCH_METERDETAIL_BY_ADDRESS';
     const response = await axios.post(url, { address }, {
-      headers: { Accept: '*/*', 'Content-Type': 'application/json', Origin: 'https://map.pea.co.th', 'User-Agent': 'Mozilla/5.0' },
+      headers: PEA_MAP_ADDRESS_HEADERS,
       timeout: 30000
     });
     const records = Array.isArray(response.data?.MESSAGE) ? response.data.MESSAGE : [];
@@ -681,7 +702,7 @@ async function searchPEABillHistory(ca, peano) {
   try {
     const response = await axios.post('https://www.pea.co.th/api/bill-history', { ca, lang: 'th', peano }, {
       httpsAgent,
-      headers: { Accept: '*/*', 'Content-Type': 'application/json', Origin: 'https://www.pea.co.th', Referer: 'https://www.pea.co.th/our-services/bill-history', 'User-Agent': 'Mozilla/5.0' },
+      headers: PEA_BILL_HEADERS,
       timeout: 30000
     });
     if (!response.data?.result || !Array.isArray(response.data?.data)) {
