@@ -874,17 +874,17 @@ function buildMenuCarouselFlex() {
             layout: 'vertical',
             spacing: 'md',
             contents: [
-              menuSection('📲 เครือข่ายสถานะเบอร์', [
+              menuSection('📲เครือข่ายสถานะเบอร์', [
                 '┣ ╾ %66XXXXXXXXX',
-                '┗ ╾ who#เบอร์โทร'
+                '┗ ╾ w%เบอร์โทร'
               ]),
-              menuSection('📗 เช็คจดทะเบียน AIS', [
+              menuSection('📗เช็คจดทะเบียน AIS', [
                 '┗ ╾ a#เบอร์โทร หรือ 13หลัก'
               ]),
-              menuSection('📘 เช็คจดทะเบียน DTAC', [
+              menuSection('📘เช็คจดทะเบียน DTAC', [
                 '┗ ╾ d#เบอร์โทร หรือ 13หลัก'
               ]),
-              menuSection('📙 เช็คจดทะเบียน TRUE', [
+              menuSection('📙เช็คจดทะเบียน TRUE', [
                 '┣ ╾ t#เบอร์โทร',
                 '┣ ╾ tid#เลขบัตร',
                 '┗ ╾ tn#ชื่อ-นามสกุล'
@@ -923,17 +923,17 @@ function buildMenuCarouselFlex() {
             layout: 'vertical',
             spacing: 'md',
             contents: [
-              menuSection('📦 ขนส่ง', [
+              menuSection('📦ขนส่ง', [
                 '┣ ╾ f#เบอร์โทร',
                 '┗ ╾ fx#เบอร์โทร/ชื่อสกุล'
               ]),
-              menuSection('🏦 พิกัด ATM/ธนาคาร', [
+              menuSection('🏦พิกัดATM/ธนาคาร', [
                 '┣ ╾ bn%ชื่อธนาคาร',
                 '┣ ╾ bc%รหัสสาขา',
                 '┣ ╾ bk%เลขบัญชี',
                 '┗ ╾ atm%รหัสตู้'
               ]),
-              menuSection('💊 ประวัติรักษา', [
+              menuSection('💊ประวัติรักษา', [
                 '┗ ╾ h%เลขบัตร'
               ])
             ]
@@ -970,18 +970,19 @@ function buildMenuCarouselFlex() {
     layout: 'vertical',
     spacing: 'md',
     contents: [
-      menuSection('🔎 บุคคล', [
+      menuSection('🔎บุคคล', [
         '┌● ประกันสังคม si%เลขบัตร',
         '├● ใบขับขี่ dl#เลขบัตร',
         '├● ผู้ต้องขัง psi#เลขบัตร',
         '├● ผู้ต้องขังยังไม่พิพากษา ps#เลขบัตร',
+        '├● ครอบครองรถบัตร cid#เลขบัตร',
         '├● เช็คทะเบียนรถ car#จังหวัด หมวด ตัวเลข ประเภทรถ',
         '└● ตัวอย่าง car#กรุงเทพ 1กก 334 1'
       ]),
-      menuSection('⚖️ หมายจับ', [
+      menuSection('⚖️หมายจับ', [
         '┗ ╾ c#เลขบัตร / doc#เลขบัตร'
       ]),
-      menuSection('⚡ ไฟฟ้า / อื่นๆ', [
+      menuSection('💡ไฟฟ้าม่วง/ส้ม, [
         '┣ ╾ mea%ชื่อสกุล',
         '┣ ╾ kru%เลขมิเตอร์',
         '┣ ╾ peab%เลข CA เลขมิเตอร์',
