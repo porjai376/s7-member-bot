@@ -2145,26 +2145,63 @@ async function handleText(event) {
   }
 
   // ประกันสังคม: si%เลขบัตร
-  if (text.startsWith('si%')) {
-    const ssoNum = text.replace(/^si%/, '').trim();
-    if (!ssoNum) return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขบัตรประชาชน เช่น si%1234567890123' });
-    try {
-      const { data: res } = await axios.get(`http://103.91.204.203:4000/?si=${ssoNum}`);
-      if (!res.success) return reply(event.replyToken, { type: 'text', text: `❌ ${res.message || 'ดึงข้อมูลไม่สำเร็จ'}` });
-      const data = res.data;
-      if (data.content && data.content.length > 0) {
-        let result = `👔 ประวัติการทำงานประกันสังคม\n====================\n🆔 เลขประกันสังคม: ${ssoNum}\n📊 จำนวนที่พบ: ${data.totalElements} รายการ\n`;
-        data.content.forEach((item, idx) => {
-          result += `\n🏢 บริษัท ${idx + 1}\nชื่อบริษัท: ${item.companyName || 'ไม่ระบุ'}\nรหัสสาขา: ${item.accBran || 'ไม่ระบุ'}\nเลขที่บัญชี: ${item.accNo || 'ไม่ระบุ'}\nวันที่เริ่มงาน: ${item.expStartDateText || 'ไม่ระบุ'}\nวันที่ลาออก: ${item.empResignDateText || '-'}\nสถานะ: ${item.employStatusDesc || 'ไม่ระบุ'}\n--------------------`;
-        });
-        return reply(event.replyToken, { type: 'text', text: result });
-      } else {
-        return reply(event.replyToken, { type: 'text', text: 'ไม่พบข้อมูลประวัติการทำงานประกันสังคม' });
-      }
-    } catch (err) {
-      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูลประกันสังคมไม่สำเร็จ' });
-    }
+if (text.startsWith('si%')) {
+  const ssoNum = text.replace(/^si%/, '').trim();
+
+  if (!ssoNum) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ กรุณาระบุเลขบัตรประชาชน เช่น si%1234567890123'
+    });
   }
+
+  try {
+    const { data: res } = await axios.get(`http://103.91.204.203:4000/?si=${ssoNum}`);
+
+    if (!res.success) {
+      return reply(event.replyToken, {
+        type: 'text',
+        text: `❌ ${res.message || 'ดึงข้อมูลไม่สำเร็จ'}`
+      });
+    }
+
+    const data = res.data;
+
+    if (data.content && data.content.length > 0) {
+      let result = `🔎[${ssoNum}] MEGABOT🤖\n`;
+      result += `┌● ประกันสังคม\n`;
+      result += `└● จำนวน: ${data.totalElements} รายการ\n`;
+
+      data.content.forEach((item, idx) => {
+        result += `\n`;
+        result += `🏢 บริษัท ${idx + 1}\n`;
+        result += `├● ชื่อ: ${item.companyName || 'ไม่ระบุ'}\n`;
+        result += `├● สาขา: ${item.accBran || 'ไม่ระบุ'}\n`;
+        result += `├● บัญชี: ${item.accNo || 'ไม่ระบุ'}\n`;
+        result += `├● เริ่มงาน: ${item.expStartDateText || 'ไม่ระบุ'}\n`;
+        result += `├● ลาออก: ${item.empResignDateText || '-'}\n`;
+        result += `└● สถานะ: ${item.employStatusDesc || 'ไม่ระบุ'}\n`;
+      });
+
+      return reply(event.replyToken, {
+        type: 'text',
+        text: result.trim()
+      });
+
+    } else {
+      return reply(event.replyToken, {
+        type: 'text',
+        text: '❌ ไม่พบข้อมูลประกันสังคม'
+      });
+    }
+
+  } catch (err) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ ดึงข้อมูลประกันสังคมไม่สำเร็จ'
+    });
+  }
+}
 
   // หมายศาล: doc#เลขบัตร [หน้า]
   if (text.startsWith('doc#')) {
