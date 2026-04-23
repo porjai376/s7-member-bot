@@ -438,6 +438,139 @@ async function fetchPEAApi(params) {
   return res.data;
 }
 
+async function searchJediHp(hid) {
+  try {
+    const url = `https://api2.logbook.emenscr.in.th/v1/tpmaplogbook68/housemember/member/${encodeURIComponent(hid)}`;
+    const response = await axios.get(url, { timeout: 30000 });
+    const data = response.data;
+
+    if (!Array.isArray(data) || data.length === 0) {
+      return `❌ ไม่พบข้อมูลสำหรับเลขบัตร ${hid}`;
+    }
+
+    const item = data[0];
+    const gender = item.gender === 'ช' ? 'ชาย' : item.gender === 'ญ' ? 'หญิง' : item.gender || '-';
+    let ageStr = '-';
+    if (item.ebmn_age !== undefined) {
+      ageStr = `${item.ebmn_age} ปี`;
+      if (item.ebmn_age_month) ageStr += ` ${item.ebmn_age_month} เดือน`;
+    }
+
+    let bdate = String(item.birthdate || '');
+    bdate = bdate.length === 8 ? `${bdate.substring(6, 8)}/${bdate.substring(4, 6)}/${bdate.substring(0, 4)}` : bdate || '-';
+
+    return `┌● ชื่อ : ${item.prefix_name || ''}${item.name || ''} ${item.surname || ''}
+├● เลขบัตร : ${item.NID || '-'}
+├● เพศ : ${gender}
+├● อายุ : ${ageStr}
+├● วันเกิด : ${bdate}
+├● อาชีพ : ${item.occupation || '-'}
+├● การศึกษา : ${item.education || '-'}
+├● ศาสนา : ${item.religion || '-'}
+└● สถานะในครอบครัว : ${item.relation || '-'}
+————————
+┌● สิทธิหลัก : ${item.main_right || '-'}
+└● โรงพยาบาล : ${item.main_hospital || '-'}`.trim();
+  } catch (error) {
+    return '❌ เกิดข้อผิดพลาดในการดึงข้อมูล: ' + error.message;
+  }
+}
+
+const UTM_CONSTANTS = {
+  pi: 3.14159265358979,
+  sm_a: 6378137.0,
+  sm_b: 6356752.3142,
+  UTMScaleFactor: 0.9996
+};
+
+function degToRad(deg) {
+  return deg / 180.0 * UTM_CONSTANTS.pi;
+}
+
+function radToDeg(rad) {
+  return rad / UTM_CONSTANTS.pi * 180.0;
+}
+
+function utmCentralMeridian(zone) {
+  return degToRad(-183.0 + zone * 6.0);
+}
+
+function footpointLatitude(y) {
+  const { sm_a, sm_b } = UTM_CONSTANTS;
+  const n = (sm_a - sm_b) / (sm_a + sm_b);
+  const alpha = (sm_a + sm_b) / 2.0 * (1 + Math.pow(n, 2) / 4 + Math.pow(n, 4) / 64);
+  const y_ = y / alpha;
+  const beta = 3.0 * n / 2.0 - 27.0 * Math.pow(n, 3) / 32.0 + 269.0 * Math.pow(n, 5) / 512.0;
+  const gamma = 21.0 * Math.pow(n, 2) / 16.0 - 55.0 * Math.pow(n, 4) / 32.0;
+  const delta = 151.0 * Math.pow(n, 3) / 96.0 - 417.0 * Math.pow(n, 5) / 128.0;
+  const epsilon = 1097.0 * Math.pow(n, 4) / 512.0;
+  return y_ + beta * Math.sin(2.0 * y_) + gamma * Math.sin(4.0 * y_) + delta * Math.sin(6.0 * y_) + epsilon * Math.sin(8.0 * y_);
+}
+
+function mapXYToLatLon(x, y, lambda0, philambda) {
+  const { sm_a, sm_b } = UTM_CONSTANTS;
+  const phif = footpointLatitude(y);
+  const ep2 = (Math.pow(sm_a, 2) - Math.pow(sm_b, 2)) / Math.pow(sm_b, 2);
+  const cf = Math.cos(phif);
+  const nuf2 = ep2 * Math.pow(cf, 2);
+  let Nf = Math.pow(sm_a, 2) / (sm_b * Math.sqrt(1 + nuf2));
+  let Nfpow = Nf;
+  const tf = Math.tan(phif);
+  const tf2 = tf * tf;
+  const tf4 = tf2 * tf2;
+
+  const x1frac = 1.0 / (Nfpow * cf);
+  Nfpow *= Nf;
+  const x2frac = tf / (2.0 * Nfpow);
+  Nfpow *= Nf;
+  const x3frac = 1.0 / (6.0 * Nfpow * cf);
+  Nfpow *= Nf;
+  const x4frac = tf / (24.0 * Nfpow);
+  Nfpow *= Nf;
+  const x5frac = 1.0 / (120.0 * Nfpow * cf);
+  Nfpow *= Nf;
+  const x6frac = tf / (720.0 * Nfpow);
+  Nfpow *= Nf;
+  const x7frac = 1.0 / (5040.0 * Nfpow * cf);
+  Nfpow *= Nf;
+  const x8frac = tf / (40320.0 * Nfpow);
+
+  philambda[0] = phif + x2frac * (-1.0 - nuf2) * x * x
+    + x4frac * (5.0 + 3.0 * tf2 + 6.0 * nuf2 - 6.0 * tf2 * nuf2 - 3.0 * nuf2 * nuf2 - 9.0 * tf2 * nuf2 * nuf2) * Math.pow(x, 4)
+    + x6frac * (-61.0 - 90.0 * tf2 - 45.0 * tf4 - 107.0 * nuf2 + 162.0 * tf2 * nuf2) * Math.pow(x, 6)
+    + x8frac * (1385.0 + 3633.0 * tf2 + 4095.0 * tf4 + 1575 * tf4 * tf2) * Math.pow(x, 8);
+
+  philambda[1] = lambda0 + x1frac * x
+    + x3frac * (-1.0 - 2 * tf2 - nuf2) * Math.pow(x, 3)
+    + x5frac * (5.0 + 28.0 * tf2 + 24.0 * tf4 + 6.0 * nuf2 + 8.0 * tf2 * nuf2) * Math.pow(x, 5)
+    + x7frac * (-61.0 - 662.0 * tf2 - 1320.0 * tf4 - 720.0 * tf4 * tf2) * Math.pow(x, 7);
+}
+
+function convertUTMToLatLon(xUtm, yUtm, zone = 47, southhemi = false) {
+  try {
+    let x = Math.floor(parseFloat(xUtm));
+    let y = Math.floor(parseFloat(yUtm));
+    if (isNaN(x) || isNaN(y)) return null;
+    x = (x - 500000.0) / UTM_CONSTANTS.UTMScaleFactor;
+    if (southhemi) y -= 10000000.0;
+    y /= UTM_CONSTANTS.UTMScaleFactor;
+    const latlon = [0, 0];
+    mapXYToLatLon(x, y, utmCentralMeridian(zone), latlon);
+    const lat = radToDeg(latlon[0]);
+    const lon = radToDeg(latlon[1]);
+    if (lat < 5 || lat > 21 || lon < 97 || lon > 106) return null;
+    return { lat: lat.toFixed(6), lon: lon.toFixed(6) };
+  } catch (e) {
+    return null;
+  }
+}
+
+function formatLatLonLink(posX, posY) {
+  const latLon = convertUTMToLatLon(posX, posY, 47, false);
+  if (!latLon) return '';
+  return `\n📍 Lat: ${latLon.lat}, Lon: ${latLon.lon}\n🔗 Google Maps: https://www.google.com/maps?q=${latLon.lat},${latLon.lon}`;
+}
+
 function formatPrisonerAddress(item) {
   const addrParts = [];
   if (item.addressNoText) addrParts.push(`เลขที่ ${item.addressNoText}`);
@@ -457,7 +590,7 @@ function formatPrisonerRecords(data, input, isRemand = false) {
   const label = isRemand ? 'ผู้ต้องขัง (ยังไม่พิพากษา)' : 'ผู้ต้องขัง';
   if (!content.length) return `❌ ไม่พบข้อมูล${label} สำหรับ "${input}"`;
 
-  let msg = `👮‍♂️ ข้อมูล${label}: ${input}\n--------------------\n`;
+  let msg = `👮‍♂️ ข้อมูล${label}: ${input}\n====================\n`;
   content.forEach((item, idx) => {
     const sex = item.sex === 'MALE' ? 'ชาย' : item.sex === 'FEMALE' ? 'หญิง' : item.sex || '-';
 
@@ -555,6 +688,7 @@ function formatPEAMeterRecords(peaData, title, page = 0, exactName = '') {
       data.POSTCODE ? `รหัสไปรษณีย์ ${data.POSTCODE}` : ''
     ].filter(Boolean).join(' ') || '-'}
 พิกัด GPS: X=${data.POS_X || '-'} Y=${data.POS_Y || '-'}
+${formatLatLonLink(data.POS_X, data.POS_Y)}
 -------------------`;
   });
 
@@ -574,7 +708,7 @@ function formatPEAAddressRecords(peaData, page = 0) {
 
   const startIndex = page * itemsPerPage;
   const pageItems = records.slice(startIndex, startIndex + itemsPerPage);
-  let result = `💡 ข้อมูลไฟฟ้า [PEA] (หน้า ${page + 1}/${totalPages})\n--------------------\n`;
+  let result = `🏠 ข้อมูลมิเตอร์ไฟฟ้าตามที่อยู่ (หน้า ${page + 1}/${totalPages})\n====================\n`;
 
   pageItems.forEach((item, index) => {
     const parts = String(item.id || '').split(';');
@@ -600,7 +734,7 @@ function formatPEABillHistory(billResponseData, ca, peano) {
   const billData = billResponseData.data;
   if (!billData.length) return '❌ ไม่พบข้อมูลประวัติการชำระเงินของหมายเลขนี้';
 
-  let msg = `⚡ ประวัติการใช้ไฟฟ้า [PEA]\n🏠 CA: ${ca} | PEA NO: ${peano}\n--------------------\n`;
+  let msg = `⚡ ประวัติการใช้ไฟฟ้า (PEA)\n🏠 CA: ${ca} | PEA NO: ${peano}\n====================\n`;
   billData.forEach(item => {
     msg += `📅 งวดเดือน: ${item.billperiod}\n`;
     msg += `🔌 หน่วยที่ใช้: ${item.unit} หน่วย\n`;
@@ -2019,7 +2153,7 @@ async function handleText(event) {
       if (!res.success) return reply(event.replyToken, { type: 'text', text: `❌ ${res.message || 'ดึงข้อมูลไม่สำเร็จ'}` });
       const data = res.data;
       if (data.content && data.content.length > 0) {
-        let result = `👔 ประวัติการทำงานประกันสังคม\n--------------------\n🆔 เลขประกันสังคม: ${ssoNum}\n📊 จำนวนที่พบ: ${data.totalElements} รายการ\n`;
+        let result = `👔 ประวัติการทำงานประกันสังคม\n====================\n🆔 เลขประกันสังคม: ${ssoNum}\n📊 จำนวนที่พบ: ${data.totalElements} รายการ\n`;
         data.content.forEach((item, idx) => {
           result += `\n🏢 บริษัท ${idx + 1}\nชื่อบริษัท: ${item.companyName || 'ไม่ระบุ'}\nรหัสสาขา: ${item.accBran || 'ไม่ระบุ'}\nเลขที่บัญชี: ${item.accNo || 'ไม่ระบุ'}\nวันที่เริ่มงาน: ${item.expStartDateText || 'ไม่ระบุ'}\nวันที่ลาออก: ${item.empResignDateText || '-'}\nสถานะ: ${item.employStatusDesc || 'ไม่ระบุ'}\n--------------------`;
         });
@@ -2050,7 +2184,7 @@ async function handleText(event) {
         if (page >= totalPages) return reply(event.replyToken, { type: 'text', text: `ไม่พบข้อมูลหน้าที่ ${page + 1} (มีทั้งหมด ${totalPages} หน้า)` });
         const startIndex = page * itemsPerPage;
         const pageItems = data.content.slice(startIndex, Math.min(startIndex + itemsPerPage, data.content.length));
-        let result = `🚨 ข้อมูลหมายศาล (หน้า ${page + 1}/${totalPages})\n--------------------\n`;
+        let result = `🚨 ข้อมูลหมายศาล (หน้า ${page + 1}/${totalPages})\n====================\n`;
         pageItems.forEach((warrant, idx) => {
           result += `\n📄 หมายจับที่ ${startIndex + idx + 1}\nเลขที่: ${warrant.woaNo}/${warrant.woaYear}\nศาล: ${warrant.courtCodeText}\n\n👤 ข้อมูลผู้ต้องหา\nชื่อ-สกุล: ${warrant.accFullName}\nเลขบัตรประชาชน: ${warrant.accCardId}\nสัญชาติ: ${warrant.accNationText}\nอาชีพ: ${warrant.accOccupation}\n\n📍 ที่อยู่\nตำบล/แขวง: ${warrant.accSubDistrictText || warrant.accSubDistrict}\nอำเภอ/เขต: ${warrant.accDistrictText}\n\n⚖️ ข้อมูลคดี\nสถานะ: ${warrant.arrestStatus}\nข้อหา: ${warrant.charge}\nผู้ร้อง: ${warrant.plaintiff}\nผู้พิพากษา: ${warrant.judgeName}\n\n📅 วันที่\nออกหมาย: ${new Date(warrant.woaDate).toLocaleDateString('th-TH')}\nเริ่มต้น: ${new Date(warrant.woaStartDate).toLocaleDateString('th-TH')}\nสิ้นสุด: ${new Date(warrant.woaEndDate).toLocaleDateString('th-TH')}\n-------------------`;
         });
@@ -2074,7 +2208,7 @@ async function handleText(event) {
       if (!res.success) return reply(event.replyToken, { type: 'text', text: `❌ ${res.message || 'ดึงข้อมูลไม่สำเร็จ'}` });
       const data = res.data;
       if (data.content && data.content.length > 0) {
-        let result = `🚗 ข้อมูลใบขับขี่\n--------------------\n`;
+        let result = `🚗 ข้อมูลใบขับขี่\n====================\n`;
         data.content.forEach((license, idx) => {
           result += `\n📄 ใบขับขี่ที่ ${idx + 1}\n👤 ชื่อ-นามสกุล: ${license.fullName}\n🆔 เลขบัตรประชาชน: ${license.citizenCardNumber}\n🚗 ประเภทใบขับขี่: ${license.type}\n📝 เลขที่ใบขับขี่: ${license.licenseNumber}\n📅 วันที่ออกใบอนุญาต: ${new Date(license.licenseIssueDate).toLocaleDateString('th-TH')}\n📅 วันที่หมดอายุ: ${new Date(license.licenseExpirationDate).toLocaleDateString('th-TH')}\n⭐ สถานะ: ${license.status}\n🏠 ที่อยู่: ${license.address}\n-------------------`;
         });
@@ -2097,7 +2231,7 @@ async function handleText(event) {
       if (!res.success) return reply(event.replyToken, { type: 'text', text: `❌ ${res.message || 'ดึงข้อมูลไม่สำเร็จ'}` });
       const data = res.data;
       if (data.content && data.content.length > 0) {
-        let result = `🚗 ข้อมูลทะเบียนรถ (จาก CID)\n---------------------\n`;
+        let result = `🚗 ข้อมูลทะเบียนรถ (จาก CID)\n====================\n`;
         data.content.slice(0, 5).forEach((vehicle, idx) => {
           result += `\n📄 รถคันที่ ${idx + 1}\n🚘 ทะเบียน: ${vehicle.plate1 || ''}${vehicle.plate2 || ''}\n🚗 ยี่ห้อ: ${vehicle.brnDesc || 'ไม่ระบุ'}\n🎨 สี: ${(vehicle.carChkMasColorList && vehicle.carChkMasColorList[0]?.colorDesc) || 'ไม่ระบุ'}\n🔧 ประเภท: ${vehicle.vehTypeDesc || 'ไม่ระบุ'}\n👤 เจ้าของ: ${vehicle.owner1 || 'ไม่ระบุ'}\n📅 หมดอายุ: ${vehicle.expDate ? new Date(vehicle.expDate).toLocaleDateString('th-TH') : 'ไม่ระบุ'}\n-------------------`;
         });
@@ -2135,7 +2269,7 @@ async function handleText(event) {
         if (page >= totalPages) return reply(event.replyToken, { type: 'text', text: `ไม่พบข้อมูลหน้าที่ ${page + 1} (มีทั้งหมด ${totalPages} หน้า)` });
         const startIndex = page * itemsPerPage;
         const pageItems = data.content.slice(startIndex, Math.min(startIndex + itemsPerPage, data.content.length));
-        let result = `🚗 ข้อมูลทะเบียนรถ (หน้า ${page + 1}/${totalPages})\n--------------------\n`;
+        let result = `🚗 ข้อมูลทะเบียนรถ (หน้า ${page + 1}/${totalPages})\n====================\n`;
         pageItems.forEach((vehicle, idx) => {
           result += `\n📄 รถคันที่ ${startIndex + idx + 1}\n🚘 ทะเบียน: ${vehicle.plate1 || ''}${vehicle.plate2 || ''}\n🏢 สำนักงาน: ${vehicle.offLocDesc || 'ไม่ระบุ'}\n🚗 ยี่ห้อ: ${vehicle.brnDesc || 'ไม่ระบุ'}\n📝 รุ่น: ${vehicle.modelName || 'ไม่ระบุ'}\n🎨 สี: ${(vehicle.carChkMasColorList && vehicle.carChkMasColorList[0]?.colorDesc) || 'ไม่ระบุ'}\n🔧 ประเภทรถ: ${vehicle.vehTypeDesc || 'ไม่ระบุ'}\n📋 หมายเลขตัวถัง: ${vehicle.numBody || 'ไม่ระบุ'}\n📅 วันที่จดทะเบียน: ${vehicle.regDate ? new Date(vehicle.regDate).toLocaleDateString('th-TH') : 'ไม่ระบุ'}\n📅 วันที่หมดอายุ: ${vehicle.expDate ? new Date(vehicle.expDate).toLocaleDateString('th-TH') : 'ไม่ระบุ'}\n\n👤 ข้อมูลเจ้าของ\nเจ้าของที่ 1:\nเลขประจำตัว: ${vehicle.docNo1 || 'ไม่ระบุ'}\nชื่อ: ${vehicle.owner1 || 'ไม่ระบุ'}\nที่อยู่: ${vehicle.addressOwner1 || 'ไม่ระบุ'}\n${vehicle.docNo2 ? `\nเจ้าของที่ 2:\nเลขประจำตัว: ${vehicle.docNo2}\nชื่อ: ${vehicle.owner2 || 'ไม่ระบุ'}` : ''}\n-------------------`;
         });
@@ -2148,6 +2282,15 @@ async function handleText(event) {
     } catch (err) {
       return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูลทะเบียนรถไม่สำเร็จ' });
     }
+  }
+
+  if (text.startsWith('h%')) {
+    const pidToSearch = text.replace(/^h%/, '').trim();
+    if (!pidToSearch) {
+      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขบัตรประชาชน เช่น h%1234567890123' });
+    }
+    const result = await searchJediHp(pidToSearch);
+    return reply(event.replyToken, { type: 'text', text: result });
   }
 
   if (text.startsWith('psi#')) {
@@ -2256,7 +2399,10 @@ async function handleText(event) {
     }
   }
 
- return;
+  return reply(event.replyToken, {
+    type: 'text',
+    text: 'พิมพ์ menu% เพื่อดูเมนู หรือพิมพ์ ยินยอมรับข้อตกลง เพื่อสมัครสมาชิก'
+  });
 }
 
 async function handleImage(event) {
