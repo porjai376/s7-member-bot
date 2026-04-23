@@ -1190,6 +1190,62 @@ function buildTopupAdminFlex(topup, userId) {
   };
 }
 
+function buildContactAdminFlex() {
+  return {
+    type: 'flex',
+    altText: 'ติดต่อแอดมิน',
+    contents: {
+      type: 'bubble',
+      size: 'mega',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        backgroundColor: '#0F172A',
+        paddingAll: '16px',
+        contents: [
+          {
+            type: 'text',
+            text: '📩 ติดต่อแอดมิน',
+            color: '#FFFFFF',
+            weight: 'bold',
+            size: 'lg'
+          }
+        ]
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        contents: [
+          {
+            type: 'text',
+            text: 'สอบถามแอดมินแจ้งข้อความได้เลยครับ',
+            wrap: true,
+            size: 'md',
+            color: '#111827'
+          }
+        ]
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'sm',
+        contents: [
+          {
+            type: 'button',
+            style: 'primary',
+            color: '#2563EB',
+            action: {
+              type: 'message',
+              label: '📋 ดูเมนูคำสั่ง',
+              text: 'menu%'
+            }
+          }
+        ]
+      }
+    }
+  };
+}
+
 function mapTopupPackage(text) {
   const cmd = text.toLowerCase().trim();
   if (cmd === 'topup30') return { days: 30, label: '30 วัน' };
@@ -1385,6 +1441,10 @@ async function handleText(event) {
 
   if (text === 'ยินยอมรับข้อตกลง') {
     return reply(event.replyToken, buildRegisterGuideFlex());
+  }
+
+  if (text === 'ติดต่อแอดมิน') {
+  return reply(event.replyToken, buildContactAdminFlex());
   }
 
   if (text === 'สถานะการสมัคร') {
