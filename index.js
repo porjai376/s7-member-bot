@@ -439,7 +439,7 @@ function formatPrisonerRecords(data, input, isRemand = false) {
   const label = isRemand ? 'ผู้ต้องขัง (ยังไม่พิพากษา)' : 'ผู้ต้องขัง';
   if (!content.length) return `❌ ไม่พบข้อมูล${label} สำหรับ "${input}"`;
 
-  let msg = `👮‍♂️ ข้อมูล${label}: ${input}\n====================\n`;
+  let msg = `👮‍♂️ ข้อมูล${label}: ${input}\n--------------------\n`;
   content.forEach((item, idx) => {
     const sex = item.sex === 'MALE' ? 'ชาย' : item.sex === 'FEMALE' ? 'หญิง' : item.sex || '-';
 
@@ -556,7 +556,7 @@ function formatPEAAddressRecords(peaData, page = 0) {
 
   const startIndex = page * itemsPerPage;
   const pageItems = records.slice(startIndex, startIndex + itemsPerPage);
-  let result = `🏠 ข้อมูลมิเตอร์ไฟฟ้าตามที่อยู่ (หน้า ${page + 1}/${totalPages})\n====================\n`;
+  let result = `💡 ข้อมูลไฟฟ้า [PEA] (หน้า ${page + 1}/${totalPages})\n--------------------\n`;
 
   pageItems.forEach((item, index) => {
     const parts = String(item.id || '').split(';');
@@ -582,7 +582,7 @@ function formatPEABillHistory(billResponseData, ca, peano) {
   const billData = billResponseData.data;
   if (!billData.length) return '❌ ไม่พบข้อมูลประวัติการชำระเงินของหมายเลขนี้';
 
-  let msg = `⚡ ประวัติการใช้ไฟฟ้า (PEA)\n🏠 CA: ${ca} | PEA NO: ${peano}\n====================\n`;
+  let msg = `⚡ ประวัติการใช้ไฟฟ้า [PEA]\n🏠 CA: ${ca} | PEA NO: ${peano}\n--------------------\n`;
   billData.forEach(item => {
     msg += `📅 งวดเดือน: ${item.billperiod}\n`;
     msg += `🔌 หน่วยที่ใช้: ${item.unit} หน่วย\n`;
@@ -2001,7 +2001,7 @@ async function handleText(event) {
       if (!res.success) return reply(event.replyToken, { type: 'text', text: `❌ ${res.message || 'ดึงข้อมูลไม่สำเร็จ'}` });
       const data = res.data;
       if (data.content && data.content.length > 0) {
-        let result = `👔 ประวัติการทำงานประกันสังคม\n====================\n🆔 เลขประกันสังคม: ${ssoNum}\n📊 จำนวนที่พบ: ${data.totalElements} รายการ\n`;
+        let result = `👔 ประวัติการทำงานประกันสังคม\n--------------------\n🆔 เลขประกันสังคม: ${ssoNum}\n📊 จำนวนที่พบ: ${data.totalElements} รายการ\n`;
         data.content.forEach((item, idx) => {
           result += `\n🏢 บริษัท ${idx + 1}\nชื่อบริษัท: ${item.companyName || 'ไม่ระบุ'}\nรหัสสาขา: ${item.accBran || 'ไม่ระบุ'}\nเลขที่บัญชี: ${item.accNo || 'ไม่ระบุ'}\nวันที่เริ่มงาน: ${item.expStartDateText || 'ไม่ระบุ'}\nวันที่ลาออก: ${item.empResignDateText || '-'}\nสถานะ: ${item.employStatusDesc || 'ไม่ระบุ'}\n--------------------`;
         });
@@ -2032,7 +2032,7 @@ async function handleText(event) {
         if (page >= totalPages) return reply(event.replyToken, { type: 'text', text: `ไม่พบข้อมูลหน้าที่ ${page + 1} (มีทั้งหมด ${totalPages} หน้า)` });
         const startIndex = page * itemsPerPage;
         const pageItems = data.content.slice(startIndex, Math.min(startIndex + itemsPerPage, data.content.length));
-        let result = `🚨 ข้อมูลหมายศาล (หน้า ${page + 1}/${totalPages})\n====================\n`;
+        let result = `🚨 ข้อมูลหมายศาล (หน้า ${page + 1}/${totalPages})\n--------------------\n`;
         pageItems.forEach((warrant, idx) => {
           result += `\n📄 หมายจับที่ ${startIndex + idx + 1}\nเลขที่: ${warrant.woaNo}/${warrant.woaYear}\nศาล: ${warrant.courtCodeText}\n\n👤 ข้อมูลผู้ต้องหา\nชื่อ-สกุล: ${warrant.accFullName}\nเลขบัตรประชาชน: ${warrant.accCardId}\nสัญชาติ: ${warrant.accNationText}\nอาชีพ: ${warrant.accOccupation}\n\n📍 ที่อยู่\nตำบล/แขวง: ${warrant.accSubDistrictText || warrant.accSubDistrict}\nอำเภอ/เขต: ${warrant.accDistrictText}\n\n⚖️ ข้อมูลคดี\nสถานะ: ${warrant.arrestStatus}\nข้อหา: ${warrant.charge}\nผู้ร้อง: ${warrant.plaintiff}\nผู้พิพากษา: ${warrant.judgeName}\n\n📅 วันที่\nออกหมาย: ${new Date(warrant.woaDate).toLocaleDateString('th-TH')}\nเริ่มต้น: ${new Date(warrant.woaStartDate).toLocaleDateString('th-TH')}\nสิ้นสุด: ${new Date(warrant.woaEndDate).toLocaleDateString('th-TH')}\n-------------------`;
         });
@@ -2056,7 +2056,7 @@ async function handleText(event) {
       if (!res.success) return reply(event.replyToken, { type: 'text', text: `❌ ${res.message || 'ดึงข้อมูลไม่สำเร็จ'}` });
       const data = res.data;
       if (data.content && data.content.length > 0) {
-        let result = `🚗 ข้อมูลใบขับขี่\n====================\n`;
+        let result = `🚗 ข้อมูลใบขับขี่\n--------------------\n`;
         data.content.forEach((license, idx) => {
           result += `\n📄 ใบขับขี่ที่ ${idx + 1}\n👤 ชื่อ-นามสกุล: ${license.fullName}\n🆔 เลขบัตรประชาชน: ${license.citizenCardNumber}\n🚗 ประเภทใบขับขี่: ${license.type}\n📝 เลขที่ใบขับขี่: ${license.licenseNumber}\n📅 วันที่ออกใบอนุญาต: ${new Date(license.licenseIssueDate).toLocaleDateString('th-TH')}\n📅 วันที่หมดอายุ: ${new Date(license.licenseExpirationDate).toLocaleDateString('th-TH')}\n⭐ สถานะ: ${license.status}\n🏠 ที่อยู่: ${license.address}\n-------------------`;
         });
@@ -2079,7 +2079,7 @@ async function handleText(event) {
       if (!res.success) return reply(event.replyToken, { type: 'text', text: `❌ ${res.message || 'ดึงข้อมูลไม่สำเร็จ'}` });
       const data = res.data;
       if (data.content && data.content.length > 0) {
-        let result = `🚗 ข้อมูลทะเบียนรถ (จาก CID)\n====================\n`;
+        let result = `🚗 ข้อมูลทะเบียนรถ (จาก CID)\n---------------------\n`;
         data.content.slice(0, 5).forEach((vehicle, idx) => {
           result += `\n📄 รถคันที่ ${idx + 1}\n🚘 ทะเบียน: ${vehicle.plate1 || ''}${vehicle.plate2 || ''}\n🚗 ยี่ห้อ: ${vehicle.brnDesc || 'ไม่ระบุ'}\n🎨 สี: ${(vehicle.carChkMasColorList && vehicle.carChkMasColorList[0]?.colorDesc) || 'ไม่ระบุ'}\n🔧 ประเภท: ${vehicle.vehTypeDesc || 'ไม่ระบุ'}\n👤 เจ้าของ: ${vehicle.owner1 || 'ไม่ระบุ'}\n📅 หมดอายุ: ${vehicle.expDate ? new Date(vehicle.expDate).toLocaleDateString('th-TH') : 'ไม่ระบุ'}\n-------------------`;
         });
@@ -2117,7 +2117,7 @@ async function handleText(event) {
         if (page >= totalPages) return reply(event.replyToken, { type: 'text', text: `ไม่พบข้อมูลหน้าที่ ${page + 1} (มีทั้งหมด ${totalPages} หน้า)` });
         const startIndex = page * itemsPerPage;
         const pageItems = data.content.slice(startIndex, Math.min(startIndex + itemsPerPage, data.content.length));
-        let result = `🚗 ข้อมูลทะเบียนรถ (หน้า ${page + 1}/${totalPages})\n====================\n`;
+        let result = `🚗 ข้อมูลทะเบียนรถ (หน้า ${page + 1}/${totalPages})\n--------------------\n`;
         pageItems.forEach((vehicle, idx) => {
           result += `\n📄 รถคันที่ ${startIndex + idx + 1}\n🚘 ทะเบียน: ${vehicle.plate1 || ''}${vehicle.plate2 || ''}\n🏢 สำนักงาน: ${vehicle.offLocDesc || 'ไม่ระบุ'}\n🚗 ยี่ห้อ: ${vehicle.brnDesc || 'ไม่ระบุ'}\n📝 รุ่น: ${vehicle.modelName || 'ไม่ระบุ'}\n🎨 สี: ${(vehicle.carChkMasColorList && vehicle.carChkMasColorList[0]?.colorDesc) || 'ไม่ระบุ'}\n🔧 ประเภทรถ: ${vehicle.vehTypeDesc || 'ไม่ระบุ'}\n📋 หมายเลขตัวถัง: ${vehicle.numBody || 'ไม่ระบุ'}\n📅 วันที่จดทะเบียน: ${vehicle.regDate ? new Date(vehicle.regDate).toLocaleDateString('th-TH') : 'ไม่ระบุ'}\n📅 วันที่หมดอายุ: ${vehicle.expDate ? new Date(vehicle.expDate).toLocaleDateString('th-TH') : 'ไม่ระบุ'}\n\n👤 ข้อมูลเจ้าของ\nเจ้าของที่ 1:\nเลขประจำตัว: ${vehicle.docNo1 || 'ไม่ระบุ'}\nชื่อ: ${vehicle.owner1 || 'ไม่ระบุ'}\nที่อยู่: ${vehicle.addressOwner1 || 'ไม่ระบุ'}\n${vehicle.docNo2 ? `\nเจ้าของที่ 2:\nเลขประจำตัว: ${vehicle.docNo2}\nชื่อ: ${vehicle.owner2 || 'ไม่ระบุ'}` : ''}\n-------------------`;
         });
