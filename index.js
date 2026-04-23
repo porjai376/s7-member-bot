@@ -63,10 +63,28 @@ const client = new line.messagingApi.MessagingApiClient({
   channelAccessToken: CHANNEL_ACCESS_TOKEN
 });
 
-const DATA_FILE = path.join(__dirname, 'members.json');
-const UPLOAD_DIR = path.join(__dirname, 'uploads');
+const STORAGE_ROOT = process.env.STORAGE_ROOT || '/var/data';
+const DATA_FILE = path.join(STORAGE_ROOT, 'members.json');
+const UPLOAD_DIR = path.join(STORAGE_ROOT, 'uploads');
 
-ensureStorage();
+function ensureStorage() {
+  if (!fs.existsSync(STORAGE_ROOT)) {
+    fs.mkdirSync(STORAGE_ROOT, { recursive: true });
+  }
+
+  if (!fs.existsSync(UPLOAD_DIR)) {
+    fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+  }
+
+  if (!fs.existsSync(DATA_FILE)) {
+    const initData = {
+      members: {},
+      processedEvents: {},
+      topups: {}
+    };
+    fs.writeFileSync(DATA_FILE, JSON.stringify(initData, null, 2), 'utf8');
+  }
+}
 
 app.use('/uploads', express.static(UPLOAD_DIR));
 
