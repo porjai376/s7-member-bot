@@ -462,7 +462,56 @@ async function postJson(url, payload, headers, timeout = 30000) {
     }
   }
 
-  return axios.post(url, payload, { headers, timeout });
+  return new Promise((resolve, reject) => {
+    const target = new URL(url);
+    const body = JSON.stringify(payload);
+    const req = https.request({
+      protocol: target.protocol,
+      hostname: target.hostname,
+      port: target.port || 443,
+      path: `${target.pathname}${target.search}`,
+      method: 'POST',
+      headers: {
+        ...headers,
+        'Content-Length': Buffer.byteLength(body)
+      },
+      timeout,
+      rejectUnauthorized: false
+    }, (res) => {
+      const chunks = [];
+      res.on('data', chunk => chunks.push(chunk));
+      res.on('end', () => {
+        const buffer = Buffer.concat(chunks);
+        const encoding = String(res.headers['content-encoding'] || '').toLowerCase();
+        const done = (err, output) => {
+          if (err) return reject(err);
+          const text = output.toString('utf8');
+          let data;
+          try {
+            data = text ? JSON.parse(text) : {};
+          } catch (e) {
+            data = text;
+          }
+          if (res.statusCode < 200 || res.statusCode >= 300) {
+            const error = new Error(`Request failed with status code ${res.statusCode}`);
+            error.response = { status: res.statusCode, data };
+            return reject(error);
+          }
+          resolve({ data });
+        };
+
+        if (encoding === 'gzip') return require('zlib').gunzip(buffer, done);
+        if (encoding === 'deflate') return require('zlib').inflate(buffer, done);
+        if (encoding === 'br') return require('zlib').brotliDecompress(buffer, done);
+        return done(null, buffer);
+      });
+    });
+
+    req.on('timeout', () => req.destroy(new Error(`Request timed out after ${timeout}ms`)));
+    req.on('error', reject);
+    req.write(body);
+    req.end();
+  });
 }
 
 function extractApiContent(res) {
@@ -1012,6 +1061,7 @@ function buildMenuCarouselFlex() {
                 '┣ ╾ peab%เลข CA เลขมิเตอร์',
                 '┣ ╾ peac%เลข CA',
                 '┣ ╾ pean%ชื่อสกุล',
+                '┣ ╾ pean#ชื่อสกุล',
                 '┣ ╾ peau%ที่อยู่',
                 '┗ ╾ se%รหัสสาขา7-11'
               ]),
@@ -2298,8 +2348,8 @@ async function handleText(event) {
     return reply(event.replyToken, { type: 'text', text: result });
   }
 
-  if (text.startsWith('pean%')) {
-    const input = text.replace(/^pean%/, '').trim();
+  if (text.startsWith('pean%') || text.startsWith('pean#')) {
+    const input = text.replace(/^pean[%#]/, '').trim();
     const parts = input.split(/\s+/);
     let page = 0;
     if (parts.length > 2 && /^\d+$/.test(parts[parts.length - 1])) {
