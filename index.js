@@ -433,6 +433,38 @@ function limitLineMessage(msg) {
   return msg.length > 4800 ? msg.slice(0, 4800) + '\n...ตัดข้อความ...' : msg;
 }
 
+async function postJson(url, payload, headers, timeout = 30000) {
+  if (typeof fetch === 'function') {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeout);
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+      const text = await response.text();
+      let data;
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch (e) {
+        data = text;
+      }
+      if (!response.ok) {
+        const error = new Error(`Request failed with status code ${response.status}`);
+        error.response = { status: response.status, data };
+        throw error;
+      }
+      return { data };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  return axios.post(url, payload, { headers, timeout });
+}
+
 function extractApiContent(res) {
   const data = res?.data ?? res;
   const payload = data?.data ?? data;
@@ -577,10 +609,7 @@ async function searchJediHp(hid) {
 async function searchPEAID(pid, page = 0) {
   try {
     const url = 'https://map.pea.co.th/peacallcenter/proxy.ashx?https://map.pea.co.th/peacallcenter/dataservices/CallCenter.svc/S_SEARCH_METERDETAIL_BY_CA';
-    const response = await axios.post(url, { ca: pid }, {
-      headers: PEA_MAP_HEADERS,
-      timeout: 30000
-    });
+    const response = await postJson(url, { ca: pid }, PEA_MAP_HEADERS);
     const records = Array.isArray(response.data?.MESSAGE) ? response.data.MESSAGE : [];
     if (!response.data?.SUCCESS || !records.length) return 'ไม่พบข้อมูลสำหรับหมายเลขที่ระบุ';
 
@@ -619,10 +648,7 @@ async function searchPEAByName(name, page = 0) {
     if (raw.split(' ').length < 2) return '❌ กรุณาใส่ชื่อเต็มและนามสกุล เช่น pean%วัชราภรณ์ จันทบุตร';
 
     const url = 'https://map.pea.co.th/peacallcenter/proxy.ashx?https://map.pea.co.th/peacallcenter/dataservices/CallCenter.svc/S_SEARCH_METERDETAIL_BY_NAME';
-    const response = await axios.post(url, { name: raw }, {
-      headers: PEA_MAP_HEADERS,
-      timeout: 30000
-    });
+    const response = await postJson(url, { name: raw }, PEA_MAP_HEADERS);
     const keywordFull = raw.toLowerCase();
     const records = (Array.isArray(response.data?.MESSAGE) ? response.data.MESSAGE : []).filter(item => {
       const data = item.data || {};
@@ -663,10 +689,7 @@ async function searchPEAByName(name, page = 0) {
 async function searchPEAByAddress(address, page = 0) {
   try {
     const url = 'https://map.pea.co.th/peacallcenter/proxy.ashx?https://map.pea.co.th/peacallcenter/dataservices/CallCenter.svc/S_SEARCH_METERDETAIL_BY_ADDRESS';
-    const response = await axios.post(url, { address }, {
-      headers: PEA_MAP_ADDRESS_HEADERS,
-      timeout: 30000
-    });
+    const response = await postJson(url, { address }, PEA_MAP_ADDRESS_HEADERS);
     const records = Array.isArray(response.data?.MESSAGE) ? response.data.MESSAGE : [];
     if (!response.data?.SUCCESS || !records.length) return 'ไม่พบข้อมูลสำหรับที่อยู่ที่ระบุ';
 
@@ -700,11 +723,7 @@ async function searchPEAByAddress(address, page = 0) {
 
 async function searchPEABillHistory(ca, peano) {
   try {
-    const response = await axios.post('https://www.pea.co.th/api/bill-history', { ca, lang: 'th', peano }, {
-      httpsAgent,
-      headers: PEA_BILL_HEADERS,
-      timeout: 30000
-    });
+    const response = await postJson('https://www.pea.co.th/api/bill-history', { ca, lang: 'th', peano }, PEA_BILL_HEADERS);
     if (!response.data?.result || !Array.isArray(response.data?.data)) {
       return '❌ ไม่สามารถดึงข้อมูลได้: ' + (response.data?.message || 'ระบบขัดข้อง');
     }
