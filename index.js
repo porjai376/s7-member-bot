@@ -6,244 +6,6 @@ const path = require('path');
 const axios = require('axios');
 const https = require('https');
 const crypto = require('crypto');
-const puppeteer = require('puppeteer');
-const os = require('os');
-
-// ====== DXC Cookie Management ======
-const DXC_LOGIN_URL = 'https://sso.dxc.go.th/auth/realms/DXC/protocol/openid-connect/auth?response_type=code&client_id=dxc-search-linkage2-server&redirect_uri=https%3A%2F%2Fsearch-linkage2.dxc.go.th%2Fsecured%2Findex.html&state=5f243021-7316-4fd9-974e-c7ba2799384b&login=true&scope=openid';
-const DXC_TARGET_URL = 'https://search-linkage2.dxc.go.th/secured/v2/index.html#/';
-const DXC_USERNAME = 'k_anuphan';
-const DXC_PASSWORD = 'OS9-17p-UJz';
-let currentCookie = '';
-
-async function refreshCookie() {
-  const tmpDir = path.join(os.tmpdir(), 'pptr_dxc_' + Date.now());
-  let browser;
-  try {
-    browser = await puppeteer.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
-      defaultViewport: { width: 1366, height: 900 },
-      userDataDir: tmpDir
-    });
-    const page = await browser.newPage();
-    page.setDefaultTimeout(45000);
-
-    await page.goto(DXC_LOGIN_URL, { waitUntil: 'networkidle2' });
-    await page.waitForSelector('#username');
-    await page.waitForSelector('#password');
-
-    await page.click('#username', { clickCount: 3 });
-    await page.type('#username', DXC_USERNAME, { delay: 20 });
-    await page.click('#password', { clickCount: 3 });
-    await page.type('#password', DXC_PASSWORD, { delay: 20 });
-
-    await Promise.allSettled([
-      page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 45000 }),
-      page.click('button[type="submit"]')
-    ]);
-
-    await page.waitForNetworkIdle({ idleTime: 1500, timeout: 15000 }).catch(() => { });
-    await page.goto(DXC_TARGET_URL, { waitUntil: 'networkidle2' });
-    await page.waitForNetworkIdle({ idleTime: 1500, timeout: 15000 }).catch(() => { });
-
-    const cookies = await page.cookies(DXC_TARGET_URL);
-    currentCookie = cookies.map(c => `${c.name}=${c.value}`).join('; ');
-    console.log('DXC Cookie refreshed:', new Date().toLocaleString());
-    return currentCookie;
-  } catch (error) {
-    console.error('Error refreshing DXC cookie:', error.message);
-    return null;
-  } finally {
-    if (browser) {
-      try { await browser.close(); } catch (e) { }
-      try { require('fs').rmSync(tmpDir, { recursive: true, force: true }); } catch (e) { }
-    }
-  }
-}
-
-async function startDXCCookieRefresh() {
-  await refreshCookie();
-  setInterval(async () => {
-    try { await refreshCookie(); } catch (e) { console.error('DXC cookie refresh error:', e.message); }
-  }, 30 * 60 * 1000);
-}
-
-function getDLTHeaders() {
-  return {
-    'accept': 'application/json, text/plain, */*',
-    'host': 'search-linkage2.dxc.go.th',
-    'referer': 'https://search-linkage2.dxc.go.th/secured/v2/index.html',
-    'sec-ch-ua-mobile': '?0',
-    'sec-fetch-dest': 'empty',
-    'sec-fetch-mode': 'cors',
-    'sec-fetch-site': 'same-origin',
-    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-    'content-type': 'application/json',
-    'cookie': currentCookie
-  };
-}
-
-// ====== DXC Search Functions ======
-async function searchSSO(ssoNum) {
-  try {
-    const url = `https://search-linkage2.dxc.go.th/api/qm/v2/sso/employments/?ssoNum=${ssoNum}&page=0&size=100&sortDirection=ASC`;
-    const response = await axios.get(url, { headers: getDLTHeaders(), httpsAgent });
-    const data = response.data;
-    if (data.content && data.content.length > 0) {
-      let result = `👔 ประวัติการทำงานประกันสังคม\n====================\n🆔 เลขประกันสังคม: ${ssoNum}\n📊 จำนวนที่พบ: ${data.totalElements} รายการ\n`;
-      data.content.forEach((item, index) => {
-        result += `\n🏢 บริษัท ${index + 1}\nชื่อบริษัท: ${item.companyName || 'ไม่ระบุ'}\nรหัสสาขา: ${item.accBran || 'ไม่ระบุ'}\nเลขที่บัญชี: ${item.accNo || 'ไม่ระบุ'}\nวันที่เริ่มงาน: ${item.expStartDateText || 'ไม่ระบุ'}\nวันที่ลาออก: ${item.empResignDateText || '-'}\nสถานะ: ${item.employStatusDesc || 'ไม่ระบุ'}\n--------------------`;
-      });
-      return result;
-    } else {
-      return 'ไม่พบข้อมูลประวัติการทำงานประกันสังคม';
-    }
-  } catch (error) {
-    console.error('Error searchSSO:', error.message);
-    if (error.response?.status === 401 || error.response?.status === 403) {
-      await refreshCookie();
-      return 'กรุณาลองใหม่อีกครั้ง ระบบกำลังรีเฟรชการเชื่อมต่อ';
-    }
-    return 'ไม่พบข้อมูลประกันสังคม⛔';
-  }
-}
-
-async function searchWarrantDXC(accCardId, page = 0) {
-  try {
-    const url = `https://search-linkage2.dxc.go.th/api/qm/v2/coj/arrest-warrants?accCardId=${accCardId}&page=0&size=100&sortDirection=ASC`;
-    const response = await axios.get(url, { headers: getDLTHeaders(), httpsAgent });
-    const data = response.data;
-    if (data.content && data.content.length > 0) {
-      const itemsPerPage = 3;
-      const totalPages = Math.ceil(data.content.length / itemsPerPage);
-      page = parseInt(page);
-      if (isNaN(page) || page < 0) page = 0;
-      if (page >= totalPages) return `ไม่พบข้อมูลหน้าที่ ${page + 1} (มีทั้งหมด ${totalPages} หน้า)`;
-      const startIndex = page * itemsPerPage;
-      const pageItems = data.content.slice(startIndex, Math.min(startIndex + itemsPerPage, data.content.length));
-      let result = `🚨 ข้อมูลหมายศาล (หน้า ${page + 1}/${totalPages})\n====================\n`;
-      pageItems.forEach((warrant, index) => {
-        result += `\n📄 หมายจับที่ ${startIndex + index + 1}\nเลขที่: ${warrant.woaNo}/${warrant.woaYear}\nศาล: ${warrant.courtCodeText}\n\n👤 ข้อมูลผู้ต้องหา\nชื่อ-สกุล: ${warrant.accFullName}\nเลขบัตรประชาชน: ${warrant.accCardId}\nสัญชาติ: ${warrant.accNationText}\nอาชีพ: ${warrant.accOccupation}\n\n📍 ที่อยู่\nตำบล/แขวง: ${warrant.accSubDistrictText || warrant.accSubDistrict}\nอำเภอ/เขต: ${warrant.accDistrictText}\n\n⚖️ ข้อมูลคดี\nสถานะ: ${warrant.arrestStatus}\nข้อหา: ${warrant.charge}\nผู้ร้อง: ${warrant.plaintiff}\nผู้พิพากษา: ${warrant.judgeName}\n\n📅 วันที่\nออกหมาย: ${new Date(warrant.woaDate).toLocaleDateString('th-TH')}\nเริ่มต้น: ${new Date(warrant.woaStartDate).toLocaleDateString('th-TH')}\nสิ้นสุด: ${new Date(warrant.woaEndDate).toLocaleDateString('th-TH')}\n-------------------`;
-      });
-      result += `\n📊 แสดง ${pageItems.length} จาก ${data.content.length} รายการ`;
-      if (totalPages > 1) result += `\nพิมพ์ doc#${accCardId} [1-${totalPages}] เพื่อดูหน้าอื่น`;
-      return result;
-    } else {
-      return 'ไม่พบข้อมูลหมายศาล';
-    }
-  } catch (error) {
-    console.error('Error searchWarrantDXC:', error.message);
-    if (error.response?.status === 401 || error.response?.status === 403) {
-      await refreshCookie();
-      return 'กรุณาลองใหม่อีกครั้ง ระบบกำลังรีเฟรชการเชื่อมต่อ';
-    }
-    return 'เกิดข้อผิดพลาดในการค้นหาหมายศาล: ' + error.message;
-  }
-}
-
-async function searchDriverLicense(citizenCardNumber) {
-  try {
-    const url = `https://search-linkage2.dxc.go.th/api/qm/dlt/driver-licenses/v2?citizenCardNumber=${citizenCardNumber}&page=0&size=100&sortDirection=ASC`;
-    const response = await axios.get(url, { headers: getDLTHeaders(), httpsAgent });
-    const data = response.data;
-    if (data.content && data.content.length > 0) {
-      let result = `🚗 ข้อมูลใบขับขี่\n====================\n`;
-      data.content.forEach((license, index) => {
-        result += `\n📄 ใบขับขี่ที่ ${index + 1}\n👤 ชื่อ-นามสกุล: ${license.fullName}\n🆔 เลขบัตรประชาชน: ${license.citizenCardNumber}\n🚗 ประเภทใบขับขี่: ${license.type}\n📝 เลขที่ใบขับขี่: ${license.licenseNumber}\n📅 วันที่ออกใบอนุญาต: ${new Date(license.licenseIssueDate).toLocaleDateString('th-TH')}\n📅 วันที่หมดอายุ: ${new Date(license.licenseExpirationDate).toLocaleDateString('th-TH')}\n⭐ สถานะ: ${license.status}\n🏠 ที่อยู่: ${license.address}\n-------------------`;
-      });
-      result += `\n📊 พบข้อมูลทั้งหมด ${data.totalElements} รายการ`;
-      return result;
-    } else {
-      return 'ไม่พบข้อมูลใบขับขี่';
-    }
-  } catch (error) {
-    console.error('Error searchDriverLicense:', error.message);
-    if (error.response?.status === 401 || error.response?.status === 403) {
-      await refreshCookie();
-      return 'กรุณาลองใหม่อีกครั้ง ระบบกำลังรีเฟรชการเชื่อมต่อ';
-    }
-    return 'เกิดข้อผิดพลาดในการค้นหาใบขับขี่: ' + error.message;
-  }
-}
-
-async function searchVehicleByCID(docNo) {
-  try {
-    const url = `https://search-linkage2.dxc.go.th/api/qm/v2/dlt/vehicle-licenses?page=0&size=100&sortDirection=ASC&docNo=${encodeURIComponent(docNo)}`;
-    const response = await axios.get(url, { headers: getDLTHeaders(), httpsAgent });
-    const data = response.data;
-    if (data.content && data.content.length > 0) {
-      let result = `🚗 ข้อมูลทะเบียนรถ (จาก CID)\n====================\n`;
-      data.content.slice(0, 5).forEach((vehicle, idx) => {
-        result += `\n📄 รถคันที่ ${idx + 1}\n🚘 ทะเบียน: ${vehicle.plate1 || ''}${vehicle.plate2 || ''}\n🚗 ยี่ห้อ: ${vehicle.brnDesc || 'ไม่ระบุ'}\n🎨 สี: ${(vehicle.carChkMasColorList && vehicle.carChkMasColorList[0]?.colorDesc) || 'ไม่ระบุ'}\n🔧 ประเภท: ${vehicle.vehTypeDesc || 'ไม่ระบุ'}\n👤 เจ้าของ: ${vehicle.owner1 || 'ไม่ระบุ'}\n📅 หมดอายุ: ${vehicle.expDate || 'ไม่ระบุ'}\n-------------------`;
-      });
-      result += `\n📊 พบทั้งหมด ${data.content.length} คัน`;
-      return result;
-    } else {
-      return 'ไม่พบข้อมูลทะเบียนรถ';
-    }
-  } catch (error) {
-    console.error('Error searchVehicleByCID:', error.message);
-    if (error.response?.status === 401 || error.response?.status === 403) {
-      await refreshCookie();
-      return 'กรุณาลองใหม่อีกครั้ง ระบบกำลังรีเฟรชการเชื่อมต่อ';
-    }
-    return 'เกิดข้อผิดพลาดในการค้นหาทะเบียนรถ: ' + error.message;
-  }
-}
-
-async function searchVehicleByPlate(province, plate1, plate2, vehTypeRef, page = 0) {
-  const provinceMap = {
-    'กระบี่': '80500', 'กรุงเทพ': '00100', 'กาญจนบุรี': '70100', 'กาฬสินธ์': '40600', 'กำแพงเพชร': '60400',
-    'ขอนแก่น': '40500', 'จันทบุรี': '20500', 'ฉะเชิงเทรา': '20200', 'ชลบุรี': '20300', 'ชัยนาท': '10000',
-    'ชัยภูมิ': '30000', 'ชุมพร': '80000', 'เชียงราย': '50000', 'เชียงใหม่': '50200', 'ตรัง': '90100',
-    'ตราด': '20600', 'ตาก': '60200', 'นครนายก': '20000', 'นครปฐม': '70200', 'นครพนม': '40300',
-    'นครราชสีมา': '30500', 'นครศรีธรรมราช': '80400', 'นครสวรรค์': '60700', 'นนทบุรี': '10700',
-    'นราธิวาส': '90600', 'น่าน': '50400', 'บึงกาฬ': '30900', 'บุรีรัมย์': '30400', 'ปทุมธานี': '10600',
-    'ประจวบคีรีขันธ์': '70700', 'ปราจีนบุรี': '20100', 'ปัตตานี': '90400', 'พระนครศรีอยุธยา': '10500',
-    'พะเยา': '50300', 'พังงา': '80300', 'พัทลุง': '90000', 'พิจิตร': '60500', 'พิษณุโลก': '60300',
-    'เพชรบุรี': '70600', 'เพชรบูรณ์': '60600', 'แพร่': '50700', 'ภูเก็ต': '80600', 'มหาสารคาม': '40700',
-    'มุกดาหาร': '40900', 'แม่ฮ่องสอน': '50100', 'ยโสธร': '30100', 'ยะลา': '90500', 'ร้อยเอ็ด': '40800',
-    'ระนอง': '80100', 'ระยอง': '20400', 'ราชบุรี': '70300', 'ลพบุรี': '10200', 'ลำปาง': '50600',
-    'ลำพูน': '50500', 'เลย': '40100', 'ศรีสะเกษ': '30300', 'สกลนคร': '40400', 'สงขลา': '90200',
-    'สตูล': '90300', 'สมุทรปราการ': '10800', 'สมุทรสงคราม': '70500', 'สมุทรสาคร': '70400',
-    'สระแก้ว': '20700', 'สระบุรี': '10400', 'สิงห์บุรี': '10100', 'สุโขทัย': '60100', 'สุพรรณบุรี': '70000',
-    'สุราษฎร์ธานี': '80200', 'สุรินทร์': '30600', 'หนองคาย': '40000', 'หนองบัวลำภู': '30800',
-    'อ่างทอง': '10300', 'อำนาจเจริญ': '30700', 'อุดรธานี': '40200', 'อุตรดิตถ์': '60000',
-    'อุทัยธานี': '60800', 'อุบลราชธานี': '30200'
-  };
-  try {
-    let provinceCode = /^\d{5}$/.test(province) ? province : provinceMap[province];
-    if (!provinceCode) return 'ไม่พบรหัสจังหวัดที่ระบุ กรุณาตรวจสอบการสะกดชื่อจังหวัด';
-    const url = `https://search-linkage2.dxc.go.th/api/qm/v2/dlt/vehicle-licenses?page=0&size=100&sortDirection=ASC&offLocCode=${encodeURIComponent(provinceCode)}&plate1=${encodeURIComponent(plate1)}&plate2=${encodeURIComponent(plate2)}&vehTypeRef=${encodeURIComponent(vehTypeRef)}`;
-    const response = await axios.get(url, { headers: getDLTHeaders(), httpsAgent, validateStatus: s => s >= 200 && s < 500 });
-    if (response.data && response.data.content && response.data.content.length > 0) {
-      const itemsPerPage = 3;
-      const totalPages = Math.ceil(response.data.content.length / itemsPerPage);
-      page = parseInt(page);
-      if (isNaN(page) || page < 0) page = 0;
-      if (page >= totalPages) return `ไม่พบข้อมูลหน้าที่ ${page + 1} (มีทั้งหมด ${totalPages} หน้า)`;
-      const startIndex = page * itemsPerPage;
-      const pageItems = response.data.content.slice(startIndex, Math.min(startIndex + itemsPerPage, response.data.content.length));
-      let result = `🚗 ข้อมูลทะเบียนรถ (หน้า ${page + 1}/${totalPages})\n====================\n`;
-      pageItems.forEach((vehicle, index) => {
-        result += `\n📄 รถคันที่ ${startIndex + index + 1}\n🚘 ทะเบียน: ${vehicle.plate1 || ''}${vehicle.plate2 || ''}\n🏢 สำนักงาน: ${vehicle.offLocDesc || 'ไม่ระบุ'}\n🚗 ยี่ห้อ: ${vehicle.brnDesc || 'ไม่ระบุ'}\n📝 รุ่น: ${vehicle.modelName || 'ไม่ระบุ'}\n🎨 สี: ${(vehicle.carChkMasColorList && vehicle.carChkMasColorList[0]?.colorDesc) || 'ไม่ระบุ'}\n🔧 ประเภทรถ: ${vehicle.vehTypeDesc || 'ไม่ระบุ'}\n📋 หมายเลขตัวถัง: ${vehicle.numBody || 'ไม่ระบุ'}\n📅 วันที่จดทะเบียน: ${vehicle.regDate || 'ไม่ระบุ'}\n📅 วันที่หมดอายุ: ${vehicle.expDate || 'ไม่ระบุ'}\n\n👤 ข้อมูลเจ้าของ\nเจ้าของที่ 1:\nเลขประจำตัว: ${vehicle.docNo1 || 'ไม่ระบุ'}\nชื่อ: ${vehicle.owner1 || 'ไม่ระบุ'}\nที่อยู่: ${vehicle.addressOwner1 || 'ไม่ระบุ'}\n${vehicle.docNo2 ? `\nเจ้าของที่ 2:\nเลขประจำตัว: ${vehicle.docNo2}\nชื่อ: ${vehicle.owner2 || 'ไม่ระบุ'}` : ''}\n-------------------`;
-      });
-      result += `\n📊 แสดง ${pageItems.length} จาก ${response.data.content.length} รายการ`;
-      if (totalPages > 1) result += `\nพิมพ์ car#${province} ${plate1} ${plate2} ${vehTypeRef} [หน้า] เพื่อดูหน้าอื่น`;
-      return result;
-    } else {
-      return 'ไม่พบข้อมูลทะเบียนรถ';
-    }
-  } catch (error) {
-    console.error('Error searchVehicleByPlate:', error.message);
-    if (error.response?.status === 401 || error.response?.status === 403) {
-      await refreshCookie();
-      return 'กรุณาลองใหม่อีกครั้ง ระบบกำลังรีเฟรชการเชื่อมต่อ';
-    }
-    return 'เกิดข้อผิดพลาดในการค้นหาทะเบียนรถ: ' + error.message;
-  }
-}
 
 async function fetchHlrLookup(msisdn) {
   const key = 'fcd01b61e422';
@@ -251,7 +13,7 @@ async function fetchHlrLookup(msisdn) {
   const timestamp = Math.floor(Date.now() / 1000);
   const endpoint = '/hlr-lookup';
   const data = { msisdn: msisdn };
-
+  
   const signatureString = endpoint + timestamp.toString() + 'POST' + JSON.stringify(data);
   const signature = crypto.createHmac('sha256', secret).update(signatureString).digest('hex');
 
@@ -324,9 +86,7 @@ app.post('/webhook', line.middleware(config), async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  startDXCCookieRefresh().catch(e => console.error('DXC cookie init error:', e.message));
 });
-
 
 function ensureStorage() {
   if (!fs.existsSync(UPLOAD_DIR)) {
@@ -646,441 +406,6 @@ function formatCrime(data, keyword = '') {
   }
 }
 
-function formatExternalApiResponse(data, emptyMessage) {
-  if (data === null || data === undefined || data === '') {
-    return emptyMessage;
-  }
-
-  if (typeof data === 'string') {
-    return data.length > 4800 ? data.slice(0, 4800) + '\n...ตัดข้อความ...' : data;
-  }
-
-  if (typeof data === 'object') {
-    const text = JSON.stringify(data, null, 2);
-    return text.length > 4800 ? text.slice(0, 4800) + '\n...ตัดข้อความ...' : text;
-  }
-
-  return String(data);
-}
-
-function buildPsiApiUrl(input) {
-  const raw = (input || '').replace(/\s+/g, ' ').trim();
-  const parts = raw.split(' ');
-
-  if (parts.length >= 2 && !/^\d{13}$/.test(raw)) {
-    const firstName = encodeURIComponent(parts[0]);
-    const lastName = encodeURIComponent(parts.slice(1).join(' '));
-    return `http://103.91.204.203:4000/?psi=${firstName}&${lastName}`;
-  }
-
-  return `http://103.91.204.203:4000/?psi=${encodeURIComponent(raw)}`;
-}
-
-function buildPrisonerAddress(item) {
-  const addrParts = [];
-  if (item.addressNoText) addrParts.push(`เลขที่ ${item.addressNoText}`);
-  if (item.addressMooText) addrParts.push(`หมู่ ${item.addressMooText}`);
-  if (item.addressMooBanText) addrParts.push(`หมู่บ้าน ${item.addressMooBanText}`);
-  if (item.addressSoiText) addrParts.push(`ซอย ${item.addressSoiText}`);
-  if (item.addressRoadText) addrParts.push(`ถนน ${item.addressRoadText}`);
-  if (item.addressTumbonText) addrParts.push(`ต.${item.addressTumbonText}`);
-  if (item.addressAmphurText) addrParts.push(`อ.${item.addressAmphurText}`);
-  if (item.addressProvinceText) addrParts.push(`จ.${item.addressProvinceText}`);
-  if (item.addressPostCode) addrParts.push(`${item.addressPostCode}`);
-  return addrParts.join(' ') || '-';
-}
-
-function formatPrisonerContent(content, input) {
-  if (!Array.isArray(content) || content.length === 0) {
-    return `❌ ไม่พบข้อมูลผู้ต้องขัง สำหรับ "${input}"`;
-  }
-
-  let msg = `👮‍♂️ ข้อมูลผู้ต้องขัง: ${input}\n====================\n`;
-  content.forEach((item, idx) => {
-    const sexMap = { MALE: 'ชาย', FEMALE: 'หญิง' };
-    const sex = sexMap[item.sex] || item.sex || '-';
-    const fatherName = `${item.fatherPrefix || ''}${item.fatherFirstName || '-'} ${item.fatherLastName || ''}`.trim();
-    const motherName = `${item.motherPrefix || ''}${item.motherFirstName || '-'} ${item.motherLastName || ''}`.trim();
-
-    msg += `[${idx + 1}]
-👤 ชื่อ-สกุล: ${item.firstName || '-'} ${item.lastName || '-'}
-🆔 เลขบัตร: ${item.citizenCardNumber || '-'}
-🎂 วันเกิด: ${item.dateOfBirth || '-'}
-🚻 เพศ: ${sex}
-🇹🇭 สัญชาติ: ${item.nationality || '-'}
-🙏 ศาสนา: ${item.religious || '-'}
-📚 การศึกษา: ${item.educationLevel || '-'} (${item.educationSchool || '-'} ${item.educationProvince || '-'})
-
-🏢 เรือนจำ: ${item.prisonName || '-'}
-🔢 เลขผู้ต้องขัง: ${item.prisonerId || '-'}
-📥 วันรับตัว: ${item.receiveDate || '-'}
-📤 วันปล่อยตัว: ${item.releaseDate || '-'}
-⚖️ ข้อหา: ${item.allegation || '-'}
-📜 คดีแดง/ดำ: ${item.decidedCaseId || '-'} / ${item.undecidedCaseId || '-'}
-⚖️ ศาล: ${item.courtName || '-'}
-📅 วันตัดสิน: ${item.sentenceDate || '-'}
-
-👨 บิดา: ${fatherName}
-👩 มารดา: ${motherName}
-
-🏠 ที่อยู่: ${buildPrisonerAddress(item)}
---------------------\n`;
-  });
-
-  msg += `แสดง ${content.length} รายการ`;
-  return msg.length > 4800 ? msg.slice(0, 4800) + '\n...ตัดข้อความ...' : msg;
-}
-
-function formatRemandPrisonerContent(content, input) {
-  if (!Array.isArray(content) || content.length === 0) {
-    return `❌ ไม่พบข้อมูลผู้ต้องขัง (ยังไม่พิพากษา) สำหรับ "${input}"`;
-  }
-
-  let msg = `👮‍♂️ ข้อมูลผู้ต้องขัง (ยังไม่พิพากษา): ${input}\n====================\n`;
-  content.forEach((item, idx) => {
-    const sex = item.sex === 'MALE' ? 'ชาย' : item.sex === 'FEMALE' ? 'หญิง' : '-';
-    msg += `[${idx + 1}]
-ชื่อ-สกุล: ${item.firstName || '-'} ${item.lastName || '-'}
-เลขบัตรประชาชน: ${item.citizenCardNumber || '-'}
-วันเกิด: ${item.dateOfBirth || '-'}
-เพศ: ${sex}
-สัญชาติ: ${item.nationality || '-'}
-ศาสนา: ${item.religious || '-'}
-การศึกษา: ${item.educationLevel || '-'} (${item.educationSchool || '-'} ${item.educationProvince || '-'})
-เรือนจำ: ${item.prisonName || '-'}
-เลขผู้ต้องขัง: ${item.prisonerId || '-'}
-วันที่รับตัว: ${item.receiveDate || '-'}
-วันที่ปล่อย: ${item.releaseDate || '-'}
-ข้อหา: ${item.allegation || '-'}
-ที่อยู่: ${item.addressNoText || '-'} หมู่บ้าน: ${item.addressMooBanText || '-'} หมู่: ${item.addressMooText || '-'} ตำบล: ${item.addressTumbonText || '-'} อำเภอ: ${item.addressAmphurText || '-'} จังหวัด: ${item.addressProvinceText || '-'} รหัสไปรษณีย์: ${item.addressPostCode || '-'}
---------------------\n`;
-  });
-
-  msg += `แสดงทั้งหมด ${content.length} รายการ`;
-  return msg.length > 4800 ? msg.slice(0, 4800) + '\n...ตัดข้อความ...' : msg;
-}
-
-async function searchPrisonerByIdCard(input) {
-  try {
-    const query = (input || '').trim();
-    if (!query) return '❌ กรุณาระบุเลขบัตรหรือชื่อ-สกุล';
-
-    const response = await axios.get(buildPsiApiUrl(query), { timeout: 30000 });
-    if (Array.isArray(response.data?.content)) {
-      return formatPrisonerContent(response.data.content, query);
-    }
-    return formatExternalApiResponse(response.data, `❌ ไม่พบข้อมูลผู้ต้องขัง สำหรับ "${query}"`);
-  } catch (e) {
-    console.error('searchPrisonerByIdCard error:', e?.response?.data || e.message);
-    return `❌ Error: ${e.message || e}`;
-  }
-}
-
-async function searchRemandPrisonerUniversal(input) {
-  try {
-    const query = (input || '').trim();
-    if (!query) return '❌ กรุณาระบุเลขบัตรประชาชน';
-
-    const url = `http://103.91.204.203:4000/?ps=${encodeURIComponent(query)}`;
-    const response = await axios.get(url, { timeout: 30000 });
-    if (Array.isArray(response.data?.content)) {
-      return formatRemandPrisonerContent(response.data.content, query);
-    }
-    return formatExternalApiResponse(response.data, `❌ ไม่พบข้อมูลผู้ต้องขัง (ยังไม่พิพากษา) สำหรับ "${query}"`);
-  } catch (e) {
-    console.error('searchRemandPrisonerUniversal error:', e?.response?.data || e.message);
-    return `❌ Error: ${e.message || e}`;
-  }
-}
-
-async function searchJediHp(hid) {
-  try {
-    const url = `https://api2.logbook.emenscr.in.th/v1/tpmaplogbook68/housemember/member/${encodeURIComponent(hid)}`;
-    const response = await axios.get(url, { timeout: 30000 });
-    const data = response.data;
-
-    if (!Array.isArray(data) || data.length === 0) {
-      return `❌ ไม่พบข้อมูลสำหรับเลขบัตร ${hid}`;
-    }
-
-    const item = data[0];
-    let result = '';
-
-    result += `┌● ชื่อ : ${item.prefix_name || ''}${item.name || ''} ${item.surname || ''}\n`;
-    result += `├● เลขบัตร : ${item.NID || '-'}\n`;
-
-    const gender = item.gender === 'ช' ? 'ชาย' : (item.gender === 'ญ' ? 'หญิง' : item.gender || '-');
-    result += `├● เพศ : ${gender}\n`;
-
-    let ageStr = '-';
-    if (item.ebmn_age !== undefined) {
-      ageStr = `${item.ebmn_age} ปี`;
-      if (item.ebmn_age_month) ageStr += ` ${item.ebmn_age_month} เดือน`;
-    }
-    result += `├● อายุ : ${ageStr}\n`;
-
-    let bdate = String(item.birthdate || '');
-    if (bdate.length === 8) {
-      bdate = `${bdate.substring(6, 8)}/${bdate.substring(4, 6)}/${bdate.substring(0, 4)}`;
-    } else {
-      bdate = bdate || '-';
-    }
-    result += `├● วันเกิด : ${bdate}\n`;
-
-    result += `├● อาชีพ : ${item.occupation || '-'}\n`;
-    result += `├● การศึกษา : ${item.education || '-'}\n`;
-    result += `├● ศาสนา : ${item.religion || '-'}\n`;
-    result += `└● สถานะในครอบครัว : ${item.relation || '-'}\n`;
-    result += `————————\n`;
-    result += `┌● สิทธิหลัก : ${item.main_right || '-'}\n`;
-    result += `└● โรงพยาบาล : ${item.main_hospital || '-'}\n`;
-
-    return result.trim();
-  } catch (e) {
-    return '❌ เกิดข้อผิดพลาดในการดึงข้อมูล: ' + e.message;
-  }
-}
-
-function formatPEARecord(data, index) {
-  return `
-📍 รายการที่ ${index}
-👤 ข้อมูลผู้ใช้ไฟฟ้า
-ชื่อ-สกุล: ${(data.PREFIX || '')}${data.CUSTOMERNAME || ''} ${data.CUSTOMERSIRNAME || ''}
-เลขCA: ${data.CA || '-'}
-เลขมิเตอร์: ${data.PEANO || '-'}
-
-📫 ที่อยู่
-บ้านเลขที่: ${data.ADDRESSNO || '-'}
-หมู่: ${data.MOO || '-'}
-ตำบล: ${data.TUMBOL || '-'}
-อำเภอ: ${data.AMPHOE || '-'}
-จังหวัด: ${data.CHANGWAT || '-'}
-รหัสไปรษณีย์: ${data.POSTCODE || '-'}
-
-🌍 พิกัด GPS
-X: ${data.POS_X || '-'}
-Y: ${data.POS_Y || '-'}
--------------------`;
-}
-
-async function searchPEAID(ca, page = 0) {
-  try {
-    const url = 'https://map.pea.co.th/peacallcenter/proxy.ashx?https://map.pea.co.th/peacallcenter/dataservices/CallCenter.svc/S_SEARCH_METERDETAIL_BY_CA';
-    const response = await axios.post(url, { ca }, {
-      headers: {
-        Accept: '*/*',
-        'Content-Type': 'application/json',
-        Origin: 'https://map.pea.co.th',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      },
-      timeout: 30000
-    });
-
-    const records = Array.isArray(response.data?.MESSAGE) ? response.data.MESSAGE : [];
-    if (!response.data?.SUCCESS || records.length === 0) return 'ไม่พบข้อมูลสำหรับหมายเลขที่ระบุ';
-
-    const itemsPerPage = 5;
-    const totalPages = Math.ceil(records.length / itemsPerPage);
-    page = Number.isInteger(page) && page >= 0 ? page : 0;
-    if (page >= totalPages) return `ไม่พบข้อมูลหน้าที่ ${page + 1} (มีทั้งหมด ${totalPages} หน้า)`;
-
-    const startIndex = page * itemsPerPage;
-    const pageItems = records.slice(startIndex, startIndex + itemsPerPage);
-    let result = `⚡ ข้อมูลมิเตอร์ไฟฟ้า PEA (หน้า ${page + 1}/${totalPages})\n====================\n`;
-
-    pageItems.forEach((item, index) => {
-      result += formatPEARecord(item.data || {}, startIndex + index + 1);
-    });
-
-    result += `\n📊 แสดง ${pageItems.length} จาก ${records.length} รายการ`;
-    return result.length > 4800 ? result.slice(0, 4800) + '\n...ตัดข้อความ...' : result;
-  } catch (e) {
-    console.error('searchPEAID error:', e?.response?.data || e.message);
-    return 'เกิดข้อผิดพลาดในการค้นหาข้อมูล: ' + e.message;
-  }
-}
-
-async function searchPEAByName(name, page = 0) {
-  try {
-    const raw = (name || '').replace(/\s+/g, ' ').trim();
-    const parts = raw.split(' ');
-    if (parts.length < 2) return '❌ กรุณาใส่ชื่อเต็มและนามสกุล เช่น pean%สมชาย ใจดี';
-
-    const url = 'https://map.pea.co.th/peacallcenter/proxy.ashx?https://map.pea.co.th/peacallcenter/dataservices/CallCenter.svc/S_SEARCH_METERDETAIL_BY_NAME';
-    const response = await axios.post(url, { name: raw }, {
-      headers: {
-        Accept: '*/*',
-        'Content-Type': 'application/json',
-        Origin: 'https://map.pea.co.th',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      },
-      timeout: 30000
-    });
-
-    const keywordFull = raw.toLowerCase();
-    const records = (Array.isArray(response.data?.MESSAGE) ? response.data.MESSAGE : []).filter(item => {
-      const data = item.data || {};
-      const nameInData = `${(data.CUSTOMERNAME || '').trim()} ${(data.CUSTOMERSIRNAME || '').trim()}`
-        .replace(/\s+/g, ' ')
-        .toLowerCase()
-        .trim();
-      return nameInData === keywordFull;
-    });
-
-    if (records.length === 0) return '❌ ไม่พบข้อมูลสำหรับชื่อและนามสกุลนี้';
-
-    const itemsPerPage = 5;
-    const totalPages = Math.ceil(records.length / itemsPerPage);
-    page = Number.isInteger(page) && page >= 0 ? page : 0;
-    if (page >= totalPages) return `ไม่พบข้อมูลหน้าที่ ${page + 1} (มีทั้งหมด ${totalPages} หน้า)`;
-
-    const startIndex = page * itemsPerPage;
-    const pageItems = records.slice(startIndex, startIndex + itemsPerPage);
-    let result = `⚡ ข้อมูลมิเตอร์ไฟฟ้าตามชื่อ (หน้า ${page + 1}/${totalPages})\n====================\n`;
-
-    pageItems.forEach((item, index) => {
-      result += formatPEARecord(item.data || {}, startIndex + index + 1);
-    });
-
-    result += `\n📊 แสดง ${pageItems.length} จาก ${records.length} รายการ`;
-    if (totalPages > 1) result += `\nพิมพ์ pean%${raw} [1-${totalPages}] เพื่อดูหน้าอื่น`;
-    return result.length > 4800 ? result.slice(0, 4800) + '\n...ตัดข้อความ...' : result;
-  } catch (e) {
-    console.error('searchPEAByName error:', e?.response?.data || e.message);
-    return 'เกิดข้อผิดพลาดในการค้นหาข้อมูล: ' + e.message;
-  }
-}
-
-async function searchPEAByAddress(address, page = 0) {
-  try {
-    const url = 'https://map.pea.co.th/peacallcenter/proxy.ashx?https://map.pea.co.th/peacallcenter/dataservices/CallCenter.svc/S_SEARCH_METERDETAIL_BY_ADDRESS';
-    const response = await axios.post(url, { address }, {
-      headers: {
-        Accept: '*/*',
-        'Content-Type': 'application/json',
-        Origin: 'https://map.pea.co.th',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      },
-      timeout: 30000
-    });
-
-    const records = Array.isArray(response.data?.MESSAGE) ? response.data.MESSAGE : [];
-    if (!response.data?.SUCCESS || records.length === 0) return 'ไม่พบข้อมูลสำหรับที่อยู่ที่ระบุ';
-
-    const itemsPerPage = 5;
-    const totalPages = Math.ceil(records.length / itemsPerPage);
-    page = Number.isInteger(page) && page >= 0 ? page : 0;
-    if (page >= totalPages) return `ไม่พบข้อมูลหน้าที่ ${page + 1} (มีทั้งหมด ${totalPages} หน้า)`;
-
-    const startIndex = page * itemsPerPage;
-    const pageItems = records.slice(startIndex, startIndex + itemsPerPage);
-    let result = `🏠 ข้อมูลมิเตอร์ไฟฟ้าตามที่อยู่ (หน้า ${page + 1}/${totalPages})\n====================\n`;
-
-    pageItems.forEach((item, index) => {
-      const parts = String(item.id || '').split(';');
-      result += `
-📍 รายการที่ ${startIndex + index + 1}
-ที่อยู่: ${item.name || '-'}
-📋 เลขCA: ${parts[1] || '-'}
-📝 เลขมิเตอร์: ${parts[2] || '-'}
-👤 รหัสลูกค้า: ${parts[3] || '-'}
-🆔 รหัสอ้างอิง: ${item.id || '-'}
--------------------`;
-    });
-
-    result += `\n📊 แสดง ${pageItems.length} จาก ${records.length} รายการ`;
-    return result.length > 4800 ? result.slice(0, 4800) + '\n...ตัดข้อความ...' : result;
-  } catch (e) {
-    console.error('searchPEAByAddress error:', e?.response?.data || e.message);
-    return 'เกิดข้อผิดพลาดในการค้นหาข้อมูล: ' + e.message;
-  }
-}
-
-async function searchPEABillHistory(ca, peano) {
-  try {
-    const response = await axios.post(
-      'https://www.pea.co.th/api/bill-history',
-      { ca, lang: 'th', peano },
-      {
-        httpsAgent,
-        headers: {
-          Accept: '*/*',
-          'Content-Type': 'application/json',
-          Origin: 'https://www.pea.co.th',
-          Referer: 'https://www.pea.co.th/our-services/bill-history',
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        },
-        timeout: 30000
-      }
-    );
-
-    if (response.data && response.data.result && Array.isArray(response.data.data)) {
-      const billData = response.data.data;
-      if (billData.length === 0) return '❌ ไม่พบข้อมูลประวัติการชำระเงินของหมายเลขนี้';
-
-      let msg = `⚡ ประวัติการใช้ไฟฟ้า (PEA)\n`;
-      msg += `🏠 CA: ${ca} | PEA NO: ${peano}\n`;
-      msg += `====================\n`;
-
-      billData.forEach(item => {
-        msg += `📅 งวดเดือน: ${item.billperiod}\n`;
-        msg += `🔌 หน่วยที่ใช้: ${item.unit} หน่วย\n`;
-        msg += `💰 ยอดเงิน: ${Number(item.totalAmountPay || 0).toLocaleString()} บาท\n`;
-        msg += `✅ วันที่จ่าย: ${item.paydate || 'ยังไม่ได้ชำระ'}\n`;
-        msg += `--------------------\n`;
-      });
-
-      return msg.length > 4800 ? msg.slice(0, 4800) + '\n...ตัดข้อความ...' : msg;
-    }
-
-    return '❌ ไม่สามารถดึงข้อมูลได้: ' + (response.data?.message || 'ระบบขัดข้อง');
-  } catch (e) {
-    console.error('searchPEABillHistory error:', e?.response?.data || e.message);
-    return '❌ ขัดข้อง: ' + (e.response?.data?.message || e.message);
-  }
-}
-
-async function searchSevenBranch(branchCode) {
-  let browser;
-  try {
-    const code = decodeURIComponent((branchCode || '').trim());
-    browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
-    const page = await browser.newPage();
-    await page.goto('https://de2zkilidxgsz.cloudfront.net/', { waitUntil: 'domcontentloaded', timeout: 30000 });
-    await page.waitForSelector('tbody tr', { timeout: 15000 });
-    await page.waitForSelector('input.search-input', { timeout: 10000 });
-
-    await page.evaluate(value => {
-      const input = document.querySelector('input.search-input');
-      input.value = '';
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-      input.value = value;
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-      input.dispatchEvent(new Event('change', { bubbles: true }));
-    }, code);
-
-    await page.click('button.btn-search');
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    await page.waitForSelector('tbody tr', { timeout: 10000 });
-
-    const tds = await page.$$eval('tbody tr:first-child td', cells => cells.map(td => td.innerText.trim()));
-    const lineLink = await page.$eval('tbody tr:first-child td a', a => a.href).catch(() => '-');
-
-    return `🏪 ข้อมูลร้าน 7-Eleven
-====================
-🔢 รหัสสาขา: ${tds[0] || '-'}
-🔗 Line: ${lineLink || '-'}
-🏠 ที่อยู่: ${tds[2] || '-'}
-====================`;
-  } catch (e) {
-    return `❌ เกิดข้อผิดพลาดในการค้นหาสาขา 7-Eleven: ${e.message}`;
-  } finally {
-    if (browser) {
-      try { await browser.close(); } catch (e) { }
-    }
-  }
-}
-
 function infoLine(label, value) {
   return {
     type: 'box',
@@ -1305,20 +630,8 @@ function buildMenuCarouselFlex() {
             layout: 'vertical',
             spacing: 'md',
             contents: [
-              menuSection('⚖️ หมายจับ / หมายศาล', [
-                '┣ ╾ c#เลขบัตร (kingkong)',
-                '┣ ╾ doc#เลขบัตร (DXC)',
-                '┣ ╾ psi#เลขบัตร หรือ ชื่อ สกุล',
-                '┗ ╾ ps#เลขบัตร'
-              ]),
-              menuSection('🛡️ ประกันสังคม / ใบขับขี่', [
-                '┣ ╾ si%เลขบัตร (ประกันสังคม)',
-                '┣ ╾ dl#เลขบัตร (ใบขับขี่)',
-                '┗ ╾ cid#เลขบัตร (เช็ครถจาก CID)'
-              ]),
-              menuSection('🚗 เช็ครถจากทะเบียน', [
-                '┣ ╾ car#กรุงเทพ 1กก 334 1',
-                '┗ ╾ car#จังหวัด หมวด ตัวเลข ประเภท'
+              menuSection('⚖️ หมายจับ', [
+                '┗ ╾ c#เลขบัตร / doc#เลขบัตร'
               ]),
               menuSection('⚡ ไฟฟ้า / อื่นๆ', [
                 '┣ ╾ mea%ชื่อสกุล',
@@ -1326,7 +639,6 @@ function buildMenuCarouselFlex() {
                 '┣ ╾ peab%เลข CA เลขมิเตอร์',
                 '┣ ╾ peac%เลข CA',
                 '┣ ╾ pean%ชื่อสกุล',
-                '┣ ╾ peau%ที่อยู่',
                 '┗ ╾ se%รหัสสาขา7-11'
               ]),
               menuSection('📺 ผ่อนสินค้า', [
@@ -2426,29 +1738,53 @@ async function handleText(event) {
   // ประกันสังคม: si%เลขบัตร
   if (text.startsWith('si%')) {
     const ssoNum = text.replace(/^si%/, '').trim();
-    if (!ssoNum) {
-      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขบัตรประชาชน เช่น si%1234567890123' });
-    }
+    if (!ssoNum) return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขบัตรประชาชน เช่น si%1234567890123' });
     try {
-      const result = await searchSSO(ssoNum);
-      return reply(event.replyToken, { type: 'text', text: result });
+      const { data: res } = await axios.get(`http://103.91.204.203:4000/?si=${ssoNum}`);
+      if (!res.success) return reply(event.replyToken, { type: 'text', text: `❌ ${res.message || 'ดึงข้อมูลไม่สำเร็จ'}` });
+      const data = res.data;
+      if (data.content && data.content.length > 0) {
+        let result = `👔 ประวัติการทำงานประกันสังคม\n====================\n🆔 เลขประกันสังคม: ${ssoNum}\n📊 จำนวนที่พบ: ${data.totalElements} รายการ\n`;
+        data.content.forEach((item, idx) => {
+          result += `\n🏢 บริษัท ${idx + 1}\nชื่อบริษัท: ${item.companyName || 'ไม่ระบุ'}\nรหัสสาขา: ${item.accBran || 'ไม่ระบุ'}\nเลขที่บัญชี: ${item.accNo || 'ไม่ระบุ'}\nวันที่เริ่มงาน: ${item.expStartDateText || 'ไม่ระบุ'}\nวันที่ลาออก: ${item.empResignDateText || '-'}\nสถานะ: ${item.employStatusDesc || 'ไม่ระบุ'}\n--------------------`;
+        });
+        return reply(event.replyToken, { type: 'text', text: result });
+      } else {
+        return reply(event.replyToken, { type: 'text', text: 'ไม่พบข้อมูลประวัติการทำงานประกันสังคม' });
+      }
     } catch (err) {
       return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูลประกันสังคมไม่สำเร็จ' });
     }
   }
 
-  // หมายศาล: doc#เลขบัตร หรือ doc#เลขบัตร หน้า
+  // หมายศาล: doc#เลขบัตร [หน้า]
   if (text.startsWith('doc#')) {
     const payload = text.replace(/^doc#/, '').trim();
     const parts = payload.split(/\s+/);
     const accCardId = parts[0];
-    const page = parts[1] ? parseInt(parts[1]) - 1 : 0;
-    if (!accCardId) {
-      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขบัตรประชาชน เช่น doc#1234567890123' });
-    }
+    let page = parts[1] ? parseInt(parts[1]) - 1 : 0;
+    if (!accCardId) return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขบัตรประชาชน เช่น doc#1234567890123' });
     try {
-      const result = await searchWarrantDXC(accCardId, page);
-      return reply(event.replyToken, { type: 'text', text: result });
+      const { data: res } = await axios.get(`http://103.91.204.203:4000/?doc=${accCardId}`);
+      if (!res.success) return reply(event.replyToken, { type: 'text', text: `❌ ${res.message || 'ดึงข้อมูลไม่สำเร็จ'}` });
+      const data = res.data;
+      if (data.content && data.content.length > 0) {
+        const itemsPerPage = 3;
+        const totalPages = Math.ceil(data.content.length / itemsPerPage);
+        if (isNaN(page) || page < 0) page = 0;
+        if (page >= totalPages) return reply(event.replyToken, { type: 'text', text: `ไม่พบข้อมูลหน้าที่ ${page + 1} (มีทั้งหมด ${totalPages} หน้า)` });
+        const startIndex = page * itemsPerPage;
+        const pageItems = data.content.slice(startIndex, Math.min(startIndex + itemsPerPage, data.content.length));
+        let result = `🚨 ข้อมูลหมายศาล (หน้า ${page + 1}/${totalPages})\n====================\n`;
+        pageItems.forEach((warrant, idx) => {
+          result += `\n📄 หมายจับที่ ${startIndex + idx + 1}\nเลขที่: ${warrant.woaNo}/${warrant.woaYear}\nศาล: ${warrant.courtCodeText}\n\n👤 ข้อมูลผู้ต้องหา\nชื่อ-สกุล: ${warrant.accFullName}\nเลขบัตรประชาชน: ${warrant.accCardId}\nสัญชาติ: ${warrant.accNationText}\nอาชีพ: ${warrant.accOccupation}\n\n📍 ที่อยู่\nตำบล/แขวง: ${warrant.accSubDistrictText || warrant.accSubDistrict}\nอำเภอ/เขต: ${warrant.accDistrictText}\n\n⚖️ ข้อมูลคดี\nสถานะ: ${warrant.arrestStatus}\nข้อหา: ${warrant.charge}\nผู้ร้อง: ${warrant.plaintiff}\nผู้พิพากษา: ${warrant.judgeName}\n\n📅 วันที่\nออกหมาย: ${new Date(warrant.woaDate).toLocaleDateString('th-TH')}\nเริ่มต้น: ${new Date(warrant.woaStartDate).toLocaleDateString('th-TH')}\nสิ้นสุด: ${new Date(warrant.woaEndDate).toLocaleDateString('th-TH')}\n-------------------`;
+        });
+        result += `\n📊 แสดง ${pageItems.length} จาก ${data.content.length} รายการ`;
+        if (totalPages > 1) result += `\nพิมพ์ doc#${accCardId} [1-${totalPages}] เพื่อดูหน้าอื่น`;
+        return reply(event.replyToken, { type: 'text', text: result });
+      } else {
+        return reply(event.replyToken, { type: 'text', text: 'ไม่พบข้อมูลหมายศาล' });
+      }
     } catch (err) {
       return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูลหมายศาลไม่สำเร็จ' });
     }
@@ -2457,12 +1793,21 @@ async function handleText(event) {
   // ใบขับขี่: dl#เลขบัตร
   if (text.startsWith('dl#')) {
     const cid = text.replace(/^dl#/, '').trim();
-    if (!cid) {
-      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขบัตรประชาชน เช่น dl#1234567890123' });
-    }
+    if (!cid) return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขบัตรประชาชน เช่น dl#1234567890123' });
     try {
-      const result = await searchDriverLicense(cid);
-      return reply(event.replyToken, { type: 'text', text: result });
+      const { data: res } = await axios.get(`http://103.91.204.203:4000/?dl=${cid}`);
+      if (!res.success) return reply(event.replyToken, { type: 'text', text: `❌ ${res.message || 'ดึงข้อมูลไม่สำเร็จ'}` });
+      const data = res.data;
+      if (data.content && data.content.length > 0) {
+        let result = `🚗 ข้อมูลใบขับขี่\n====================\n`;
+        data.content.forEach((license, idx) => {
+          result += `\n📄 ใบขับขี่ที่ ${idx + 1}\n👤 ชื่อ-นามสกุล: ${license.fullName}\n🆔 เลขบัตรประชาชน: ${license.citizenCardNumber}\n🚗 ประเภทใบขับขี่: ${license.type}\n📝 เลขที่ใบขับขี่: ${license.licenseNumber}\n📅 วันที่ออกใบอนุญาต: ${new Date(license.licenseIssueDate).toLocaleDateString('th-TH')}\n📅 วันที่หมดอายุ: ${new Date(license.licenseExpirationDate).toLocaleDateString('th-TH')}\n⭐ สถานะ: ${license.status}\n🏠 ที่อยู่: ${license.address}\n-------------------`;
+        });
+        result += `\n📊 พบข้อมูลทั้งหมด ${data.totalElements} รายการ`;
+        return reply(event.replyToken, { type: 'text', text: result });
+      } else {
+        return reply(event.replyToken, { type: 'text', text: 'ไม่พบข้อมูลใบขับขี่' });
+      }
     } catch (err) {
       return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูลใบขับขี่ไม่สำเร็จ' });
     }
@@ -2471,12 +1816,21 @@ async function handleText(event) {
   // เช็ครถจาก CID: cid#เลขบัตร
   if (text.startsWith('cid#')) {
     const cid = text.replace(/^cid#/, '').trim();
-    if (!cid) {
-      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขบัตรประชาชน เช่น cid#1234567890123' });
-    }
+    if (!cid) return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขบัตรประชาชน เช่น cid#1234567890123' });
     try {
-      const result = await searchVehicleByCID(cid);
-      return reply(event.replyToken, { type: 'text', text: result });
+      const { data: res } = await axios.get(`http://103.91.204.203:4000/?cid=${cid}`);
+      if (!res.success) return reply(event.replyToken, { type: 'text', text: `❌ ${res.message || 'ดึงข้อมูลไม่สำเร็จ'}` });
+      const data = res.data;
+      if (data.content && data.content.length > 0) {
+        let result = `🚗 ข้อมูลทะเบียนรถ (จาก CID)\n====================\n`;
+        data.content.slice(0, 5).forEach((vehicle, idx) => {
+          result += `\n📄 รถคันที่ ${idx + 1}\n🚘 ทะเบียน: ${vehicle.plate1 || ''}${vehicle.plate2 || ''}\n🚗 ยี่ห้อ: ${vehicle.brnDesc || 'ไม่ระบุ'}\n🎨 สี: ${(vehicle.carChkMasColorList && vehicle.carChkMasColorList[0]?.colorDesc) || 'ไม่ระบุ'}\n🔧 ประเภท: ${vehicle.vehTypeDesc || 'ไม่ระบุ'}\n👤 เจ้าของ: ${vehicle.owner1 || 'ไม่ระบุ'}\n📅 หมดอายุ: ${vehicle.expDate ? new Date(vehicle.expDate).toLocaleDateString('th-TH') : 'ไม่ระบุ'}\n-------------------`;
+        });
+        result += `\n📊 พบทั้งหมด ${data.content.length} คัน`;
+        return reply(event.replyToken, { type: 'text', text: result });
+      } else {
+        return reply(event.replyToken, { type: 'text', text: 'ไม่พบข้อมูลทะเบียนรถ' });
+      }
     } catch (err) {
       return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูลทะเบียนรถไม่สำเร็จ' });
     }
@@ -2487,149 +1841,44 @@ async function handleText(event) {
     const payload = text.replace(/^car#/, '').trim();
     const parts = payload.split(/\s+/);
     if (parts.length < 4) {
-      return reply(event.replyToken, {
-        type: 'text',
-        text: '❌ รูปแบบไม่ถูกต้อง\nตัวอย่าง: car#กรุงเทพ 1กก 334 1\ncar#จังหวัด หมวดอักษร ตัวเลข ประเภทรถ'
-      });
+      return reply(event.replyToken, { type: 'text', text: '❌ รูปแบบไม่ถูกต้อง\nตัวอย่าง: car#กรุงเทพ 1กก 334 1\ncar#จังหวัด หมวดอักษร ตัวเลข ประเภทรถ' });
     }
     const province = parts[0];
     const plate1 = parts[1];
     const plate2 = parts[2];
     const vehTypeRef = parts[3];
-    const page = parts[4] ? parseInt(parts[4]) - 1 : 0;
+    let page = parts[4] ? parseInt(parts[4]) - 1 : 0;
     try {
-      const result = await searchVehicleByPlate(province, plate1, plate2, vehTypeRef, page);
-      return reply(event.replyToken, { type: 'text', text: result });
+      const url = `http://103.91.204.203:4000/?province=${encodeURIComponent(province)}&plate1=${encodeURIComponent(plate1)}&plate2=${encodeURIComponent(plate2)}&vehTypeRef=${encodeURIComponent(vehTypeRef)}`;
+      const { data: res } = await axios.get(url);
+      if (!res.success) return reply(event.replyToken, { type: 'text', text: `❌ ${res.message || 'ดึงข้อมูลไม่สำเร็จ'}` });
+      const data = res.data;
+      if (data.content && data.content.length > 0) {
+        const itemsPerPage = 3;
+        const totalPages = Math.ceil(data.content.length / itemsPerPage);
+        if (isNaN(page) || page < 0) page = 0;
+        if (page >= totalPages) return reply(event.replyToken, { type: 'text', text: `ไม่พบข้อมูลหน้าที่ ${page + 1} (มีทั้งหมด ${totalPages} หน้า)` });
+        const startIndex = page * itemsPerPage;
+        const pageItems = data.content.slice(startIndex, Math.min(startIndex + itemsPerPage, data.content.length));
+        let result = `🚗 ข้อมูลทะเบียนรถ (หน้า ${page + 1}/${totalPages})\n====================\n`;
+        pageItems.forEach((vehicle, idx) => {
+          result += `\n📄 รถคันที่ ${startIndex + idx + 1}\n🚘 ทะเบียน: ${vehicle.plate1 || ''}${vehicle.plate2 || ''}\n🏢 สำนักงาน: ${vehicle.offLocDesc || 'ไม่ระบุ'}\n🚗 ยี่ห้อ: ${vehicle.brnDesc || 'ไม่ระบุ'}\n📝 รุ่น: ${vehicle.modelName || 'ไม่ระบุ'}\n🎨 สี: ${(vehicle.carChkMasColorList && vehicle.carChkMasColorList[0]?.colorDesc) || 'ไม่ระบุ'}\n🔧 ประเภทรถ: ${vehicle.vehTypeDesc || 'ไม่ระบุ'}\n📋 หมายเลขตัวถัง: ${vehicle.numBody || 'ไม่ระบุ'}\n📅 วันที่จดทะเบียน: ${vehicle.regDate ? new Date(vehicle.regDate).toLocaleDateString('th-TH') : 'ไม่ระบุ'}\n📅 วันที่หมดอายุ: ${vehicle.expDate ? new Date(vehicle.expDate).toLocaleDateString('th-TH') : 'ไม่ระบุ'}\n\n👤 ข้อมูลเจ้าของ\nเจ้าของที่ 1:\nเลขประจำตัว: ${vehicle.docNo1 || 'ไม่ระบุ'}\nชื่อ: ${vehicle.owner1 || 'ไม่ระบุ'}\nที่อยู่: ${vehicle.addressOwner1 || 'ไม่ระบุ'}\n${vehicle.docNo2 ? `\nเจ้าของที่ 2:\nเลขประจำตัว: ${vehicle.docNo2}\nชื่อ: ${vehicle.owner2 || 'ไม่ระบุ'}` : ''}\n-------------------`;
+        });
+        result += `\n📊 แสดง ${pageItems.length} จาก ${data.content.length} รายการ`;
+        if (totalPages > 1) result += `\nพิมพ์ car#${province} ${plate1} ${plate2} ${vehTypeRef} [หน้า] เพื่อดูหน้าอื่น`;
+        return reply(event.replyToken, { type: 'text', text: result });
+      } else {
+        return reply(event.replyToken, { type: 'text', text: 'ไม่พบข้อมูลทะเบียนรถ' });
+      }
     } catch (err) {
       return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูลทะเบียนรถไม่สำเร็จ' });
     }
   }
 
-  // ประวัติการรักษา: h%เลขบัตร
-  if (text.startsWith('h%')) {
-    const pid = text.replace(/^h%/, '').trim();
-    if (!pid) {
-      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขบัตรประชาชน เช่น h%1234567890123' });
-    }
-    try {
-      const result = await searchJediHp(pid);
-      return reply(event.replyToken, { type: 'text', text: result });
-    } catch (err) {
-      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูลประวัติการรักษาไม่สำเร็จ' });
-    }
-  }
-
-  // ผู้ต้องขัง (พิพากษาแล้ว): psi#เลขบัตร หรือ psi#ชื่อ สกุล
-  if (text.startsWith('psi#')) {
-    const query = text.replace(/^psi#/, '').trim();
-    if (!query) {
-      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขบัตรหรือชื่อ-สกุล เช่น psi#1234567890123 หรือ psi#สมชาย ใจดี' });
-    }
-    try {
-      const result = await searchPrisonerByIdCard(query);
-      return reply(event.replyToken, { type: 'text', text: result });
-    } catch (err) {
-      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูลผู้ต้องขังไม่สำเร็จ' });
-    }
-  }
-
-  // ผู้ต้องขัง (ยังไม่พิพากษา): ps#เลขบัตร
-  if (text.startsWith('ps#')) {
-    const query = text.replace(/^ps#/, '').trim();
-    if (!query) {
-      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขบัตรประชาชน เช่น ps#1234567890123' });
-    }
-    try {
-      const result = await searchRemandPrisonerUniversal(query);
-      return reply(event.replyToken, { type: 'text', text: result });
-    } catch (err) {
-      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูลผู้ต้องขัง (ยังไม่พิพากษา) ไม่สำเร็จ' });
-    }
-  }
-
-  // ไฟฟ้าภูมิภาค: peab%เลข CA เลขมิเตอร์
-  if (text.startsWith('peab%')) {
-    const parts = text.replace(/^peab%/, '').trim().split(/\s+/);
-    if (parts.length < 2) {
-      return reply(event.replyToken, { type: 'text', text: '❌ รูปแบบ: peab%เลข CA เลขมิเตอร์\nตัวอย่าง: peab%020016787285 28453755' });
-    }
-    try {
-      const result = await searchPEABillHistory(parts[0], parts[1]);
-      return reply(event.replyToken, { type: 'text', text: result });
-    } catch (err) {
-      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูลประวัติใช้ไฟฟ้าไม่สำเร็จ' });
-    }
-  }
-
-  // ไฟฟ้าภูมิภาค: peac%เลข CA [หน้า]
-  if (text.startsWith('peac%')) {
-    const parts = text.replace(/^peac%/, '').trim().split(/\s+/);
-    const ca = parts[0];
-    const page = parts[1] ? parseInt(parts[1], 10) - 1 : 0;
-    if (!ca) {
-      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลข CA เช่น peac%020016787285' });
-    }
-    try {
-      const result = await searchPEAID(ca, page);
-      return reply(event.replyToken, { type: 'text', text: result });
-    } catch (err) {
-      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูล PEA จากเลข CA ไม่สำเร็จ' });
-    }
-  }
-
-  // ไฟฟ้าภูมิภาค: pean%ชื่อ สกุล [หน้า]
-  if (text.startsWith('pean%')) {
-    const parts = text.replace(/^pean%/, '').trim().split(/\s+/).filter(Boolean);
-    let page = 0;
-    if (parts.length > 2 && /^\d+$/.test(parts[parts.length - 1])) {
-      page = parseInt(parts.pop(), 10) - 1;
-    }
-    const name = parts.join(' ');
-    if (parts.length < 2) {
-      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาใส่ชื่อเต็มและนามสกุล เช่น pean%สมชาย ใจดี' });
-    }
-    try {
-      const result = await searchPEAByName(name, page);
-      return reply(event.replyToken, { type: 'text', text: result });
-    } catch (err) {
-      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูล PEA จากชื่อไม่สำเร็จ' });
-    }
-  }
-
-  // ไฟฟ้าภูมิภาค: peau%ที่อยู่ [หน้า]
-  if (text.startsWith('peau%')) {
-    const parts = text.replace(/^peau%/, '').trim().split(/\s+/).filter(Boolean);
-    let page = 0;
-    if (parts.length > 1 && /^\d+$/.test(parts[parts.length - 1])) {
-      page = parseInt(parts.pop(), 10) - 1;
-    }
-    const address = parts.join(' ');
-    if (!address) {
-      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุที่อยู่ เช่น peau%99 ม.1 ต.วิหารแดง อ.สระบุรี' });
-    }
-    try {
-      const result = await searchPEAByAddress(address, page);
-      return reply(event.replyToken, { type: 'text', text: result });
-    } catch (err) {
-      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูล PEA จากที่อยู่ไม่สำเร็จ' });
-    }
-  }
-
-  // ตำแหน่งร้าน 7-Eleven: se%รหัสสาขา
-  if (text.startsWith('se%')) {
-    const branchCode = text.replace(/^se%/, '').trim();
-    if (!branchCode) {
-      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุรหัสสาขา เช่น se%12345' });
-    }
-    try {
-      const result = await searchSevenBranch(branchCode);
-      return reply(event.replyToken, { type: 'text', text: result });
-    } catch (err) {
-      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูลสาขา 7-Eleven ไม่สำเร็จ' });
-    }
-  }
-
-
+  return reply(event.replyToken, {
+    type: 'text',
+    text: 'พิมพ์ menu% เพื่อดูเมนู หรือพิมพ์ ยินยอมรับข้อตกลง เพื่อสมัครสมาชิก'
+  });
 }
 
 async function handleImage(event) {
