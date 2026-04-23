@@ -940,63 +940,64 @@ function buildMenuCarouselFlex() {
           },
           footer: buildMenuFooter()
         },
-    {
-  type: 'bubble',
-  size: 'mega',
-  header: {
-    type: 'box',
-    layout: 'vertical',
-    backgroundColor: '#334155',
-    paddingAll: '16px',
-    contents: [
-      {
-        type: 'text',
-        text: 'MEGABOT 3/3',
-        color: '#FFFFFF',
-        weight: 'bold',
-        size: 'lg'
-      },
-      {
-        type: 'text',
-        text: 'หมายจับ / ไฟฟ้า / อื่น ๆ',
-        color: '#CBD5E1',
-        size: 'sm',
-        margin: 'sm'
-      }
-    ]
-  },
-  body: {
-    type: 'box',
-    layout: 'vertical',
-    spacing: 'md',
-    contents: [
-      menuSection('🔎 บุคคล', [
-        '┌● ประกันสังคม si%เลขบัตร',
-        '├● ใบขับขี่ dl#เลขบัตร',
-        '├● ผู้ต้องขัง psi#เลขบัตร',
-        '├● ผู้ต้องขังยังไม่พิพากษา ps#เลขบัตร',
-        '├● เช็คทะเบียนรถ car#จังหวัด หมวด ตัวเลข ประเภทรถ',
-        '└● ตัวอย่าง car#กรุงเทพ 1กก 334 1'
-      ]),
-      menuSection('⚖️ หมายจับ', [
-        '┗ ╾ c#เลขบัตร / doc#เลขบัตร'
-      ]),
-      menuSection('⚡ ไฟฟ้า / อื่นๆ', [
-        '┣ ╾ mea%ชื่อสกุล',
-        '┣ ╾ kru%เลขมิเตอร์',
-        '┣ ╾ peab%เลข CA เลขมิเตอร์',
-        '┣ ╾ peac%เลข CA',
-        '┣ ╾ pean%ชื่อสกุล',
-        '┣ ╾ peau%ที่อยู่',
-        '┗ ╾ se%รหัสสาขา7-11'
-      ]),
-      menuSection('📺 ผ่อนสินค้า', [
-        '┗ ╾ s%เลขบัตร'
-      ])
-    ]
-  },
-  footer: buildMenuFooter()
-}
+        {
+          type: 'bubble',
+          size: 'mega',
+          header: {
+            type: 'box',
+            layout: 'vertical',
+            backgroundColor: '#334155',
+            paddingAll: '16px',
+            contents: [
+              {
+                type: 'text',
+                text: 'MEGABOT 3/3',
+                color: '#FFFFFF',
+                weight: 'bold',
+                size: 'lg'
+              },
+              {
+                type: 'text',
+                text: 'หมายจับ / ไฟฟ้า / อื่น ๆ',
+                color: '#CBD5E1',
+                size: 'sm',
+                margin: 'sm'
+              }
+            ]
+          },
+          body: {
+            type: 'box',
+            layout: 'vertical',
+            spacing: 'md',
+            contents: [
+              menuSection('🔎 บุคคล', [
+                '┌● ประกันสังคม si%เลขบัตร',
+                '├● ใบขับขี่ dl#เลขบัตร',
+                '├● ผู้ต้องขัง psi#เลขบัตร',
+                '├● ผู้ต้องขังยังไม่พิพากษา ps#เลขบัตร',
+                '├● เช็ครถจากเลขบัตร cid#เลขบัตร',
+                '├● เช็คทะเบียนรถ car#จังหวัด หมวด ตัวเลข ประเภทรถ',
+                '└● ตัวอย่าง car#กรุงเทพ 1กก 334 1'
+              ]),
+              menuSection('⚖️ หมายจับ', [
+                '┗ ╾ c#เลขบัตร / doc#เลขบัตร'
+              ]),
+              menuSection('⚡ ไฟฟ้า / อื่นๆ', [
+                '┣ ╾ mea%ชื่อสกุล',
+                '┣ ╾ kru%เลขมิเตอร์',
+                '┣ ╾ peab%เลข CA เลขมิเตอร์',
+                '┣ ╾ peac%เลข CA',
+                '┣ ╾ pean%ชื่อสกุล',
+                '┣ ╾ peau%ที่อยู่',
+                '┗ ╾ se%รหัสสาขา7-11'
+              ]),
+              menuSection('📺 ผ่อนสินค้า', [
+                '┗ ╾ s%เลขบัตร'
+              ])
+            ]
+          },
+          footer: buildMenuFooter()
+        }
       ]
     }
   };
