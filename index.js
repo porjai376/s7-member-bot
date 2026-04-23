@@ -1735,6 +1735,146 @@ async function handleText(event) {
     });
   }
 
+  // ประกันสังคม: si%เลขบัตร
+  if (text.startsWith('si%')) {
+    const ssoNum = text.replace(/^si%/, '').trim();
+    if (!ssoNum) return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขบัตรประชาชน เช่น si%1234567890123' });
+    try {
+      const { data: res } = await axios.get(`http://103.91.204.203:4000/?si=${ssoNum}`);
+      if (!res.success) return reply(event.replyToken, { type: 'text', text: `❌ ${res.message || 'ดึงข้อมูลไม่สำเร็จ'}` });
+      const data = res.data;
+      if (data.content && data.content.length > 0) {
+        let result = `👔 ประวัติการทำงานประกันสังคม\n====================\n🆔 เลขประกันสังคม: ${ssoNum}\n📊 จำนวนที่พบ: ${data.totalElements} รายการ\n`;
+        data.content.forEach((item, idx) => {
+          result += `\n🏢 บริษัท ${idx + 1}\nชื่อบริษัท: ${item.companyName || 'ไม่ระบุ'}\nรหัสสาขา: ${item.accBran || 'ไม่ระบุ'}\nเลขที่บัญชี: ${item.accNo || 'ไม่ระบุ'}\nวันที่เริ่มงาน: ${item.expStartDateText || 'ไม่ระบุ'}\nวันที่ลาออก: ${item.empResignDateText || '-'}\nสถานะ: ${item.employStatusDesc || 'ไม่ระบุ'}\n--------------------`;
+        });
+        return reply(event.replyToken, { type: 'text', text: result });
+      } else {
+        return reply(event.replyToken, { type: 'text', text: 'ไม่พบข้อมูลประวัติการทำงานประกันสังคม' });
+      }
+    } catch (err) {
+      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูลประกันสังคมไม่สำเร็จ' });
+    }
+  }
+
+  // หมายศาล: doc#เลขบัตร [หน้า]
+  if (text.startsWith('doc#')) {
+    const payload = text.replace(/^doc#/, '').trim();
+    const parts = payload.split(/\s+/);
+    const accCardId = parts[0];
+    let page = parts[1] ? parseInt(parts[1]) - 1 : 0;
+    if (!accCardId) return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขบัตรประชาชน เช่น doc#1234567890123' });
+    try {
+      const { data: res } = await axios.get(`http://103.91.204.203:4000/?doc=${accCardId}`);
+      if (!res.success) return reply(event.replyToken, { type: 'text', text: `❌ ${res.message || 'ดึงข้อมูลไม่สำเร็จ'}` });
+      const data = res.data;
+      if (data.content && data.content.length > 0) {
+        const itemsPerPage = 3;
+        const totalPages = Math.ceil(data.content.length / itemsPerPage);
+        if (isNaN(page) || page < 0) page = 0;
+        if (page >= totalPages) return reply(event.replyToken, { type: 'text', text: `ไม่พบข้อมูลหน้าที่ ${page + 1} (มีทั้งหมด ${totalPages} หน้า)` });
+        const startIndex = page * itemsPerPage;
+        const pageItems = data.content.slice(startIndex, Math.min(startIndex + itemsPerPage, data.content.length));
+        let result = `🚨 ข้อมูลหมายศาล (หน้า ${page + 1}/${totalPages})\n====================\n`;
+        pageItems.forEach((warrant, idx) => {
+          result += `\n📄 หมายจับที่ ${startIndex + idx + 1}\nเลขที่: ${warrant.woaNo}/${warrant.woaYear}\nศาล: ${warrant.courtCodeText}\n\n👤 ข้อมูลผู้ต้องหา\nชื่อ-สกุล: ${warrant.accFullName}\nเลขบัตรประชาชน: ${warrant.accCardId}\nสัญชาติ: ${warrant.accNationText}\nอาชีพ: ${warrant.accOccupation}\n\n📍 ที่อยู่\nตำบล/แขวง: ${warrant.accSubDistrictText || warrant.accSubDistrict}\nอำเภอ/เขต: ${warrant.accDistrictText}\n\n⚖️ ข้อมูลคดี\nสถานะ: ${warrant.arrestStatus}\nข้อหา: ${warrant.charge}\nผู้ร้อง: ${warrant.plaintiff}\nผู้พิพากษา: ${warrant.judgeName}\n\n📅 วันที่\nออกหมาย: ${new Date(warrant.woaDate).toLocaleDateString('th-TH')}\nเริ่มต้น: ${new Date(warrant.woaStartDate).toLocaleDateString('th-TH')}\nสิ้นสุด: ${new Date(warrant.woaEndDate).toLocaleDateString('th-TH')}\n-------------------`;
+        });
+        result += `\n📊 แสดง ${pageItems.length} จาก ${data.content.length} รายการ`;
+        if (totalPages > 1) result += `\nพิมพ์ doc#${accCardId} [1-${totalPages}] เพื่อดูหน้าอื่น`;
+        return reply(event.replyToken, { type: 'text', text: result });
+      } else {
+        return reply(event.replyToken, { type: 'text', text: 'ไม่พบข้อมูลหมายศาล' });
+      }
+    } catch (err) {
+      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูลหมายศาลไม่สำเร็จ' });
+    }
+  }
+
+  // ใบขับขี่: dl#เลขบัตร
+  if (text.startsWith('dl#')) {
+    const cid = text.replace(/^dl#/, '').trim();
+    if (!cid) return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขบัตรประชาชน เช่น dl#1234567890123' });
+    try {
+      const { data: res } = await axios.get(`http://103.91.204.203:4000/?dl=${cid}`);
+      if (!res.success) return reply(event.replyToken, { type: 'text', text: `❌ ${res.message || 'ดึงข้อมูลไม่สำเร็จ'}` });
+      const data = res.data;
+      if (data.content && data.content.length > 0) {
+        let result = `🚗 ข้อมูลใบขับขี่\n====================\n`;
+        data.content.forEach((license, idx) => {
+          result += `\n📄 ใบขับขี่ที่ ${idx + 1}\n👤 ชื่อ-นามสกุล: ${license.fullName}\n🆔 เลขบัตรประชาชน: ${license.citizenCardNumber}\n🚗 ประเภทใบขับขี่: ${license.type}\n📝 เลขที่ใบขับขี่: ${license.licenseNumber}\n📅 วันที่ออกใบอนุญาต: ${new Date(license.licenseIssueDate).toLocaleDateString('th-TH')}\n📅 วันที่หมดอายุ: ${new Date(license.licenseExpirationDate).toLocaleDateString('th-TH')}\n⭐ สถานะ: ${license.status}\n🏠 ที่อยู่: ${license.address}\n-------------------`;
+        });
+        result += `\n📊 พบข้อมูลทั้งหมด ${data.totalElements} รายการ`;
+        return reply(event.replyToken, { type: 'text', text: result });
+      } else {
+        return reply(event.replyToken, { type: 'text', text: 'ไม่พบข้อมูลใบขับขี่' });
+      }
+    } catch (err) {
+      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูลใบขับขี่ไม่สำเร็จ' });
+    }
+  }
+
+  // เช็ครถจาก CID: cid#เลขบัตร
+  if (text.startsWith('cid#')) {
+    const cid = text.replace(/^cid#/, '').trim();
+    if (!cid) return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขบัตรประชาชน เช่น cid#1234567890123' });
+    try {
+      const { data: res } = await axios.get(`http://103.91.204.203:4000/?cid=${cid}`);
+      if (!res.success) return reply(event.replyToken, { type: 'text', text: `❌ ${res.message || 'ดึงข้อมูลไม่สำเร็จ'}` });
+      const data = res.data;
+      if (data.content && data.content.length > 0) {
+        let result = `🚗 ข้อมูลทะเบียนรถ (จาก CID)\n====================\n`;
+        data.content.slice(0, 5).forEach((vehicle, idx) => {
+          result += `\n📄 รถคันที่ ${idx + 1}\n🚘 ทะเบียน: ${vehicle.plate1 || ''}${vehicle.plate2 || ''}\n🚗 ยี่ห้อ: ${vehicle.brnDesc || 'ไม่ระบุ'}\n🎨 สี: ${(vehicle.carChkMasColorList && vehicle.carChkMasColorList[0]?.colorDesc) || 'ไม่ระบุ'}\n🔧 ประเภท: ${vehicle.vehTypeDesc || 'ไม่ระบุ'}\n👤 เจ้าของ: ${vehicle.owner1 || 'ไม่ระบุ'}\n📅 หมดอายุ: ${vehicle.expDate ? new Date(vehicle.expDate).toLocaleDateString('th-TH') : 'ไม่ระบุ'}\n-------------------`;
+        });
+        result += `\n📊 พบทั้งหมด ${data.content.length} คัน`;
+        return reply(event.replyToken, { type: 'text', text: result });
+      } else {
+        return reply(event.replyToken, { type: 'text', text: 'ไม่พบข้อมูลทะเบียนรถ' });
+      }
+    } catch (err) {
+      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูลทะเบียนรถไม่สำเร็จ' });
+    }
+  }
+
+  // เช็ครถจากทะเบียน: car#จังหวัด หมวด ตัวเลข ประเภท [หน้า]
+  if (text.startsWith('car#')) {
+    const payload = text.replace(/^car#/, '').trim();
+    const parts = payload.split(/\s+/);
+    if (parts.length < 4) {
+      return reply(event.replyToken, { type: 'text', text: '❌ รูปแบบไม่ถูกต้อง\nตัวอย่าง: car#กรุงเทพ 1กก 334 1\ncar#จังหวัด หมวดอักษร ตัวเลข ประเภทรถ' });
+    }
+    const province = parts[0];
+    const plate1 = parts[1];
+    const plate2 = parts[2];
+    const vehTypeRef = parts[3];
+    let page = parts[4] ? parseInt(parts[4]) - 1 : 0;
+    try {
+      const url = `http://103.91.204.203:4000/?province=${encodeURIComponent(province)}&plate1=${encodeURIComponent(plate1)}&plate2=${encodeURIComponent(plate2)}&vehTypeRef=${encodeURIComponent(vehTypeRef)}`;
+      const { data: res } = await axios.get(url);
+      if (!res.success) return reply(event.replyToken, { type: 'text', text: `❌ ${res.message || 'ดึงข้อมูลไม่สำเร็จ'}` });
+      const data = res.data;
+      if (data.content && data.content.length > 0) {
+        const itemsPerPage = 3;
+        const totalPages = Math.ceil(data.content.length / itemsPerPage);
+        if (isNaN(page) || page < 0) page = 0;
+        if (page >= totalPages) return reply(event.replyToken, { type: 'text', text: `ไม่พบข้อมูลหน้าที่ ${page + 1} (มีทั้งหมด ${totalPages} หน้า)` });
+        const startIndex = page * itemsPerPage;
+        const pageItems = data.content.slice(startIndex, Math.min(startIndex + itemsPerPage, data.content.length));
+        let result = `🚗 ข้อมูลทะเบียนรถ (หน้า ${page + 1}/${totalPages})\n====================\n`;
+        pageItems.forEach((vehicle, idx) => {
+          result += `\n📄 รถคันที่ ${startIndex + idx + 1}\n🚘 ทะเบียน: ${vehicle.plate1 || ''}${vehicle.plate2 || ''}\n🏢 สำนักงาน: ${vehicle.offLocDesc || 'ไม่ระบุ'}\n🚗 ยี่ห้อ: ${vehicle.brnDesc || 'ไม่ระบุ'}\n📝 รุ่น: ${vehicle.modelName || 'ไม่ระบุ'}\n🎨 สี: ${(vehicle.carChkMasColorList && vehicle.carChkMasColorList[0]?.colorDesc) || 'ไม่ระบุ'}\n🔧 ประเภทรถ: ${vehicle.vehTypeDesc || 'ไม่ระบุ'}\n📋 หมายเลขตัวถัง: ${vehicle.numBody || 'ไม่ระบุ'}\n📅 วันที่จดทะเบียน: ${vehicle.regDate ? new Date(vehicle.regDate).toLocaleDateString('th-TH') : 'ไม่ระบุ'}\n📅 วันที่หมดอายุ: ${vehicle.expDate ? new Date(vehicle.expDate).toLocaleDateString('th-TH') : 'ไม่ระบุ'}\n\n👤 ข้อมูลเจ้าของ\nเจ้าของที่ 1:\nเลขประจำตัว: ${vehicle.docNo1 || 'ไม่ระบุ'}\nชื่อ: ${vehicle.owner1 || 'ไม่ระบุ'}\nที่อยู่: ${vehicle.addressOwner1 || 'ไม่ระบุ'}\n${vehicle.docNo2 ? `\nเจ้าของที่ 2:\nเลขประจำตัว: ${vehicle.docNo2}\nชื่อ: ${vehicle.owner2 || 'ไม่ระบุ'}` : ''}\n-------------------`;
+        });
+        result += `\n📊 แสดง ${pageItems.length} จาก ${data.content.length} รายการ`;
+        if (totalPages > 1) result += `\nพิมพ์ car#${province} ${plate1} ${plate2} ${vehTypeRef} [หน้า] เพื่อดูหน้าอื่น`;
+        return reply(event.replyToken, { type: 'text', text: result });
+      } else {
+        return reply(event.replyToken, { type: 'text', text: 'ไม่พบข้อมูลทะเบียนรถ' });
+      }
+    } catch (err) {
+      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูลทะเบียนรถไม่สำเร็จ' });
+    }
+  }
+
   return reply(event.replyToken, {
     type: 'text',
     text: 'พิมพ์ menu% เพื่อดูเมนู หรือพิมพ์ ยินยอมรับข้อตกลง เพื่อสมัครสมาชิก'
