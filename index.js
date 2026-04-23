@@ -2238,10 +2238,7 @@ async function handleText(event) {
     }
   }
 
-  return reply(event.replyToken, {
-    type: 'text',
-    text: 'พิมพ์ menu% เพื่อดูเมนู หรือพิมพ์ ยินยอมรับข้อตกลง เพื่อสมัครสมาชิก'
-  });
+ return;
 }
 
 async function handleImage(event) {
