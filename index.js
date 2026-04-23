@@ -406,6 +406,337 @@ function formatCrime(data, keyword = '') {
   }
 }
 
+const SEARCH_API_BASE = 'http://103.91.204.203:4000/';
+
+function limitLineMessage(msg) {
+  return msg.length > 4800 ? msg.slice(0, 4800) + '\n...ตัดข้อความ...' : msg;
+}
+
+function extractApiContent(res) {
+  const data = res?.data ?? res;
+  const payload = data?.data ?? data;
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.content)) return payload.content;
+  if (Array.isArray(data?.content)) return data.content;
+  if (Array.isArray(data?.data?.content)) return data.data.content;
+  return [];
+}
+
+function buildSearchUrl(kind, input) {
+  const raw = (input || '').replace(/\s+/g, ' ').trim();
+  if (kind === 'psi' && !/^\d{13}$/.test(raw)) {
+    const [firstName, ...rest] = raw.split(' ');
+    const lastName = rest.join(' ');
+    return `${SEARCH_API_BASE}?psi=${encodeURIComponent(firstName || '')}${lastName ? `&${encodeURIComponent(lastName)}` : ''}`;
+  }
+  return `${SEARCH_API_BASE}?${kind}=${encodeURIComponent(raw)}`;
+}
+
+function formatPrisonerAddress(item) {
+  const addrParts = [];
+  if (item.addressNoText) addrParts.push(`เลขที่ ${item.addressNoText}`);
+  if (item.addressMooText) addrParts.push(`หมู่ ${item.addressMooText}`);
+  if (item.addressMooBanText) addrParts.push(`หมู่บ้าน ${item.addressMooBanText}`);
+  if (item.addressSoiText) addrParts.push(`ซอย ${item.addressSoiText}`);
+  if (item.addressRoadText) addrParts.push(`ถนน ${item.addressRoadText}`);
+  if (item.addressTumbonText) addrParts.push(`ต.${item.addressTumbonText}`);
+  if (item.addressAmphurText) addrParts.push(`อ.${item.addressAmphurText}`);
+  if (item.addressProvinceText) addrParts.push(`จ.${item.addressProvinceText}`);
+  if (item.addressPostCode) addrParts.push(`${item.addressPostCode}`);
+  return addrParts.join(' ') || '-';
+}
+
+async function searchPrisonerUniversal(input) {
+  try {
+    const response = await axios.get(buildSearchUrl('psi', input), { timeout: 30000 });
+    const content = extractApiContent(response.data);
+    if (!content.length) return `❌ ไม่พบข้อมูลผู้ต้องขัง สำหรับ "${input}"`;
+
+    let msg = `👮‍♂️ ข้อมูลผู้ต้องขัง: ${input}\n====================\n`;
+    content.forEach((item, idx) => {
+      const sexMap = { MALE: 'ชาย', FEMALE: 'หญิง' };
+      const fatherName = `${item.fatherPrefix || ''}${item.fatherFirstName || '-'} ${item.fatherLastName || ''}`.trim();
+      const motherName = `${item.motherPrefix || ''}${item.motherFirstName || '-'} ${item.motherLastName || ''}`.trim();
+
+      msg += `[${idx + 1}]
+👤 ชื่อ-สกุล: ${item.firstName || '-'} ${item.lastName || '-'}
+🆔 เลขบัตร: ${item.citizenCardNumber || '-'}
+🎂 วันเกิด: ${item.dateOfBirth || '-'}
+🚻 เพศ: ${sexMap[item.sex] || item.sex || '-'}
+🇹🇭 สัญชาติ: ${item.nationality || '-'}
+🙏 ศาสนา: ${item.religious || '-'}
+📚 การศึกษา: ${item.educationLevel || '-'} (${item.educationSchool || '-'} ${item.educationProvince || '-'})
+
+🏢 เรือนจำ: ${item.prisonName || '-'}
+🔢 เลขผู้ต้องขัง: ${item.prisonerId || '-'}
+📥 วันรับตัว: ${item.receiveDate || '-'}
+📤 วันปล่อยตัว: ${item.releaseDate || '-'}
+⚖️ ข้อหา: ${item.allegation || '-'}
+📜 คดีแดง/ดำ: ${item.decidedCaseId || '-'} / ${item.undecidedCaseId || '-'}
+⚖️ ศาล: ${item.courtName || '-'}
+📅 วันตัดสิน: ${item.sentenceDate || '-'}
+
+👨 บิดา: ${fatherName}
+👩 มารดา: ${motherName}
+
+🏠 ที่อยู่: ${formatPrisonerAddress(item)}
+--------------------\n`;
+    });
+    msg += `แสดง ${content.length} รายการ`;
+    return limitLineMessage(msg);
+  } catch (e) {
+    console.error('searchPrisonerUniversal error:', e?.response?.data || e.message || e);
+    return `❌ Error: ${e.message || e}`;
+  }
+}
+
+async function searchRemandPrisonerUniversal(input) {
+  try {
+    const response = await axios.get(buildSearchUrl('ps', input), { timeout: 30000 });
+    const content = extractApiContent(response.data);
+    if (!content.length) return `❌ ไม่พบข้อมูลผู้ต้องขัง (ยังไม่พิพากษา) สำหรับ "${input}"`;
+
+    let msg = `👮‍♂️ ข้อมูลผู้ต้องขัง (ยังไม่พิพากษา): ${input}\n====================\n`;
+    content.forEach((item, idx) => {
+      msg += `[${idx + 1}]
+ชื่อ-สกุล: ${item.firstName || '-'} ${item.lastName || '-'}
+เลขบัตรประชาชน: ${item.citizenCardNumber || '-'}
+วันเกิด: ${item.dateOfBirth || '-'}
+เพศ: ${item.sex === 'MALE' ? 'ชาย' : item.sex === 'FEMALE' ? 'หญิง' : '-'}
+สัญชาติ: ${item.nationality || '-'}
+ศาสนา: ${item.religious || '-'}
+การศึกษา: ${item.educationLevel || '-'} (${item.educationSchool || '-'} ${item.educationProvince || '-'})
+เรือนจำ: ${item.prisonName || '-'}
+เลขผู้ต้องขัง: ${item.prisonerId || '-'}
+วันที่รับตัว: ${item.receiveDate || '-'}
+วันที่ปล่อย: ${item.releaseDate || '-'}
+ข้อหา: ${item.allegation || '-'}
+ที่อยู่: ${formatPrisonerAddress(item)}
+--------------------\n`;
+    });
+    msg += `แสดงทั้งหมด ${content.length} รายการ`;
+    return limitLineMessage(msg);
+  } catch (e) {
+    console.error('searchRemandPrisonerUniversal error:', e?.response?.data || e.message || e);
+    return `❌ Error: ${e.message || e}`;
+  }
+}
+
+async function searchJediHp(hid) {
+  try {
+    const url = `https://api2.logbook.emenscr.in.th/v1/tpmaplogbook68/housemember/member/${encodeURIComponent(hid)}`;
+    const response = await axios.get(url, { timeout: 30000 });
+    const data = response.data;
+    if (!Array.isArray(data) || data.length === 0) return `❌ ไม่พบข้อมูลสำหรับเลขบัตร ${hid}`;
+
+    const item = data[0];
+    const gender = item.gender === 'ช' ? 'ชาย' : item.gender === 'ญ' ? 'หญิง' : item.gender || '-';
+    let ageStr = '-';
+    if (item.ebmn_age !== undefined) ageStr = `${item.ebmn_age} ปี${item.ebmn_age_month ? ` ${item.ebmn_age_month} เดือน` : ''}`;
+    let bdate = String(item.birthdate || '');
+    bdate = bdate.length === 8 ? `${bdate.substring(6, 8)}/${bdate.substring(4, 6)}/${bdate.substring(0, 4)}` : bdate || '-';
+
+    return `┌● ชื่อ : ${item.prefix_name || ''}${item.name || ''} ${item.surname || ''}
+├● เลขบัตร : ${item.NID || '-'}
+├● เพศ : ${gender}
+├● อายุ : ${ageStr}
+├● วันเกิด : ${bdate}
+├● อาชีพ : ${item.occupation || '-'}
+├● การศึกษา : ${item.education || '-'}
+├● ศาสนา : ${item.religion || '-'}
+└● สถานะในครอบครัว : ${item.relation || '-'}
+————————
+┌● สิทธิหลัก : ${item.main_right || '-'}
+└● โรงพยาบาล : ${item.main_hospital || '-'}`.trim();
+  } catch (error) {
+    return '❌ เกิดข้อผิดพลาดในการดึงข้อมูล: ' + error.message;
+  }
+}
+
+async function searchPEAID(pid, page = 0) {
+  try {
+    const url = 'https://map.pea.co.th/peacallcenter/proxy.ashx?https://map.pea.co.th/peacallcenter/dataservices/CallCenter.svc/S_SEARCH_METERDETAIL_BY_CA';
+    const response = await axios.post(url, { ca: pid }, {
+      headers: { Accept: '*/*', 'Content-Type': 'application/json', Origin: 'https://map.pea.co.th', 'User-Agent': 'Mozilla/5.0' },
+      timeout: 30000
+    });
+    const records = Array.isArray(response.data?.MESSAGE) ? response.data.MESSAGE : [];
+    if (!response.data?.SUCCESS || !records.length) return 'ไม่พบข้อมูลสำหรับหมายเลขที่ระบุ';
+
+    const itemsPerPage = 5;
+    const totalPages = Math.ceil(records.length / itemsPerPage);
+    page = parseInt(page, 10);
+    if (isNaN(page) || page < 0) page = 0;
+    if (page >= totalPages) return `ไม่พบข้อมูลหน้าที่ ${page + 1} (มีทั้งหมด ${totalPages} หน้า)`;
+
+    const startIndex = page * itemsPerPage;
+    const pageItems = records.slice(startIndex, startIndex + itemsPerPage);
+    let result = `⚡ ข้อมูลมิเตอร์ไฟฟ้า PEA (หน้า ${page + 1}/${totalPages})\n====================\n`;
+    pageItems.forEach((item, index) => {
+      const data = item.data || {};
+      result += `
+📍 รายการที่ ${startIndex + index + 1}
+👤 ข้อมูลผู้ใช้ไฟฟ้า
+ชื่อ: ${(data.PREFIX || '')}${data.CUSTOMERNAME || ''} ${data.CUSTOMERSIRNAME || ''}
+เลขCA: ${data.CA || '-'}
+เลขมิเตอร์: ${data.PEANO || '-'}
+📫 ที่อยู่: ${[data.ADDRESSNO, data.MOO ? `หมู่ ${data.MOO}` : '', data.TUMBOL ? `ต.${data.TUMBOL}` : '', data.AMPHOE ? `อ.${data.AMPHOE}` : '', data.CHANGWAT ? `จ.${data.CHANGWAT}` : '', data.POSTCODE].filter(Boolean).join(' ') || '-'}
+พิกัด GPS: X=${data.POS_X || '-'} Y=${data.POS_Y || '-'}
+-------------------`;
+    });
+    result += `\n📊 แสดง ${pageItems.length} จาก ${records.length} รายการ`;
+    return limitLineMessage(result);
+  } catch (error) {
+    console.error('Error searching PEA:', error?.response?.data || error.message);
+    return 'เกิดข้อผิดพลาดในการค้นหาข้อมูล: ' + error.message;
+  }
+}
+
+async function searchPEAByName(name, page = 0) {
+  try {
+    const raw = (name || '').replace(/\s+/g, ' ').trim();
+    if (raw.split(' ').length < 2) return '❌ กรุณาใส่ชื่อเต็มและนามสกุล เช่น pean%วัชราภรณ์ จันทบุตร';
+
+    const url = 'https://map.pea.co.th/peacallcenter/proxy.ashx?https://map.pea.co.th/peacallcenter/dataservices/CallCenter.svc/S_SEARCH_METERDETAIL_BY_NAME';
+    const response = await axios.post(url, { name: raw }, {
+      headers: { Accept: '*/*', 'Content-Type': 'application/json', Origin: 'https://map.pea.co.th', 'User-Agent': 'Mozilla/5.0' },
+      timeout: 30000
+    });
+    const keywordFull = raw.toLowerCase();
+    const records = (Array.isArray(response.data?.MESSAGE) ? response.data.MESSAGE : []).filter(item => {
+      const data = item.data || {};
+      const nameInData = `${(data.CUSTOMERNAME || '').trim()} ${(data.CUSTOMERSIRNAME || '').trim()}`.replace(/\s+/g, ' ').toLowerCase().trim();
+      return nameInData === keywordFull;
+    });
+    if (!records.length) return '❌ ไม่พบข้อมูลสำหรับชื่อและนามสกุลนี้';
+
+    const itemsPerPage = 5;
+    const totalPages = Math.ceil(records.length / itemsPerPage);
+    page = parseInt(page, 10);
+    if (isNaN(page) || page < 0) page = 0;
+    if (page >= totalPages) return `ไม่พบข้อมูลหน้าที่ ${page + 1} (มีทั้งหมด ${totalPages} หน้า)`;
+
+    const startIndex = page * itemsPerPage;
+    const pageItems = records.slice(startIndex, startIndex + itemsPerPage);
+    let result = `⚡ ข้อมูลมิเตอร์ไฟฟ้าตามชื่อ (หน้า ${page + 1}/${totalPages})\n====================\n`;
+    pageItems.forEach((rec, idx) => {
+      const data = rec.data || {};
+      result += `
+📍 รายการที่ ${startIndex + idx + 1}
+👤 ข้อมูลผู้ใช้ไฟฟ้า
+ชื่อ-สกุล: ${(data.PREFIX || '')}${data.CUSTOMERNAME || ''} ${data.CUSTOMERSIRNAME || ''}
+เลขCA: ${data.CA || '-'}
+เลขมิเตอร์: ${data.PEANO || '-'}
+📫 ที่อยู่: ${[data.ADDRESSNO, data.MOO && data.MOO !== '-' ? `หมู่ ${data.MOO}` : '', data.TUMBOL ? `ต.${data.TUMBOL}` : '', data.AMPHOE ? `อ.${data.AMPHOE}` : '', data.CHANGWAT ? `จ.${data.CHANGWAT}` : '', data.POSTCODE ? `รหัสไปรษณีย์ ${data.POSTCODE}` : ''].filter(Boolean).join(' ') || '-'}
+พิกัด GPS: X=${data.POS_X || '-'} Y=${data.POS_Y || '-'}
+-------------------`;
+    });
+    result += `\n📊 แสดง ${pageItems.length} จาก ${records.length} รายการ`;
+    return limitLineMessage(result);
+  } catch (error) {
+    console.error('Error searching PEA by name:', error?.response?.data || error.message);
+    return 'เกิดข้อผิดพลาดในการค้นหาข้อมูล: ' + error.message;
+  }
+}
+
+async function searchPEAByAddress(address, page = 0) {
+  try {
+    const url = 'https://map.pea.co.th/peacallcenter/proxy.ashx?https://map.pea.co.th/peacallcenter/dataservices/CallCenter.svc/S_SEARCH_METERDETAIL_BY_ADDRESS';
+    const response = await axios.post(url, { address }, {
+      headers: { Accept: '*/*', 'Content-Type': 'application/json', Origin: 'https://map.pea.co.th', 'User-Agent': 'Mozilla/5.0' },
+      timeout: 30000
+    });
+    const records = Array.isArray(response.data?.MESSAGE) ? response.data.MESSAGE : [];
+    if (!response.data?.SUCCESS || !records.length) return 'ไม่พบข้อมูลสำหรับที่อยู่ที่ระบุ';
+
+    const itemsPerPage = 5;
+    const totalPages = Math.ceil(records.length / itemsPerPage);
+    page = parseInt(page, 10);
+    if (isNaN(page) || page < 0) page = 0;
+    if (page >= totalPages) return `ไม่พบข้อมูลหน้าที่ ${page + 1} (มีทั้งหมด ${totalPages} หน้า)`;
+
+    const startIndex = page * itemsPerPage;
+    const pageItems = records.slice(startIndex, startIndex + itemsPerPage);
+    let result = `🏠 ข้อมูลมิเตอร์ไฟฟ้าตามที่อยู่ (หน้า ${page + 1}/${totalPages})\n====================\n`;
+    pageItems.forEach((item, index) => {
+      const parts = String(item.id || '').split(';');
+      result += `
+📍 รายการที่ ${startIndex + index + 1}
+ที่อยู่: ${item.name || '-'}
+📋 เลขCA: ${parts[1] || 'ไม่ระบุ'}
+📝 เลขมิเตอร์: ${parts[2] || 'ไม่ระบุ'}
+👤 รหัสลูกค้า: ${parts[3] || 'ไม่ระบุ'}
+🆔 รหัสอ้างอิง: ${item.id || '-'}
+-------------------`;
+    });
+    result += `\n📊 แสดง ${pageItems.length} จาก ${records.length} รายการ`;
+    return limitLineMessage(result);
+  } catch (error) {
+    console.error('Error searching PEA by address:', error?.response?.data || error.message);
+    return 'เกิดข้อผิดพลาดในการค้นหาข้อมูล: ' + error.message;
+  }
+}
+
+async function searchPEABillHistory(ca, peano) {
+  try {
+    const response = await axios.post('https://www.pea.co.th/api/bill-history', { ca, lang: 'th', peano }, {
+      httpsAgent,
+      headers: { Accept: '*/*', 'Content-Type': 'application/json', Origin: 'https://www.pea.co.th', Referer: 'https://www.pea.co.th/our-services/bill-history', 'User-Agent': 'Mozilla/5.0' },
+      timeout: 30000
+    });
+    if (!response.data?.result || !Array.isArray(response.data?.data)) {
+      return '❌ ไม่สามารถดึงข้อมูลได้: ' + (response.data?.message || 'ระบบขัดข้อง');
+    }
+    const billData = response.data.data;
+    if (!billData.length) return '❌ ไม่พบข้อมูลประวัติการชำระเงินของหมายเลขนี้';
+
+    let msg = `⚡ ประวัติการใช้ไฟฟ้า (PEA)\n🏠 CA: ${ca} | PEA NO: ${peano}\n====================\n`;
+    billData.forEach(item => {
+      msg += `📅 งวดเดือน: ${item.billperiod}\n🔌 หน่วยที่ใช้: ${item.unit} หน่วย\n💰 ยอดเงิน: ${Number(item.totalAmountPay).toLocaleString()} บาท\n✅ วันที่จ่าย: ${item.paydate || 'ยังไม่ได้ชำระ'}\n--------------------\n`;
+    });
+    return limitLineMessage(msg);
+  } catch (error) {
+    console.error('PEA Bill History Error:', error?.response?.data || error.message);
+    return '❌ ขัดข้อง: ' + (error.response?.data?.message || error.message);
+  }
+}
+
+async function searchSevenBranch(branchCode) {
+  let browser;
+  try {
+    const puppeteer = require('puppeteer');
+    const code = decodeURIComponent((branchCode || '').trim());
+    browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox'] });
+    const page = await browser.newPage();
+    await page.goto('https://de2zkilidxgsz.cloudfront.net/', { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.waitForSelector('tbody tr', { timeout: 15000 });
+    await page.waitForSelector('input.search-input', { timeout: 10000 });
+    await page.evaluate((value) => {
+      const input = document.querySelector('input.search-input');
+      input.value = '';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.value = value;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    }, code);
+    await page.click('button.btn-search');
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    await page.waitForSelector('tbody tr', { timeout: 10000 });
+    const tds = await page.$$eval('tbody tr:first-child td', tds => tds.map(td => td.innerText.trim()));
+    const lineLink = await page.$eval('tbody tr:first-child td a', a => a.href).catch(() => '-');
+    await browser.close();
+    return `🏪 ข้อมูลร้าน 7-Eleven
+====================
+🔢 รหัสสาขา: ${tds[0] || '-'}
+🔗 Line: ${lineLink || '-'}
+🏠 ที่อยู่: ${tds[2] || '-'}
+====================`;
+  } catch (e) {
+    if (browser) await browser.close();
+    return `❌ เกิดข้อผิดพลาดในการค้นหาสาขา 7-Eleven: ${e.message}`;
+  }
+}
+
 function infoLine(label, value) {
   return {
     type: 'box',
@@ -594,66 +925,63 @@ function buildMenuCarouselFlex() {
                 '┗ ╾ atm%รหัสตู้'
               ]),
               menuSection('💊 ประวัติรักษา', [
-                '┗ ╾ h%เลขบัตร'
+                '┣ ╾ h%เลขบัตร',
+                '┣ ╾ psi#เลขบัตร/ชื่อสกุล',
+                '┗ ╾ ps#เลขบัตร'
               ])
             ]
           },
           footer: buildMenuFooter()
         },
-    {
-  type: 'bubble',
-  size: 'mega',
-  header: {
-    type: 'box',
-    layout: 'vertical',
-    backgroundColor: '#334155',
-    paddingAll: '16px',
-    contents: [
-      {
-        type: 'text',
-        text: 'MEGABOT 3/3',
-        color: '#FFFFFF',
-        weight: 'bold',
-        size: 'lg'
-      },
-      {
-        type: 'text',
-        text: 'หมายจับ / ไฟฟ้า / อื่น ๆ',
-        color: '#CBD5E1',
-        size: 'sm',
-        margin: 'sm'
-      }
-    ]
-  },
-  body: {
-    type: 'box',
-    layout: 'vertical',
-    spacing: 'md',
-    contents: [
-      menuSection('🔎 บุคคล', [
-        '┌● ประกันสังคม si%เลขบัตร',
-        '├● ใบขับขี่ dl#เลขบัตร',
-        '├● เช็คทะเบียนรถ car#จังหวัด หมวด ตัวเลข ประเภทรถ',
-        '└● ตัวอย่าง car#กรุงเทพ 1กก 334 1'
-      ]),
-      menuSection('⚖️ หมายจับ', [
-        '┗ ╾ c#เลขบัตร / doc#เลขบัตร'
-      ]),
-      menuSection('⚡ ไฟฟ้า / อื่นๆ', [
-        '┣ ╾ mea%ชื่อสกุล',
-        '┣ ╾ kru%เลขมิเตอร์',
-        '┣ ╾ peab%เลข CA เลขมิเตอร์',
-        '┣ ╾ peac%เลข CA',
-        '┣ ╾ pean%ชื่อสกุล',
-        '┗ ╾ se%รหัสสาขา7-11'
-      ]),
-      menuSection('📺 ผ่อนสินค้า', [
-        '┗ ╾ s%เลขบัตร'
-      ])
-    ]
-  },
-  footer: buildMenuFooter()
-}
+        {
+          type: 'bubble',
+          size: 'mega',
+          header: {
+            type: 'box',
+            layout: 'vertical',
+            backgroundColor: '#334155',
+            paddingAll: '16px',
+            contents: [
+              {
+                type: 'text',
+                text: 'MEGABOT 3/3',
+                color: '#FFFFFF',
+                weight: 'bold',
+                size: 'lg'
+              },
+              {
+                type: 'text',
+                text: 'หมายจับ / ไฟฟ้า / อื่น ๆ',
+                color: '#CBD5E1',
+                size: 'sm',
+                margin: 'sm'
+              }
+            ]
+          },
+          body: {
+            type: 'box',
+            layout: 'vertical',
+            spacing: 'md',
+            contents: [
+              menuSection('⚖️ หมายจับ', [
+                '┗ ╾ c#เลขบัตร / doc#เลขบัตร'
+              ]),
+              menuSection('⚡ ไฟฟ้า / อื่นๆ', [
+                '┣ ╾ mea%ชื่อสกุล',
+                '┣ ╾ kru%เลขมิเตอร์',
+                '┣ ╾ peab%เลข CA เลขมิเตอร์',
+                '┣ ╾ peac%เลข CA',
+                '┣ ╾ pean%ชื่อสกุล',
+                '┣ ╾ peau%ที่อยู่',
+                '┗ ╾ se%รหัสสาขา7-11'
+              ]),
+              menuSection('📺 ผ่อนสินค้า', [
+                '┗ ╾ s%เลขบัตร'
+              ])
+            ]
+          },
+          footer: buildMenuFooter()
+        }
       ]
     }
   };
@@ -1190,62 +1518,6 @@ function buildTopupAdminFlex(topup, userId) {
   };
 }
 
-function buildContactAdminFlex() {
-  return {
-    type: 'flex',
-    altText: 'ติดต่อแอดมิน',
-    contents: {
-      type: 'bubble',
-      size: 'mega',
-      header: {
-        type: 'box',
-        layout: 'vertical',
-        backgroundColor: '#0F172A',
-        paddingAll: '16px',
-        contents: [
-          {
-            type: 'text',
-            text: '📩 ติดต่อแอดมิน',
-            color: '#FFFFFF',
-            weight: 'bold',
-            size: 'lg'
-          }
-        ]
-      },
-      body: {
-        type: 'box',
-        layout: 'vertical',
-        contents: [
-          {
-            type: 'text',
-            text: 'สอบถามแอดมินแจ้งข้อความได้เลยครับ',
-            wrap: true,
-            size: 'md',
-            color: '#111827'
-          }
-        ]
-      },
-      footer: {
-        type: 'box',
-        layout: 'vertical',
-        spacing: 'sm',
-        contents: [
-          {
-            type: 'button',
-            style: 'primary',
-            color: '#2563EB',
-            action: {
-              type: 'message',
-              label: '📋 ดูเมนูคำสั่ง',
-              text: 'menu%'
-            }
-          }
-        ]
-      }
-    }
-  };
-}
-
 function mapTopupPackage(text) {
   const cmd = text.toLowerCase().trim();
   if (cmd === 'topup30') return { days: 30, label: '30 วัน' };
@@ -1441,10 +1713,6 @@ async function handleText(event) {
 
   if (text === 'ยินยอมรับข้อตกลง') {
     return reply(event.replyToken, buildRegisterGuideFlex());
-  }
-
-  if (text === 'ติดต่อแอดมิน') {
-  return reply(event.replyToken, buildContactAdminFlex());
   }
 
   if (text === 'สถานะการสมัคร') {
@@ -1939,6 +2207,94 @@ async function handleText(event) {
     } catch (err) {
       return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูลทะเบียนรถไม่สำเร็จ' });
     }
+  }
+
+  if (text.startsWith('h%')) {
+    const pidToSearch = text.replace(/^h%/, '').trim();
+    if (!pidToSearch) {
+      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขบัตรประชาชน เช่น h%1234567890123' });
+    }
+    const result = await searchJediHp(pidToSearch);
+    return reply(event.replyToken, { type: 'text', text: result });
+  }
+
+  if (text.startsWith('psi#')) {
+    const input = text.replace(/^psi#/, '').trim();
+    if (!input) {
+      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขบัตรหรือชื่อสกุล เช่น psi#1234567890123 หรือ psi#สมชาย ใจดี' });
+    }
+    const result = await searchPrisonerUniversal(input);
+    return reply(event.replyToken, { type: 'text', text: result });
+  }
+
+  if (text.startsWith('ps#')) {
+    const input = text.replace(/^ps#/, '').trim();
+    if (!input) {
+      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขบัตรประชาชน เช่น ps#1234567890123' });
+    }
+    const result = await searchRemandPrisonerUniversal(input);
+    return reply(event.replyToken, { type: 'text', text: result });
+  }
+
+  if (text.startsWith('peab%')) {
+    const parts = text.replace(/^peab%/, '').trim().split(/\s+/);
+    const ca = parts[0];
+    const peano = parts[1];
+    if (!ca || !peano) {
+      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุข้อมูลให้ครบ เช่น peab%020023216339 6200152445' });
+    }
+    const result = await searchPEABillHistory(ca, peano);
+    return reply(event.replyToken, { type: 'text', text: result });
+  }
+
+  if (text.startsWith('peac%')) {
+    const parts = text.replace(/^peac%/, '').trim().split(/\s+/);
+    const ca = parts[0];
+    const page = parts[1] ? parseInt(parts[1], 10) - 1 : 0;
+    if (!ca) {
+      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลข CA เช่น peac%020023216339' });
+    }
+    const result = await searchPEAID(ca, page);
+    return reply(event.replyToken, { type: 'text', text: result });
+  }
+
+  if (text.startsWith('pean%')) {
+    const input = text.replace(/^pean%/, '').trim();
+    const parts = input.split(/\s+/);
+    let page = 0;
+    if (parts.length > 2 && /^\d+$/.test(parts[parts.length - 1])) {
+      page = parseInt(parts.pop(), 10) - 1;
+    }
+    const name = parts.join(' ');
+    if (!name) {
+      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาใส่ชื่อเต็มและนามสกุล เช่น pean%วัชราภรณ์ จันทบุตร' });
+    }
+    const result = await searchPEAByName(name, page);
+    return reply(event.replyToken, { type: 'text', text: result });
+  }
+
+  if (text.startsWith('peau%')) {
+    const input = text.replace(/^peau%/, '').trim();
+    const parts = input.split(/\s+/);
+    let page = 0;
+    if (parts.length > 1 && /^\d+$/.test(parts[parts.length - 1])) {
+      page = parseInt(parts.pop(), 10) - 1;
+    }
+    const address = parts.join(' ');
+    if (!address) {
+      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุที่อยู่ เช่น peau%บางรัก กรุงเทพ' });
+    }
+    const result = await searchPEAByAddress(address, page);
+    return reply(event.replyToken, { type: 'text', text: result });
+  }
+
+  if (text.startsWith('se%')) {
+    const branchCode = text.replace(/^se%/, '').trim();
+    if (!branchCode) {
+      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุรหัสสาขา 7-11 เช่น se%12345' });
+    }
+    const result = await searchSevenBranch(branchCode);
+    return reply(event.replyToken, { type: 'text', text: result });
   }
 
   return reply(event.replyToken, {
