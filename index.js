@@ -2134,7 +2134,6 @@ if (!canUseBotCommands(userId, member, text)) {
       type: 'text',
       text: '❌ คุณไม่มีสิทธิ์ใช้งานคำสั่งนี้'
     });
-  }
 
   if (text === 'menu%') {
     return reply(event.replyToken, [
