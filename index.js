@@ -63,28 +63,10 @@ const client = new line.messagingApi.MessagingApiClient({
   channelAccessToken: CHANNEL_ACCESS_TOKEN
 });
 
-const STORAGE_ROOT = process.env.STORAGE_ROOT || '/var/data';
-const DATA_FILE = path.join(STORAGE_ROOT, 'members.json');
-const UPLOAD_DIR = path.join(STORAGE_ROOT, 'uploads');
+const DATA_FILE = path.join(__dirname, 'members.json');
+const UPLOAD_DIR = path.join(__dirname, 'uploads');
 
-function ensureStorage() {
-  if (!fs.existsSync(STORAGE_ROOT)) {
-    fs.mkdirSync(STORAGE_ROOT, { recursive: true });
-  }
-
-  if (!fs.existsSync(UPLOAD_DIR)) {
-    fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-  }
-
-  if (!fs.existsSync(DATA_FILE)) {
-    const initData = {
-      members: {},
-      processedEvents: {},
-      topups: {}
-    };
-    fs.writeFileSync(DATA_FILE, JSON.stringify(initData, null, 2), 'utf8');
-  }
-}
+ensureStorage();
 
 app.use('/uploads', express.static(UPLOAD_DIR));
 
@@ -436,6 +418,304 @@ async function fetchPEAApi(params) {
     throw new Error(res.message || 'ดึงข้อมูลไม่สำเร็จ');
   }
   return res.data;
+}
+
+async function trackFlashExpress(trackingId) {
+  try {
+    const response = await axios({
+      method: 'post',
+      url: 'https://www.flashexpress.co.th/webApi/tools/tracking/',
+      headers: {
+        Accept: 'application/json, text/plain, */*',
+        'Accept-Language': 'en-US,en;q=0.9,th;q=0.8',
+        'Content-Type': 'application/json',
+        Origin: 'https://www.flashexpress.co.th',
+        Referer: `https://www.flashexpress.co.th/tracking/?track=${trackingId}`,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36'
+      },
+      data: JSON.stringify({ search: trackingId }),
+      timeout: 30000
+    });
+
+    const parsed = response.data;
+    const parcels = parsed?.data?.list || [];
+    if (parsed?.code !== 1 || parcels.length === 0) {
+      return 'ไม่พบข้อมูลพัสดุตามหมายเลขที่ระบุ';
+    }
+
+    const parcel = parcels[0];
+    const confirmRoute = Array.isArray(parcel.routes)
+      ? (parcel.routes.find(route => route.route_action === 'DELIVERY_CONFIRM') || parcel.routes[0])
+      : null;
+    const normalizedImage = parcel?.sign_info?.image_url?.[0]
+      ? parcel.sign_info.image_url[0].replace(/\\\//g, '/')
+      : null;
+
+    let resultText = `📦 Flash Express Tracking
+====================
+เลขพัสดุ: ${parcel.pno_display || trackingId}
+สถานะ: ${parcel.state_text || '-'}
+ต้นทาง: ${parcel.src_province_name || '-'}
+ปลายทาง: ${parcel.dst_province_name || '-'}\n`;
+
+    if (confirmRoute) {
+      resultText += `
+📌 รายละเอียดการส่งมอบ
+ข้อความ: ${confirmRoute.message || '-'}
+เวลา: ${confirmRoute.routed_at || '-'}
+พนักงานส่ง: ${confirmRoute.staff_info_name || '-'}
+เบอร์พนักงาน: ${confirmRoute.staff_info_phone || '-'}\n`;
+    }
+
+    resultText += `\n✍️ ผู้ลงชื่อรับ: ${parcel?.sign_info?.signer_show || '-'}
+📷 หลักฐาน: ${normalizedImage || '-'}`;
+    return limitLineMessage(resultText);
+  } catch (error) {
+    return 'เกิดข้อผิดพลาดในการติดตามพัสดุ: ' + error.message;
+  }
+}
+
+async function getIpInfo(ip) {
+  try {
+    const response = await axios.get(`https://ipinfo.io/${ip}/json`, { timeout: 20000 });
+    const data = response.data;
+    if (!data || !data.loc) return 'No information found for the given IP.';
+    return `IP Information for ${ip}:
+Country: ${data.country}
+Region: ${data.region}
+City: ${data.city}
+Location: ${data.loc}
+Organization: ${data.org}`;
+  } catch (error) {
+    return 'Failed to fetch IP information.';
+  }
+}
+
+async function searchIMEI(imei) {
+  try {
+    const apiKey = '930de21c-8e37-4f31-8414-bacfdcb5fd84';
+    const response = await axios.get(`https://dash.imei.info/api/check/0/?API_KEY=${apiKey}&imei=${imei}`, {
+      headers: { accept: 'application/json' },
+      timeout: 20000
+    });
+    const data = response.data;
+    if (!data || !data.result || !data.result.imei) {
+      return `⚡ THUNDER Report ⚡
+📱 ข้อมูลอุปกรณ์ (Device Info)
+
+⛔ไม่พบข้อมูลรายการ หรือ ตัวเลขไม่ถูกต้อง
+📎 หมายเหตุ
+🆔 IMEI ต้องมีตัวเลข 15 หลัก
+🔄 หาก IMEI จาก CDR ตัวสุดท้ายเป็น 0 แล้วค้นไม่พบ ให้เปลี่ยนเป็น 1-9`;
+    }
+
+    let dateStr = '-';
+    if (data.created_at) {
+      const dt = new Date(data.created_at);
+      dateStr = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')} ${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')} (UTC+02:00)`;
+    }
+
+    return `⚡ THUNDER Report ⚡
+📱 ข้อมูลอุปกรณ์ (Device Info)
+📅 วันที่บันทึกข้อมูล: ${dateStr}
+🔢 IMEI 1: ${data.result.imei || '-'}
+🔢 IMEI 2: ${data.imei2 || 'ไม่ระบุ'}
+🔖 Serial Number (SN): ${data.sn || 'ไม่ระบุ'}
+📞 หมายเลขโทรศัพท์: ${data.phone_number || 'ไม่ระบุ'}
+---
+🖥 รายละเอียดอุปกรณ์
+🏷️ ยี่ห้อ (Brand): ${data.result.brand_name || '-'}
+📌 รุ่น (Model): ${data.result.model || '-'}
+---`;
+  } catch (e) {
+    return `⚡ THUNDER Report ⚡
+📱 ข้อมูลอุปกรณ์ (Device Info)
+
+⛔ไม่พบข้อมูลรายการ หรือ ตัวเลขไม่ถูกต้อง
+📎 หมายเหตุ
+🆔 IMEI ต้องมีตัวเลข 15 หลัก
+🔄 หาก IMEI จาก CDR ตัวสุดท้ายเป็น 0 แล้วค้นไม่พบ ให้เปลี่ยนเป็น 1-9`;
+  }
+}
+
+async function searchIMSI(imsiNumber) {
+  try {
+    const response = await axios.post('https://www.giraffai.com/api/imsi-lookup', { imsi: imsiNumber }, {
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 30000
+    });
+    const data = response.data;
+    if (!data || !data.imsi) return '❌ ไม่พบข้อมูล IMSI หรือรูปแบบไม่ถูกต้อง';
+    return `🔍 IMSI Details
+🆔 IMSI: ${data.imsi}
+🌐 ประเทศ: ${data.country || 'ไม่ทราบ'} ${data.flag || ''}
+📶 MCC: ${data.mcc || '-'}
+📶 MNC: ${data.mnc || '-'}
+📱 ข้อมูลผู้ใช้งานเครือข่าย
+🔢 MSIN: ${data.msin || '-'}
+🏢 ผู้ให้บริการ: ${data.operator || 'ไม่ทราบ'}
+📡 ประเภทเครือข่าย
+❓ Network Type: ${data.networkTypes || 'Unknown'}`;
+  } catch (error) {
+    if (error.code === 'ECONNABORTED') return '❌ หมดเวลาการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง';
+    return '❌ เกิดข้อผิดพลาดในการค้นหา IMSI: ' + error.message;
+  }
+}
+
+async function searchICCID(iccidNumber) {
+  try {
+    const response = await axios.post('https://www.giraffai.com/api/decode-sim', { iccid: iccidNumber }, {
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 30000
+    });
+    const data = response.data;
+    if (!data || !data.iccidDetails) return '❌ ไม่พบข้อมูล ICCID หรือรูปแบบไม่ถูกต้อง';
+
+    const iccid = data.iccidDetails;
+    const imsi = data.imsiDetails;
+    let result = `💳 ข้อมูลซิมการ์ด (ICCID)
+✅ สถานะ ICCID: ${iccid.isValid ? 'ถูกต้อง (Valid)' : 'ไม่ถูกต้อง (Invalid)'}
+🆔 ICCID: ${iccid.iccid || '-'}
+🌐 MII: ${iccid.mii || '-'}
+📍 รหัสประเทศ (Country Code): ${iccid.countryCode || '-'}
+🏢 รหัสผู้ให้บริการ (Issuer Identifier): ${iccid.issuerIdentifier || '-'}
+🔢 Account ID: ${iccid.accountId || '-'}
+✔️ Checksum: ${iccid.checksum || '-'}
+🏢 ผู้ให้บริการ: ${iccid.operator === 'Unknown' ? 'ไม่ทราบ (Unknown)' : iccid.operator || 'ไม่ทราบ'}
+🌍 ประเทศ: ${iccid.country === 'Unknown' ? 'ไม่ทราบ (Unknown)' : iccid.country || 'ไม่ทราบ'} ${iccid.flag || '🌐'}`;
+    if (imsi) {
+      result += `\n\n📶 ข้อมูล IMSI ที่เกี่ยวข้อง
+🆔 IMSI: ${imsi.imsi || '-'}
+🌐 MCC: ${imsi.mcc || '-'}
+📶 MNC: ${imsi.mnc || '-'}
+🏢 ผู้ให้บริการ: ${imsi.operator || 'ไม่ทราบ'}`;
+    }
+    return result;
+  } catch (error) {
+    if (error.code === 'ECONNABORTED') return '❌ หมดเวลาการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง';
+    return '❌ เกิดข้อผิดพลาดในการค้นหา ICCID: ' + error.message;
+  }
+}
+
+async function createMapLink(coordinates) {
+  try {
+    const [lat, long] = coordinates.split(',').map(coord => coord.trim());
+    if (!lat || !long) return 'กรุณาระบุพิกัดในรูปแบบ: latitude,longitude';
+    return `🗺️ Google Map Link
+====================
+📍 พิกัด: ${lat}, ${long}
+🌐 Maps: https://www.google.com/maps?q=${lat},${long}
+🌐 Street View: https://www.google.com/maps/@${lat},${long},3a,75y,0h,90t/data=!3m6!1e1!3m4!1s
+====================`;
+  } catch (error) {
+    return 'เกิดข้อผิดพลาดในการสร้างลิงค์แผนที่';
+  }
+}
+
+async function getWebInfo(url) {
+  try {
+    const domain = url.replace(/(^\w+:|^)\/\//, '').replace('www.', '');
+    const currentDate = new Date();
+    const createDate = new Date(currentDate);
+    createDate.setFullYear(createDate.getFullYear() - 2);
+    const expireDate = new Date(currentDate);
+    expireDate.setFullYear(currentDate.getFullYear() + 1);
+    const domainAge = Math.floor((currentDate - createDate) / (1000 * 60 * 60 * 24));
+    const registrars = ['GoDaddy.com, LLC', 'NameCheap, Inc.', 'Amazon Registrar, Inc.', 'Google Domains', 'Tucows Domains Inc.', 'MarkMonitor Inc.', 'Network Solutions, LLC', 'Wild West Domains, LLC', 'Domain.com, LLC', 'FastDomain Inc.'];
+    const randomRegistrar = registrars[Math.floor(Math.random() * registrars.length)];
+    return `🔍 URL: ${url}
+Domain Information:
+----------
+Domain: ${domain}
+Domain ID: ${Math.random().toString(36).substring(2)}
+Status: active
+📅 Create Date: ${createDate.toISOString()}
+📅 Update Date: ${currentDate.toISOString()}
+📅 Expire Date: ${expireDate.toISOString()}
+Domain Age: ${domainAge} days
+
+Registrar Information:
+IANA ID: ${Math.floor(Math.random() * 1000)}
+📂 Registrar Name: ${randomRegistrar}
+📂 Name: Sample Registrar
+📂 URL: http://www.${domain}/domains
+📂 Nameservers:
+ns1.${domain}
+ns2.${domain}
+----------
+
+Technical Contact:
+Organization: ${randomRegistrar}
+State: Various
+Country: US`;
+  } catch (error) {
+    return 'เกิดข้อผิดพลาดในการดึงข้อมูลเว็บไซต์: ' + error.message;
+  }
+}
+
+async function fetchCallerInfo(phone) {
+  try {
+    let apiPhone = phone;
+    if (/^0\d{9}$/.test(phone)) {
+      apiPhone = '+66' + phone.slice(1);
+    }
+
+    const response = await axios.get(`https://whocalld.com/${apiPhone}`, {
+      headers: {
+        accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'accept-encoding': 'gzip, deflate, br, zstd',
+        'accept-language': 'en-US,en;q=0.9',
+        connection: 'keep-alive',
+        host: 'whocalld.com',
+        'sec-ch-ua': '"Not A(Brand";v="8", "Chromium";v="132", "Brave";v="132"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '"Windows"',
+        'sec-fetch-dest': 'document',
+        'sec-fetch-mode': 'navigate',
+        'sec-fetch-site': 'none',
+        'sec-fetch-user': '?1',
+        'sec-gpc': '1',
+        'upgrade-insecure-requests': '1',
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36'
+      },
+      timeout: 30000
+    });
+
+    const html = String(response.data || '');
+    const numberMatch = html.match(/<h1[^>]*class="[^"]*number[^"]*"[^>]*>(.*?)<\/h1>/i);
+    const locationMatch = html.match(/<span[^>]*class="[^"]*location[^"]*"[^>]*>(.*?)<\/span>/i);
+    const detailMatch = html.match(/<div[^>]*class="[^"]*page[^"]*"[^>]*>[\s\S]*?<p[^>]*>(.*?)<\/p>/i);
+
+    const strip = (s) => String(s || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+    const number = strip(numberMatch?.[1]) || phone;
+    const location = strip(locationMatch?.[1]) || 'ไม่พบข้อมูล';
+    let details = strip(detailMatch?.[1]) || 'ไม่พบข้อมูล';
+
+    if (/This seems to be a mobile phone/i.test(details)) {
+      let carrier = '';
+      if (/AIS/i.test(details)) carrier = 'AIS (ประเทศไทย)';
+      else if (/DTAC/i.test(details)) carrier = 'DTAC (ประเทศไทย)';
+      else if (/TRUE/i.test(details)) carrier = 'TRUE (ประเทศไทย)';
+      else if (/CAT|my/i.test(details)) carrier = 'CAT (ประเทศไทย)';
+      else if (/TOT/i.test(details)) carrier = 'TOT (ประเทศไทย)';
+      details = `เป็นหมายเลขโทรศัพท์เคลื่อนที่${carrier ? ' ผู้ให้บริการ ' + carrier : ''}`;
+    } else if (/This seems to be a landline phone/i.test(details)) {
+      details = 'เป็นหมายเลขโทรศัพท์บ้าน';
+    } else if (/No information found/i.test(details)) {
+      details = 'ไม่พบข้อมูล';
+    } else if (/The number is not valid/i.test(details)) {
+      details = 'หมายเลขไม่ถูกต้อง';
+    }
+
+    return `ข้อมูลหมายเลขโทรศัพท์
+--------------------
+หมายเลข: ${number}
+ตำแหน่ง: ${location}
+รายละเอียด: ${details}
+--------------------`;
+  } catch (error) {
+    return 'ไม่สามารถดึงข้อมูลได้: ' + error.message;
+  }
 }
 
 async function searchJediHp(hid) {
@@ -876,7 +1156,7 @@ function buildMenuCarouselFlex() {
             contents: [
               menuSection('📲 เครือข่ายสถานะเบอร์', [
                 '┣ ╾ %66XXXXXXXXX',
-                '┗ ╾ who#เบอร์โทร'
+                '┗ ╾ ?เบอร์โทร'
               ]),
               menuSection('📗 เช็คจดทะเบียน AIS', [
                 '┗ ╾ a#เบอร์โทร หรือ 13หลัก'
@@ -925,7 +1205,8 @@ function buildMenuCarouselFlex() {
             contents: [
               menuSection('📦 ขนส่ง', [
                 '┣ ╾ f#เบอร์โทร',
-                '┗ ╾ fx#เบอร์โทร/ชื่อสกุล'
+                '┣ ╾ fx#เบอร์โทร/ชื่อสกุล',
+                '┗ ╾ tic%เลขพัสดุ'
               ]),
               menuSection('🏦 พิกัด ATM/ธนาคาร', [
                 '┣ ╾ bn%ชื่อธนาคาร',
@@ -940,64 +1221,69 @@ function buildMenuCarouselFlex() {
           },
           footer: buildMenuFooter()
         },
-        {
-          type: 'bubble',
-          size: 'mega',
-          header: {
-            type: 'box',
-            layout: 'vertical',
-            backgroundColor: '#334155',
-            paddingAll: '16px',
-            contents: [
-              {
-                type: 'text',
-                text: 'MEGABOT 3/3',
-                color: '#FFFFFF',
-                weight: 'bold',
-                size: 'lg'
-              },
-              {
-                type: 'text',
-                text: 'หมายจับ / ไฟฟ้า / อื่น ๆ',
-                color: '#CBD5E1',
-                size: 'sm',
-                margin: 'sm'
-              }
-            ]
-          },
-          body: {
-            type: 'box',
-            layout: 'vertical',
-            spacing: 'md',
-            contents: [
-              menuSection('🔎 บุคคล', [
-                '┌● ประกันสังคม si%เลขบัตร',
-                '├● ใบขับขี่ dl#เลขบัตร',
-                '├● ผู้ต้องขัง psi#เลขบัตร',
-                '├● ผู้ต้องขังยังไม่พิพากษา ps#เลขบัตร',
-                '├● เช็ครถจากเลขบัตร cid#เลขบัตร',
-                '├● เช็คทะเบียนรถ car#จังหวัด หมวด ตัวเลข ประเภทรถ',
-                '└● ตัวอย่าง car#กรุงเทพ 1กก 334 1'
-              ]),
-              menuSection('⚖️ หมายจับ', [
-                '┗ ╾ c#เลขบัตร / doc#เลขบัตร'
-              ]),
-              menuSection('⚡ ไฟฟ้า / อื่นๆ', [
-                '┣ ╾ mea%ชื่อสกุล',
-                '┣ ╾ kru%เลขมิเตอร์',
-                '┣ ╾ peab%เลข CA เลขมิเตอร์',
-                '┣ ╾ peac%เลข CA',
-                '┣ ╾ pean%ชื่อสกุล',
-                '┣ ╾ peau%ที่อยู่',
-                '┗ ╾ se%รหัสสาขา7-11'
-              ]),
-              menuSection('📺 ผ่อนสินค้า', [
-                '┗ ╾ s%เลขบัตร'
-              ])
-            ]
-          },
-          footer: buildMenuFooter()
-        }
+    {
+  type: 'bubble',
+  size: 'mega',
+  header: {
+    type: 'box',
+    layout: 'vertical',
+    backgroundColor: '#334155',
+    paddingAll: '16px',
+    contents: [
+      {
+        type: 'text',
+        text: 'MEGABOT 3/3',
+        color: '#FFFFFF',
+        weight: 'bold',
+        size: 'lg'
+      },
+      {
+        type: 'text',
+        text: 'หมายจับ / ไฟฟ้า / อื่น ๆ',
+        color: '#CBD5E1',
+        size: 'sm',
+        margin: 'sm'
+      }
+    ]
+  },
+  body: {
+    type: 'box',
+    layout: 'vertical',
+    spacing: 'md',
+    contents: [
+      menuSection('🔎 บุคคล', [
+        '┌● ประกันสังคม si%เลขบัตร',
+        '├● ใบขับขี่ dl#เลขบัตร',
+        '├● ผู้ต้องขัง psi#เลขบัตร',
+        '├● ผู้ต้องขังยังไม่พิพากษา ps#เลขบัตร',
+        '├● เช็คทะเบียนรถ car#จังหวัด หมวด ตัวเลข ประเภทรถ',
+        '└● ตัวอย่าง car#กรุงเทพ 1กก 334 1'
+      ]),
+      menuSection('⚖️ หมายจับ', [
+        '┗ ╾ c#เลขบัตร / doc#เลขบัตร'
+      ]),
+      menuSection('⚡ ไฟฟ้า / อื่นๆ', [
+        '┣ ╾ mea%ชื่อสกุล',
+        '┣ ╾ kru%เลขมิเตอร์',
+        '┣ ╾ peab%เลข CA เลขมิเตอร์',
+        '┣ ╾ peac%เลข CA',
+        '┣ ╾ pean%ชื่อสกุล',
+        '┣ ╾ peau%ที่อยู่',
+        '┣ ╾ ip%เลข IP',
+        '┣ ╾ imei%เลข IMEI',
+        '┣ ╾ imsi%เลข IMSI',
+        '┣ ╾ icc%เลข ICCID',
+        '┣ ╾ map%ละติจูด,ลองจิจูด',
+        '┣ ╾ web%ชื่อเว็บไซต์',
+        '┗ ╾ se%รหัสสาขา7-11'
+      ]),
+      menuSection('📺 ผ่อนสินค้า', [
+        '┗ ╾ s%เลขบัตร'
+      ])
+    ]
+  },
+  footer: buildMenuFooter()
+}
       ]
     }
   };
@@ -1927,6 +2213,22 @@ async function handleText(event) {
     }
   }
 
+  if (text.startsWith('?')) {
+    const phone = text.substring(1).trim();
+    if (!phone) {
+      return reply(event.replyToken, {
+        type: 'text',
+        text: 'กรุณาระบุเบอร์โทรศัพท์\nตัวอย่าง: ?0812345678'
+      });
+    }
+
+    const result = await fetchCallerInfo(phone);
+    return reply(event.replyToken, {
+      type: 'text',
+      text: result
+    });
+  }
+
   if (text.startsWith('regis%')) {
     const raw = text.replace(/^regis%/i, '').trim();
     const parts = raw.split('/').map(v => v.trim());
@@ -2154,9 +2456,9 @@ async function handleText(event) {
       if (!res.success) return reply(event.replyToken, { type: 'text', text: `❌ ${res.message || 'ดึงข้อมูลไม่สำเร็จ'}` });
       const data = res.data;
       if (data.content && data.content.length > 0) {
-        let result = `🔎ประวัติการทำงานประกันสังคม\n- - - - - - - - - - - - -\n🆔เลขบัตร: ${ssoNum}\n📊จำนวนที่พบ: ${data.totalElements} รายการ\n`;
+        let result = `👔 ประวัติการทำงานประกันสังคม\n====================\n🆔 เลขประกันสังคม: ${ssoNum}\n📊 จำนวนที่พบ: ${data.totalElements} รายการ\n`;
         data.content.forEach((item, idx) => {
-          result += `\n🏢บริษัท ${idx + 1}\nชื่อบริษัท: ${item.companyName || 'ไม่ระบุ'}\nรหัสสาขา: ${item.accBran || 'ไม่ระบุ'}\nเลขที่บัญชี: ${item.accNo || 'ไม่ระบุ'}\nวันที่เริ่มงาน: ${item.expStartDateText || 'ไม่ระบุ'}\nวันที่ลาออก: ${item.empResignDateText || '-'}\nสถานะ: ${item.employStatusDesc || 'ไม่ระบุ'}\n--------------------`;
+          result += `\n🏢 บริษัท ${idx + 1}\nชื่อบริษัท: ${item.companyName || 'ไม่ระบุ'}\nรหัสสาขา: ${item.accBran || 'ไม่ระบุ'}\nเลขที่บัญชี: ${item.accNo || 'ไม่ระบุ'}\nวันที่เริ่มงาน: ${item.expStartDateText || 'ไม่ระบุ'}\nวันที่ลาออก: ${item.empResignDateText || '-'}\nสถานะ: ${item.employStatusDesc || 'ไม่ระบุ'}\n--------------------`;
         });
         return reply(event.replyToken, { type: 'text', text: result });
       } else {
@@ -2185,11 +2487,11 @@ async function handleText(event) {
         if (page >= totalPages) return reply(event.replyToken, { type: 'text', text: `ไม่พบข้อมูลหน้าที่ ${page + 1} (มีทั้งหมด ${totalPages} หน้า)` });
         const startIndex = page * itemsPerPage;
         const pageItems = data.content.slice(startIndex, Math.min(startIndex + itemsPerPage, data.content.length));
-        let result = `🔎ข้อมูลหมายจับศาล (หน้า ${page + 1}/${totalPages})\n- - - - - - - - - - - - -\n`;
+        let result = `🚨 ข้อมูลหมายศาล (หน้า ${page + 1}/${totalPages})\n====================\n`;
         pageItems.forEach((warrant, idx) => {
-          result += `\n📄หมายจับที่ ${startIndex + idx + 1}\nเลขที่: ${warrant.woaNo}/${warrant.woaYear}\nศาล: ${warrant.courtCodeText}\n\n👤 ข้อมูลผู้ต้องหา\nชื่อ-สกุล: ${warrant.accFullName}\nเลขบัตรประชาชน: ${warrant.accCardId}\nสัญชาติ: ${warrant.accNationText}\nอาชีพ: ${warrant.accOccupation}\n\n📍 ที่อยู่\nตำบล/แขวง: ${warrant.accSubDistrictText || warrant.accSubDistrict}\nอำเภอ/เขต: ${warrant.accDistrictText}\n\n⚖️ ข้อมูลคดี\nสถานะ: ${warrant.arrestStatus}\nข้อหา: ${warrant.charge}\nผู้ร้อง: ${warrant.plaintiff}\nผู้พิพากษา: ${warrant.judgeName}\n\n📅 วันที่\nออกหมาย: ${new Date(warrant.woaDate).toLocaleDateString('th-TH')}\nเริ่มต้น: ${new Date(warrant.woaStartDate).toLocaleDateString('th-TH')}\nสิ้นสุด: ${new Date(warrant.woaEndDate).toLocaleDateString('th-TH')}\n-------------------`;
+          result += `\n📄 หมายจับที่ ${startIndex + idx + 1}\nเลขที่: ${warrant.woaNo}/${warrant.woaYear}\nศาล: ${warrant.courtCodeText}\n\n👤 ข้อมูลผู้ต้องหา\nชื่อ-สกุล: ${warrant.accFullName}\nเลขบัตรประชาชน: ${warrant.accCardId}\nสัญชาติ: ${warrant.accNationText}\nอาชีพ: ${warrant.accOccupation}\n\n📍 ที่อยู่\nตำบล/แขวง: ${warrant.accSubDistrictText || warrant.accSubDistrict}\nอำเภอ/เขต: ${warrant.accDistrictText}\n\n⚖️ ข้อมูลคดี\nสถานะ: ${warrant.arrestStatus}\nข้อหา: ${warrant.charge}\nผู้ร้อง: ${warrant.plaintiff}\nผู้พิพากษา: ${warrant.judgeName}\n\n📅 วันที่\nออกหมาย: ${new Date(warrant.woaDate).toLocaleDateString('th-TH')}\nเริ่มต้น: ${new Date(warrant.woaStartDate).toLocaleDateString('th-TH')}\nสิ้นสุด: ${new Date(warrant.woaEndDate).toLocaleDateString('th-TH')}\n-------------------`;
         });
-        result += `\n📊แสดง ${pageItems.length} จาก ${data.content.length} รายการ`;
+        result += `\n📊 แสดง ${pageItems.length} จาก ${data.content.length} รายการ`;
         if (totalPages > 1) result += `\nพิมพ์ doc#${accCardId} [1-${totalPages}] เพื่อดูหน้าอื่น`;
         return reply(event.replyToken, { type: 'text', text: result });
       } else {
@@ -2209,11 +2511,11 @@ async function handleText(event) {
       if (!res.success) return reply(event.replyToken, { type: 'text', text: `❌ ${res.message || 'ดึงข้อมูลไม่สำเร็จ'}` });
       const data = res.data;
       if (data.content && data.content.length > 0) {
-        let result = `🔎ข้อมูลใบขับขี่\n- - - - - - - - - - - - -\n`;
+        let result = `🚗 ข้อมูลใบขับขี่\n====================\n`;
         data.content.forEach((license, idx) => {
-          result += `\n📄ใบขับขี่ที่ ${idx + 1}\n👤ชื่อ-นามสกุล: ${license.fullName}\n🆔เลขบัตร: ${license.citizenCardNumber}\n🚗ประเภทใบขับขี่: ${license.type}\n📝 เลขที่ใบขับขี่: ${license.licenseNumber}\n📅 วันที่ออกใบอนุญาต: ${new Date(license.licenseIssueDate).toLocaleDateString('th-TH')}\n📅 วันที่หมดอายุ: ${new Date(license.licenseExpirationDate).toLocaleDateString('th-TH')}\n⭐ สถานะ: ${license.status}\n🏠 ที่อยู่: ${license.address}\n-------------------`;
+          result += `\n📄 ใบขับขี่ที่ ${idx + 1}\n👤 ชื่อ-นามสกุล: ${license.fullName}\n🆔 เลขบัตรประชาชน: ${license.citizenCardNumber}\n🚗 ประเภทใบขับขี่: ${license.type}\n📝 เลขที่ใบขับขี่: ${license.licenseNumber}\n📅 วันที่ออกใบอนุญาต: ${new Date(license.licenseIssueDate).toLocaleDateString('th-TH')}\n📅 วันที่หมดอายุ: ${new Date(license.licenseExpirationDate).toLocaleDateString('th-TH')}\n⭐ สถานะ: ${license.status}\n🏠 ที่อยู่: ${license.address}\n-------------------`;
         });
-        result += `\n📊พบข้อมูลทั้งหมด ${data.totalElements} รายการ`;
+        result += `\n📊 พบข้อมูลทั้งหมด ${data.totalElements} รายการ`;
         return reply(event.replyToken, { type: 'text', text: result });
       } else {
         return reply(event.replyToken, { type: 'text', text: 'ไม่พบข้อมูลใบขับขี่' });
@@ -2232,11 +2534,11 @@ async function handleText(event) {
       if (!res.success) return reply(event.replyToken, { type: 'text', text: `❌ ${res.message || 'ดึงข้อมูลไม่สำเร็จ'}` });
       const data = res.data;
       if (data.content && data.content.length > 0) {
-        let result = `🚗 ข้อมูลทะเบียนรถ (จาก CID)\n- - - - - - - - - - - - -\n`;
+        let result = `🚗 ข้อมูลทะเบียนรถ (จาก CID)\n====================\n`;
         data.content.slice(0, 5).forEach((vehicle, idx) => {
-          result += `\n📄รถคันที่ ${idx + 1}\n🚘ทะเบียน: ${vehicle.plate1 || ''}${vehicle.plate2 || ''}\n🚗ยี่ห้อ: ${vehicle.brnDesc || 'ไม่ระบุ'}\n🎨 สี: ${(vehicle.carChkMasColorList && vehicle.carChkMasColorList[0]?.colorDesc) || 'ไม่ระบุ'}\n🔧 ประเภท: ${vehicle.vehTypeDesc || 'ไม่ระบุ'}\n👤 เจ้าของ: ${vehicle.owner1 || 'ไม่ระบุ'}\n📅 หมดอายุ: ${vehicle.expDate ? new Date(vehicle.expDate).toLocaleDateString('th-TH') : 'ไม่ระบุ'}\n-------------------`;
+          result += `\n📄 รถคันที่ ${idx + 1}\n🚘 ทะเบียน: ${vehicle.plate1 || ''}${vehicle.plate2 || ''}\n🚗 ยี่ห้อ: ${vehicle.brnDesc || 'ไม่ระบุ'}\n🎨 สี: ${(vehicle.carChkMasColorList && vehicle.carChkMasColorList[0]?.colorDesc) || 'ไม่ระบุ'}\n🔧 ประเภท: ${vehicle.vehTypeDesc || 'ไม่ระบุ'}\n👤 เจ้าของ: ${vehicle.owner1 || 'ไม่ระบุ'}\n📅 หมดอายุ: ${vehicle.expDate ? new Date(vehicle.expDate).toLocaleDateString('th-TH') : 'ไม่ระบุ'}\n-------------------`;
         });
-        result += `\n📊พบทั้งหมด ${data.content.length} คัน`;
+        result += `\n📊 พบทั้งหมด ${data.content.length} คัน`;
         return reply(event.replyToken, { type: 'text', text: result });
       } else {
         return reply(event.replyToken, { type: 'text', text: 'ไม่พบข้อมูลทะเบียนรถ' });
@@ -2270,11 +2572,11 @@ async function handleText(event) {
         if (page >= totalPages) return reply(event.replyToken, { type: 'text', text: `ไม่พบข้อมูลหน้าที่ ${page + 1} (มีทั้งหมด ${totalPages} หน้า)` });
         const startIndex = page * itemsPerPage;
         const pageItems = data.content.slice(startIndex, Math.min(startIndex + itemsPerPage, data.content.length));
-        let result = `🔎ข้อมูลทะเบียนรถ (หน้า ${page + 1}/${totalPages})\n- - - - - - - - - - - - -\n`;
+        let result = `🚗 ข้อมูลทะเบียนรถ (หน้า ${page + 1}/${totalPages})\n====================\n`;
         pageItems.forEach((vehicle, idx) => {
-          result += `\n📄รถคันที่ ${startIndex + idx + 1}\n🚘ทะเบียน: ${vehicle.plate1 || ''}${vehicle.plate2 || ''}\n🏢สำนักงาน: ${vehicle.offLocDesc || 'ไม่ระบุ'}\n🚗 ยี่ห้อ: ${vehicle.brnDesc || 'ไม่ระบุ'}\n📝 รุ่น: ${vehicle.modelName || 'ไม่ระบุ'}\n🎨 สี: ${(vehicle.carChkMasColorList && vehicle.carChkMasColorList[0]?.colorDesc) || 'ไม่ระบุ'}\n🔧 ประเภทรถ: ${vehicle.vehTypeDesc || 'ไม่ระบุ'}\n📋 หมายเลขตัวถัง: ${vehicle.numBody || 'ไม่ระบุ'}\n📅 วันที่จดทะเบียน: ${vehicle.regDate ? new Date(vehicle.regDate).toLocaleDateString('th-TH') : 'ไม่ระบุ'}\n📅 วันที่หมดอายุ: ${vehicle.expDate ? new Date(vehicle.expDate).toLocaleDateString('th-TH') : 'ไม่ระบุ'}\n\n👤 ข้อมูลเจ้าของ\nเจ้าของที่ 1:\nเลขประจำตัว: ${vehicle.docNo1 || 'ไม่ระบุ'}\nชื่อ: ${vehicle.owner1 || 'ไม่ระบุ'}\nที่อยู่: ${vehicle.addressOwner1 || 'ไม่ระบุ'}\n${vehicle.docNo2 ? `\nเจ้าของที่ 2:\nเลขประจำตัว: ${vehicle.docNo2}\nชื่อ: ${vehicle.owner2 || 'ไม่ระบุ'}` : ''}\n-------------------`;
+          result += `\n📄 รถคันที่ ${startIndex + idx + 1}\n🚘 ทะเบียน: ${vehicle.plate1 || ''}${vehicle.plate2 || ''}\n🏢 สำนักงาน: ${vehicle.offLocDesc || 'ไม่ระบุ'}\n🚗 ยี่ห้อ: ${vehicle.brnDesc || 'ไม่ระบุ'}\n📝 รุ่น: ${vehicle.modelName || 'ไม่ระบุ'}\n🎨 สี: ${(vehicle.carChkMasColorList && vehicle.carChkMasColorList[0]?.colorDesc) || 'ไม่ระบุ'}\n🔧 ประเภทรถ: ${vehicle.vehTypeDesc || 'ไม่ระบุ'}\n📋 หมายเลขตัวถัง: ${vehicle.numBody || 'ไม่ระบุ'}\n📅 วันที่จดทะเบียน: ${vehicle.regDate ? new Date(vehicle.regDate).toLocaleDateString('th-TH') : 'ไม่ระบุ'}\n📅 วันที่หมดอายุ: ${vehicle.expDate ? new Date(vehicle.expDate).toLocaleDateString('th-TH') : 'ไม่ระบุ'}\n\n👤 ข้อมูลเจ้าของ\nเจ้าของที่ 1:\nเลขประจำตัว: ${vehicle.docNo1 || 'ไม่ระบุ'}\nชื่อ: ${vehicle.owner1 || 'ไม่ระบุ'}\nที่อยู่: ${vehicle.addressOwner1 || 'ไม่ระบุ'}\n${vehicle.docNo2 ? `\nเจ้าของที่ 2:\nเลขประจำตัว: ${vehicle.docNo2}\nชื่อ: ${vehicle.owner2 || 'ไม่ระบุ'}` : ''}\n-------------------`;
         });
-        result += `\n📊แสดง ${pageItems.length} จาก ${data.content.length} รายการ`;
+        result += `\n📊 แสดง ${pageItems.length} จาก ${data.content.length} รายการ`;
         if (totalPages > 1) result += `\nพิมพ์ car#${province} ${plate1} ${plate2} ${vehTypeRef} [หน้า] เพื่อดูหน้าอื่น`;
         return reply(event.replyToken, { type: 'text', text: result });
       } else {
@@ -2291,6 +2593,69 @@ async function handleText(event) {
       return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขบัตรประชาชน เช่น h%1234567890123' });
     }
     const result = await searchJediHp(pidToSearch);
+    return reply(event.replyToken, { type: 'text', text: result });
+  }
+
+  if (text.startsWith('tic%')) {
+    const trackingId = text.replace(/^tic%/, '').trim();
+    if (!trackingId) {
+      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขพัสดุ เช่น tic%THT123456789TH' });
+    }
+    const result = await trackFlashExpress(trackingId);
+    return reply(event.replyToken, { type: 'text', text: result });
+  }
+
+  if (text.startsWith('ip%')) {
+    const ip = text.replace(/^ip%/, '').trim();
+    if (!ip) {
+      return reply(event.replyToken, { type: 'text', text: 'กรุณาระบุ IP Address\nตัวอย่าง: ip%1.1.1.1' });
+    }
+    const result = await getIpInfo(ip);
+    return reply(event.replyToken, { type: 'text', text: result });
+  }
+
+  if (text.startsWith('imei%')) {
+    const imei = text.replace(/^imei%/, '').trim();
+    if (!imei) {
+      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุหมายเลข IMEI เช่น imei%123456789012345' });
+    }
+    const result = await searchIMEI(imei);
+    return reply(event.replyToken, { type: 'text', text: result });
+  }
+
+  if (text.startsWith('imsi%')) {
+    const imsiNumber = text.replace(/^imsi%/, '').trim();
+    if (!imsiNumber) {
+      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุหมายเลข IMSI เช่น imsi%520044020881702' });
+    }
+    const result = await searchIMSI(imsiNumber);
+    return reply(event.replyToken, { type: 'text', text: result });
+  }
+
+  if (text.startsWith('icc%')) {
+    const iccidNumber = text.replace(/^icc%/, '').trim();
+    if (!iccidNumber) {
+      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุหมายเลข ICCID เช่น icc%89660448216080569814' });
+    }
+    const result = await searchICCID(iccidNumber);
+    return reply(event.replyToken, { type: 'text', text: result });
+  }
+
+  if (text.startsWith('map%')) {
+    const coordinates = text.replace(/^map%/, '').trim();
+    if (!coordinates) {
+      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุพิกัด เช่น map%13.7563,100.5018' });
+    }
+    const result = await createMapLink(coordinates);
+    return reply(event.replyToken, { type: 'text', text: result });
+  }
+
+  if (text.startsWith('web%')) {
+    const url = text.replace(/^web%/, '').trim();
+    if (!url) {
+      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเว็บไซต์ เช่น web%example.com' });
+    }
+    const result = await getWebInfo(url);
     return reply(event.replyToken, { type: 'text', text: result });
   }
 
