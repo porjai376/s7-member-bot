@@ -2042,6 +2042,7 @@ function canUseBotCommands(userId, member, text) {
     'สถานะการสมัคร',
     'myid',
     'ติดต่อแอดมิน'
+    'hadmin'
   ];
 
   if (publicCommands.includes(text)) return true;
