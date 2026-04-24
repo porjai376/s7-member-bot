@@ -1454,6 +1454,79 @@ function buildAdminMenuFlex() {
   };
 }
 
+function buildMemberStatusFlex(member, statusText) {
+  return {
+    type: 'flex',
+    altText: 'สถานะการสมัคร',
+    contents: {
+      type: 'bubble',
+      size: 'mega',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        backgroundColor: '#0F172A',
+        paddingAll: '16px',
+        contents: [
+          {
+            type: 'text',
+            text: 'สถานะการสมัคร',
+            color: '#FFFFFF',
+            weight: 'bold',
+            size: 'lg'
+          },
+          {
+            type: 'text',
+            text: member.fullname || '-',
+            color: '#CBD5E1',
+            size: 'sm',
+            margin: 'sm',
+            wrap: true
+          }
+        ]
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'md',
+        contents: [
+          infoLine('ชื่อ', member.fullname || '-'),
+          infoLine('สถานะ', statusText),
+          infoLine('อนุมัติ', member.approvedAt || '-'),
+          infoLine('อายุสมาชิก', `${member.approvedDays || 0} วัน`),
+          infoLine('หมดอายุ', member.expireAt ? formatThaiDate(member.expireAt) : '-'),
+          infoLine('เวลาล่าสุด', member.updatedAt || member.registeredAt || '-')
+        ]
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'sm',
+        contents: [
+          {
+            type: 'button',
+            style: 'primary',
+            color: '#2563EB',
+            action: {
+              type: 'message',
+              label: 'ดูเมนูหลัก',
+              text: 'menu%'
+            }
+          },
+          {
+            type: 'button',
+            style: 'secondary',
+            action: {
+              type: 'message',
+              label: 'ติดต่อแอดมิน',
+              text: 'ติดต่อแอดมิน'
+            }
+          }
+        ]
+      }
+    }
+  };
+}
+
 function buildAdminApproveFlex(member, targetUserId) {
   return {
     type: 'flex',
@@ -2106,17 +2179,7 @@ async function handleText(event) {
       statusText = member.status;
     }
 
-    return reply(event.replyToken, {
-      type: 'text',
-      text:
-        `สถานะการสมัคร\n` +
-        `ชื่อ: ${member.fullname || '-'}\n` +
-        `สถานะ: ${statusText}\n` +
-        `อนุมัติ: ${member.approvedAt || '-'}\n` +
-        `อายุสมาชิก: ${member.approvedDays || 0} วัน\n` +
-        `หมดอายุ: ${member.expireAt ? formatThaiDate(member.expireAt) : '-'}\n` +
-        `เวลาล่าสุด: ${member.updatedAt || member.registeredAt || '-'}`
-    });
+   return reply(event.replyToken, buildMemberStatusFlex(member, statusText));
   }
 
   if (text.startsWith('%')) {
