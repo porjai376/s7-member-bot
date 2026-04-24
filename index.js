@@ -1584,7 +1584,33 @@ function buildAdminMenuFlex() {
   };
 }
 
-function buildMemberStatusFlex(member, statusText) {
+function buildMemberStatusFlex(member, statusText, profile) {
+  const totalDays = Number(member.approvedDays || 0);
+  const expireTime = member.expireAt ? new Date(member.expireAt).getTime() : 0;
+  const now = Date.now();
+
+  const daysLeft = expireTime
+    ? Math.max(0, Math.ceil((expireTime - now) / (1000 * 60 * 60 * 24)))
+    : 0;
+
+  const percent = totalDays > 0
+    ? Math.max(0, Math.min(100, Math.round((daysLeft / totalDays) * 100)))
+    : 0;
+
+  const isApproved = member.status === 'approved' && !isExpired(member.expireAt);
+
+  const statusColor = isApproved
+    ? '#16A34A'
+    : member.status === 'rejected'
+      ? '#DC2626'
+      : '#F59E0B';
+
+  const badgeText = isApproved
+    ? 'ACTIVE'
+    : member.status === 'rejected'
+      ? 'REJECTED'
+      : 'PENDING';
+
   return {
     type: 'flex',
     altText: 'สถานะการสมัคร',
@@ -1593,24 +1619,50 @@ function buildMemberStatusFlex(member, statusText) {
       size: 'mega',
       header: {
         type: 'box',
-        layout: 'vertical',
+        layout: 'horizontal',
         backgroundColor: '#0F172A',
-        paddingAll: '16px',
+        paddingAll: '18px',
+        spacing: 'md',
         contents: [
           {
-            type: 'text',
-            text: 'สถานะการสมัคร',
-            color: '#FFFFFF',
-            weight: 'bold',
-            size: 'lg'
+            type: 'image',
+            url: profile?.pictureUrl || 'https://placehold.co/200x200/png',
+            size: 'sm',
+            aspectRatio: '1:1',
+            aspectMode: 'cover'
           },
           {
-            type: 'text',
-            text: member.fullname || '-',
-            color: '#CBD5E1',
-            size: 'sm',
-            margin: 'sm',
-            wrap: true
+            type: 'box',
+            layout: 'vertical',
+            justifyContent: 'center',
+            contents: [
+              {
+                type: 'text',
+                text: profile?.displayName || member.lineName || member.fullname || '-',
+                color: '#FFFFFF',
+                weight: 'bold',
+                size: 'md',
+                wrap: true
+              },
+              {
+                type: 'box',
+                layout: 'vertical',
+                backgroundColor: statusColor,
+                cornerRadius: '999px',
+                paddingAll: '6px',
+                margin: 'sm',
+                contents: [
+                  {
+                    type: 'text',
+                    text: badgeText,
+                    color: '#FFFFFF',
+                    size: 'xs',
+                    weight: 'bold',
+                    align: 'center'
+                  }
+                ]
+              }
+            ]
           }
         ]
       },
@@ -1619,12 +1671,56 @@ function buildMemberStatusFlex(member, statusText) {
         layout: 'vertical',
         spacing: 'md',
         contents: [
+          {
+            type: 'text',
+            text: 'สถานะสมาชิก',
+            weight: 'bold',
+            size: 'lg',
+            color: '#111827'
+          },
           infoLine('ชื่อ', member.fullname || '-'),
           infoLine('สถานะ', statusText),
           infoLine('อนุมัติ', member.approvedAt || '-'),
-          infoLine('อายุสมาชิก', `${member.approvedDays || 0} วัน`),
+          infoLine('อายุสมาชิก', `${totalDays} วัน`),
           infoLine('หมดอายุ', member.expireAt ? formatThaiDate(member.expireAt) : '-'),
-          infoLine('เวลาล่าสุด', member.updatedAt || member.registeredAt || '-')
+          infoLine('เวลาล่าสุด', member.updatedAt || member.registeredAt || '-'),
+          {
+            type: 'separator',
+            margin: 'md'
+          },
+          {
+            type: 'text',
+            text: `เหลือ ${daysLeft} วัน`,
+            weight: 'bold',
+            size: 'md',
+            color: statusColor,
+            margin: 'md'
+          },
+          {
+            type: 'box',
+            layout: 'vertical',
+            backgroundColor: '#E5E7EB',
+            height: '10px',
+            cornerRadius: '999px',
+            contents: [
+              {
+                type: 'box',
+                layout: 'vertical',
+                backgroundColor: statusColor,
+                height: '10px',
+                width: `${percent}%`,
+                cornerRadius: '999px',
+                contents: []
+              }
+            ]
+          },
+          {
+            type: 'text',
+            text: `ใช้งานคงเหลือ ${percent}%`,
+            size: 'xs',
+            color: '#6B7280',
+            align: 'end'
+          }
         ]
       },
       footer: {
@@ -2309,8 +2405,12 @@ async function handleText(event) {
       statusText = member.status;
     }
 
-   return reply(event.replyToken, buildMemberStatusFlex(member, statusText));
-  }
+   const profile = await getProfile(userId);
+
+return reply(
+  event.replyToken,
+  buildMemberStatusFlex(member, statusText, profile)
+);
 
   if (text.startsWith('%')) {
     const msisdn = text.substring(1).trim();
