@@ -63,8 +63,10 @@ const client = new line.messagingApi.MessagingApiClient({
   channelAccessToken: CHANNEL_ACCESS_TOKEN
 });
 
-const DATA_FILE = path.join(__dirname, 'members.json');
-const UPLOAD_DIR = path.join(__dirname, 'uploads');
+const DATA_DIR = process.env.STORAGE_ROOT || process.env.DATA_DIR || __dirname;
+
+const DATA_FILE = path.join(DATA_DIR, 'members.json');
+const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
 
 ensureStorage();
 
