@@ -1958,17 +1958,21 @@ async function notifyAdmins(messages) {
 }
 
 function canUseBotCommands(userId, member, text) {
+  // แอดมินใช้ได้ทุกคำสั่ง
   if (isAdmin(userId)) return true;
 
+  // คำสั่งที่คนยังไม่อนุมัติใช้ได้
   const publicCommands = [
-    'menu%',
     'ยินยอมรับข้อตกลง',
-    'สถานะการสมัคร'
+    'สถานะการสมัคร',
+    'myid',
+    'ติดต่อแอดมิน'
   ];
 
   if (publicCommands.includes(text)) return true;
   if (text.startsWith('regis%')) return true;
 
+  // คำสั่งอื่นทั้งหมด ต้องเป็นสมาชิก approved และไม่หมดอายุ
   return isActiveMember(member);
 }
 
@@ -2773,6 +2777,22 @@ async function handleImage(event) {
   const db = loadDB();
   const member = db.members[userId];
   const topup = db.topups?.[userId];
+
+if (!member) {
+  return reply(event.replyToken, {
+    type: 'text',
+    text: '❌ กรุณาสมัครสมาชิกก่อน โดยพิมพ์: ยินยอมรับข้อตกลง'
+  });
+}
+
+if (member.status === 'waiting_card') {
+  // อนุญาตให้ส่งรูปหลักฐานสมัครต่อได้
+} else if (!isActiveMember(member)) {
+  return reply(event.replyToken, {
+    type: 'text',
+    text: '⏳ บัญชีของคุณยังไม่ได้รับการอนุมัติจากแอดมิน หรือสมาชิกหมดอายุ'
+  });
+}
 
   if (topup && topup.status === 'waiting_slip') {
     try {
