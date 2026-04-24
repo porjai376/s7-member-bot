@@ -2089,13 +2089,29 @@ async function handleText(event) {
   const db = loadDB();
   const member = db.members[userId];
 
-  if (!canUseBotCommands(userId, member, text)) {
-    if (!member) {
-      return reply(event.replyToken, {
-        type: 'text',
-        text: '❌ ยังไม่มีสิทธิ์ใช้งาน\nกรุณาสมัครสมาชิกก่อน โดยพิมพ์: ยินยอมรับข้อตกลง'
-      });
-    }
+if (!canUseBotCommands(userId, member, text)) {
+
+  if (!member) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ ยังไม่มีสิทธิ์ใช้งาน กรุณาสมัครสมาชิกก่อน โดยพิมพ์: ยินยอมรับข้อตกลง'
+    });
+  }
+
+  if (!isActiveMember(member)) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '⛔ บัญชีของคุณยังไม่ได้รับการอนุมัติ หรือสมาชิกหมดอายุ'
+    });
+  }
+
+  return reply(event.replyToken, {
+    type: 'text',
+    text: '❌ คุณไม่มีสิทธิ์ใช้งานคำสั่งนี้'
+  });
+}
+
+}
 
     if (member.status !== 'approved') {
       return reply(event.replyToken, {
@@ -2179,7 +2195,12 @@ async function handleText(event) {
       statusText = member.status;
     }
 
-   return reply(event.replyToken, buildMemberStatusFlex(member, statusText));
+  const profile = await getProfile(userId);
+
+return reply(
+  event.replyToken,
+  buildMemberStatusFlex(member, statusText, profile)
+);
   }
 
   if (text.startsWith('%')) {
