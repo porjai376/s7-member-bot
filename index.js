@@ -422,6 +422,135 @@ async function fetchPEAApi(params) {
   return res.data;
 }
 
+const ATM_CSV_PATH = path.join(__dirname, 'Location ATM.csv');
+const CELL_CSV_PATH = path.join(__dirname, 'cellsite11.xlsx (1).csv');
+let atmCache = { mtimeMs: 0, data: new Map() };
+let cellCache = { mtimeMs: 0, data: new Map() };
+
+function parseCsvLine(line) {
+  const values = [];
+  let value = '';
+  let quoted = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (quoted && line[i + 1] === '"') {
+        value += '"';
+        i++;
+      } else {
+        quoted = !quoted;
+      }
+    } else if (ch === ',' && !quoted) {
+      values.push(value);
+      value = '';
+    } else {
+      value += ch;
+    }
+  }
+
+  values.push(value);
+  return values;
+}
+
+function loadATMCache() {
+  const stat = fs.statSync(ATM_CSV_PATH);
+  if (atmCache.mtimeMs === stat.mtimeMs && atmCache.data.size) return atmCache.data;
+
+  const rows = fs.readFileSync(ATM_CSV_PATH, 'utf8').replace(/^\uFEFF/, '').split(/\r?\n/);
+  const data = new Map();
+
+  for (let i = 1; i < rows.length; i++) {
+    if (!rows[i]) continue;
+    const [atmCode, rowData] = parseCsvLine(rows[i]);
+    if (!atmCode || !rowData) continue;
+
+    try {
+      const key = String(atmCode).trim().toUpperCase();
+      if (!data.has(key)) data.set(key, []);
+      data.get(key).push(JSON.parse(rowData));
+    } catch (e) {
+      console.error('ATM CSV parse error on row', i + 1, e.message);
+    }
+  }
+
+  atmCache = { mtimeMs: stat.mtimeMs, data };
+  return atmCache.data;
+}
+
+function searchATMLocal(atmCode) {
+  const code = String(atmCode || '').trim().toUpperCase();
+  if (!code) return { success: false, message: 'กรุณาระบุรหัสตู้ ATM เช่น atm%T002B066B001P010' };
+
+  const rows = loadATMCache().get(code) || [];
+  if (!rows.length) return { success: false, message: 'ไม่พบข้อมูลตู้ ATM' };
+  return { success: true, data: rows.length === 1 ? rows[0] : rows };
+}
+
+function loadCellCache() {
+  const stat = fs.statSync(CELL_CSV_PATH);
+  if (cellCache.mtimeMs === stat.mtimeMs && cellCache.data.size) return cellCache.data;
+
+  const rows = fs.readFileSync(CELL_CSV_PATH, 'utf8').replace(/^\uFEFF/, '').split(/\r?\n/);
+  const headers = parseCsvLine(rows[0] || '').map(v => v.trim());
+  const data = new Map();
+
+  for (let i = 1; i < rows.length; i++) {
+    if (!rows[i]) continue;
+    const values = parseCsvLine(rows[i]);
+    const row = {};
+    headers.forEach((header, index) => {
+      row[header] = (values[index] || '').trim();
+    });
+
+    const lac = row['LAC/TAC'];
+    const cid = row['CID/eCID'];
+    if (!lac || !cid) continue;
+
+    const key = `${lac}|${cid}`;
+    if (!data.has(key)) data.set(key, []);
+    data.get(key).push({
+      'Home MCC': row['Home MCC'],
+      'Home MNC': row['Home MNC'],
+      'LAC/TAC': row['LAC/TAC'],
+      'CID/eCID': row['CID/eCID'],
+      Latitude: row.Latitude,
+      Longitude: row.Longitude,
+      Type: row.Type,
+      'Signal type': row['Signal type']
+    });
+  }
+
+  cellCache = { mtimeMs: stat.mtimeMs, data };
+  return cellCache.data;
+}
+
+function searchCellLocal(input) {
+  const parts = String(input || '').trim().split(/[,\s|]+/).filter(Boolean);
+  const lac = parts[0];
+  const cid = parts[1];
+  if (!lac || !cid) return { success: false, message: 'กรุณาระบุ LAC,CID เช่น cell%845,165131877' };
+
+  const rows = loadCellCache().get(`${lac}|${cid}`) || [];
+  if (!rows.length) return { success: false, message: 'ไม่พบข้อมูล cell site' };
+  return { success: true, data: rows.length === 1 ? rows[0] : rows };
+}
+
+function formatKeyValueRows(data, title) {
+  const rows = Array.isArray(data) ? data : [data];
+  let result = `${title}\n====================`;
+
+  rows.slice(0, 10).forEach((row, index) => {
+    if (rows.length > 1) result += `\n\nรายการที่ ${index + 1}`;
+    for (const [key, value] of Object.entries(row || {})) {
+      result += `\n${key}: ${value || '-'}`;
+    }
+  });
+
+  if (rows.length > 10) result += `\n\n...แสดง 10 จาก ${rows.length} รายการ`;
+  return limitLineMessage(result);
+}
+
 async function trackFlashExpress(trackingId) {
   try {
     const response = await axios({
@@ -1214,7 +1343,8 @@ function buildMenuCarouselFlex() {
                 '┣ ╾ bn%ชื่อธนาคาร',
                 '┣ ╾ bc%รหัสสาขา',
                 '┣ ╾ bk%เลขบัญชี',
-                '┗ ╾ atm%รหัสตู้'
+                '┣ ╾ atm%รหัสตู้',
+                '┗ ╾ cell%LAC,CID'
               ]),
               menuSection('💊 ประวัติรักษา', [
                 '┗ ╾ h%เลขบัตร'
@@ -2672,6 +2802,32 @@ async function handleText(event) {
     }
     const result = await trackFlashExpress(trackingId);
     return reply(event.replyToken, { type: 'text', text: result });
+  }
+
+  if (text.startsWith('atm%')) {
+    const atmCode = text.replace(/^atm%/i, '').trim();
+    try {
+      const res = searchATMLocal(atmCode);
+      if (!res.success) return reply(event.replyToken, { type: 'text', text: `❌ ${res.message}` });
+      const result = formatKeyValueRows(res.data, `🏧 ข้อมูลตู้ ATM: ${atmCode}`);
+      return reply(event.replyToken, { type: 'text', text: result });
+    } catch (err) {
+      console.error('atm lookup error:', err.message);
+      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูล ATM ไม่สำเร็จ: ' + err.message });
+    }
+  }
+
+  if (text.startsWith('cell%')) {
+    const cellInput = text.replace(/^cell%/i, '').trim();
+    try {
+      const res = searchCellLocal(cellInput);
+      if (!res.success) return reply(event.replyToken, { type: 'text', text: `❌ ${res.message}` });
+      const result = formatKeyValueRows(res.data, `📡 Cell Site: ${cellInput}`);
+      return reply(event.replyToken, { type: 'text', text: result });
+    } catch (err) {
+      console.error('cell lookup error:', err.message);
+      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูล cell site ไม่สำเร็จ: ' + err.message });
+    }
   }
 
   if (text.startsWith('ip%')) {
