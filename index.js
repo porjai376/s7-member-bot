@@ -576,7 +576,7 @@ function searchCellLocal(input) {
 
 function formatKeyValueRows(data, title) {
   const rows = Array.isArray(data) ? data : [data];
-  let result = `${title}\n====================`;
+  let result = `${title}\n--------------------`;
 
   rows.slice(0, 10).forEach((row, index) => {
     if (rows.length > 1) result += `\n\nรายการที่ ${index + 1}`;
@@ -621,7 +621,7 @@ async function trackFlashExpress(trackingId) {
       : null;
 
     let resultText = `📦 Flash Express Tracking
-====================
+--------------------
 เลขพัสดุ: ${parcel.pno_display || trackingId}
 สถานะ: ${parcel.state_text || '-'}
 ต้นทาง: ${parcel.src_province_name || '-'}
@@ -771,11 +771,11 @@ async function createMapLink(coordinates) {
     const [lat, long] = coordinates.split(',').map(coord => coord.trim());
     if (!lat || !long) return 'กรุณาระบุพิกัดในรูปแบบ: latitude,longitude';
     return `🗺️ Google Map Link
-====================
+--------------------
 📍 พิกัด: ${lat}, ${long}
 🌐 Maps: https://www.google.com/maps?q=${lat},${long}
 🌐 Street View: https://www.google.com/maps/@${lat},${long},3a,75y,0h,90t/data=!3m6!1e1!3m4!1s
-====================`;
+--------------------`;
   } catch (error) {
     return 'เกิดข้อผิดพลาดในการสร้างลิงค์แผนที่';
   }
@@ -1039,7 +1039,7 @@ function formatPrisonerRecords(data, input, isRemand = false) {
   const label = isRemand ? 'ผู้ต้องขัง (ยังไม่พิพากษา)' : 'ผู้ต้องขัง';
   if (!content.length) return `❌ ไม่พบข้อมูล${label} สำหรับ "${input}"`;
 
-  let msg = `👮‍♂️ ข้อมูล${label}: ${input}\n====================\n`;
+  let msg = `👮‍♂️ ข้อมูล${label}: ${input}\n--------------------\n`;
   content.forEach((item, idx) => {
     const sex = item.sex === 'MALE' ? 'ชาย' : item.sex === 'FEMALE' ? 'หญิง' : item.sex || '-';
 
@@ -1317,7 +1317,7 @@ function formatPEABillHistory(billResponseData, ca, peano) {
   const billData = billResponseData.data;
   if (!billData.length) return '❌ ไม่พบข้อมูลประวัติการชำระเงินของหมายเลขนี้';
 
-  let msg = `⚡ ประวัติการใช้ไฟฟ้า (PEA)\n🏠 CA: ${ca} | PEA NO: ${peano}\n====================\n`;
+  let msg = `⚡ ประวัติการใช้ไฟฟ้า (PEA)\n🏠 CA: ${ca} | PEA NO: ${peano}\n--------------------\n`;
   billData.forEach(item => {
     msg += `📅 งวดเดือน: ${item.billperiod}\n`;
     msg += `🔌 หน่วยที่ใช้: ${item.unit} หน่วย\n`;
@@ -2827,7 +2827,7 @@ async function handleText(event) {
       if (!res.success) return reply(event.replyToken, { type: 'text', text: `❌ ${res.message || 'ดึงข้อมูลไม่สำเร็จ'}` });
       const data = res.data;
       if (data.content && data.content.length > 0) {
-        let result = `👔 ประวัติการทำงานประกันสังคม\n====================\n🆔 เลขประกันสังคม: ${ssoNum}\n📊 จำนวนที่พบ: ${data.totalElements} รายการ\n`;
+        let result = `👔 ประวัติการทำงานประกันสังคม\n--------------------\n🆔 เลขประกันสังคม: ${ssoNum}\n📊 จำนวนที่พบ: ${data.totalElements} รายการ\n`;
         data.content.forEach((item, idx) => {
           result += `\n🏢 บริษัท ${idx + 1}\nชื่อบริษัท: ${item.companyName || 'ไม่ระบุ'}\nรหัสสาขา: ${item.accBran || 'ไม่ระบุ'}\nเลขที่บัญชี: ${item.accNo || 'ไม่ระบุ'}\nวันที่เริ่มงาน: ${item.expStartDateText || 'ไม่ระบุ'}\nวันที่ลาออก: ${item.empResignDateText || '-'}\nสถานะ: ${item.employStatusDesc || 'ไม่ระบุ'}\n--------------------`;
         });
