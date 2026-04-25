@@ -3233,8 +3233,11 @@ async function handleText(event) {
     }
     try {
       const data = await fetchPEAApi({ peac: ca });
-      const result = formatPEAMeterRecords(data, '⚡ ข้อมูลมิเตอร์ไฟฟ้า PEA', page);
-      return reply(event.replyToken, { type: 'text', text: result });
+
+return reply(
+  event.replyToken,
+  buildPEANFlex(data, '⚡ ข้อมูลมิเตอร์ไฟฟ้า PEA', page)
+);
     } catch (err) {
       console.error('peac error:', err?.response?.data || err.message);
       return reply(event.replyToken, { type: 'text', text: '❌ดึงข้อมูล PEA จากเลข CA ไม่สำเร็จ: ' + err.message });
