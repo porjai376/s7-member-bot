@@ -589,6 +589,74 @@ function formatKeyValueRows(data, title) {
   return limitLineMessage(result);
 }
 
+function buildCellSiteFlex(data, input) {
+  const row = Array.isArray(data) ? data[0] : data;
+  const lat = row?.Latitude;
+  const lon = row?.Longitude;
+  const mapUrl = lat && lon ? `https://www.google.com/maps?q=${lat},${lon}` : null;
+
+  return {
+    type: 'flex',
+    altText: `Cell Site ${input}`,
+    contents: {
+      type: 'bubble',
+      size: 'mega',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        backgroundColor: '#0F172A',
+        paddingAll: '16px',
+        contents: [
+          { type: 'text', text: '📡 Cell Site', color: '#FFFFFF', weight: 'bold', size: 'lg' },
+          { type: 'text', text: input, color: '#CBD5E1', size: 'sm', margin: 'sm' }
+        ]
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'md',
+        contents: [
+          infoLine('Home MCC', row && row['Home MCC'] ? row['Home MCC'] : '-'),
+          infoLine('Home MNC', row && row['Home MNC'] ? row['Home MNC'] : '-'),
+          infoLine('LAC/TAC', row && row['LAC/TAC'] ? row['LAC/TAC'] : '-'),
+          infoLine('CID/eCID', row && row['CID/eCID'] ? row['CID/eCID'] : '-'),
+          infoLine('Latitude', lat || '-'),
+          infoLine('Longitude', lon || '-'),
+          infoLine('Type', row && row.Type ? row.Type : '-'),
+          infoLine('Signal type', row && row['Signal type'] ? row['Signal type'] : '-')
+        ]
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'sm',
+        contents: [
+          mapUrl
+            ? {
+                type: 'button',
+                style: 'primary',
+                color: '#2563EB',
+                action: {
+                  type: 'uri',
+                  label: 'เปิด Google Maps',
+                  uri: mapUrl
+                }
+              }
+            : {
+                type: 'button',
+                style: 'secondary',
+                action: {
+                  type: 'message',
+                  label: 'ไม่มีพิกัด',
+                  text: 'ไม่มีพิกัด'
+                }
+              }
+        ]
+      }
+    }
+  };
+}
+
 async function trackFlashExpress(trackingId) {
   try {
     const response = await axios({
@@ -2992,8 +3060,10 @@ async function handleText(event) {
     const cellInput = text.replace(/^cell%/i, '').trim();
     try {
       const data = await fetchPEAApi({ cell: cellInput });
-      const result = formatKeyValueRows(data, `📡 Cell Site: ${cellInput}`);
-      return reply(event.replyToken, { type: 'text', text: result });
+return reply(
+  event.replyToken,
+  buildCellSiteFlex(data, cellInput)
+);
     } catch (err) {
       console.error('cell lookup error:', err?.response?.data || err.message);
       return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูล cell site ไม่สำเร็จ: ' + err.message });
