@@ -1443,22 +1443,21 @@ function infoLine(label, value) {
   return {
     type: 'box',
     layout: 'baseline',
-    spacing: 'sm',
     contents: [
       {
         type: 'text',
         text: label,
         size: 'sm',
-        color: '#6B7280',
-        flex: 3
+        flex: 3,
+        color: '#555'
       },
       {
         type: 'text',
-        text: String(value || '-'),
+        text: value,
         size: 'sm',
-        color: '#111827',
+        flex: 5,
         wrap: true,
-        flex: 7
+        color: '#111'
       }
     ]
   };
@@ -1646,7 +1645,7 @@ function buildCarCidFlex(data) {
   type: 'box',
   layout: 'vertical',
   spacing: 'md',
-  contents: [
+contents: [
   infoLine('ทะเบียน', plate),
   infoLine('ยี่ห้อ', car.modelName || '-'),
   infoLine('สี', car.colorDesc || car.carChkMasColorListText || '-'),
