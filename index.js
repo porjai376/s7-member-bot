@@ -1647,13 +1647,13 @@ function buildCarCidFlex(data) {
   layout: 'vertical',
   spacing: 'md',
   contents: [
-    infoLine('ทะเบียน', plate),
-    infoLine('ยี่ห้อ', car.brand || car.brandName || car.make || car.carBrand || car.vehicleBrand || '-'),
-    infoLine('สี', car.color || car.carColor || car.vehicleColor || '-'),
-    infoLine('ประเภท', car.type || car.carType || car.vehicleType || car.vehicleTypeName || car.vehType || '-'),
-    infoLine('เจ้าของ', car.owner || car.ownerName || car.fullname || car.name || '-'),
-    infoLine('หมดอายุ', car.expireDate || car.expire || car.expire_date || car.taxExpire || car.endDate || '-')
-  ]
+  infoLine('ทะเบียน', plate),
+  infoLine('ยี่ห้อ', car.modelName || '-'),
+  infoLine('สี', car.colorDesc || car.carChkMasColorListText || '-'),
+  infoLine('ประเภท', car.vehTypeDesc || car.kindDesc || '-'),
+  infoLine('เจ้าของ', car.owner1 || '-'),
+  infoLine('หมดอายุ', formatDate(car.expDate))
+]
 }
     };
   });
