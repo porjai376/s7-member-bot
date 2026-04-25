@@ -3377,9 +3377,12 @@ return reply(
       return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลข CA เช่น peac%020006438778' });
     }
     try {
-      const data = await fetchPEAApi({ peac: ca });
-      const result = formatPEAMeterRecords(data, '⚡ ข้อมูลมิเตอร์ไฟฟ้า PEA', page);
-      return reply(event.replyToken, { type: 'text', text: result });
+      const peaData = await fetchPEAApi({ peac: ca });
+
+return reply(
+  event.replyToken,
+  buildPEAMeterCarouselFlex(peaData, '⚡ ข้อมูลมิเตอร์ไฟฟ้าตามเลข CA', page)
+);
     } catch (err) {
       console.error('peac error:', err?.response?.data || err.message);
       return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูล PEA จากเลข CA ไม่สำเร็จ: ' + err.message });
