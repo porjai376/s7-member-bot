@@ -414,6 +414,36 @@ function limitLineMessage(msg) {
   return msg.length > 4800 ? msg.slice(0, 4800) + '\n...ตัดข้อความ...' : msg;
 }
 
+function limitAllSection(text, max = 1000) {
+  const value = String(text || '-');
+  return value.length > max ? value.slice(0, max) + '\n...ย่อข้อมูล...' : value;
+}
+
+function summarizeSI(data) {
+  const rows = Array.isArray(data?.content)
+    ? data.content
+    : Array.isArray(data?.data)
+      ? data.data
+      : Array.isArray(data)
+        ? data
+        : [];
+
+  if (!rows.length) return '❌ ไม่พบข้อมูลประกันสังคม';
+
+  let msg = `📊 จำนวนที่พบ: ${rows.length} รายการ\n`;
+
+  rows.slice(0, 3).forEach((item, i) => {
+    msg += `\n🏢 บริษัท ${i + 1}\n`;
+    msg += `ชื่อบริษัท: ${item.companyName || item.company || item.name || '-'}\n`;
+    msg += `วันที่เริ่มงาน: ${item.startDate || item.beginDate || '-'}\n`;
+    msg += `วันที่ลาออก: ${item.endDate || item.resignDate || '-'}\n`;
+    msg += `สถานะ: ${item.status || item.statusText || '-'}\n`;
+  });
+
+  if (rows.length > 3) msg += `\n...แสดง 3 จาก ${rows.length} รายการ`;
+  return msg.trim();
+}
+
 async function fetchPEAApi(params) {
   const { data: res } = await axios.get(SEARCH_API_BASE, { params, timeout: 30000 });
   if (!res.success) {
@@ -3389,6 +3419,54 @@ return reply(
     });
   }
 }
+
+// 🔎 รวมข้อมูลจากเลขบัตร
+  if (/^all%\d{13}$/.test(text)) {
+    const pid = text.replace(/^all%/, '').trim();
+
+    try {
+      const [hRes, cRes, siRes, sRes] = await Promise.allSettled([
+        searchJediHp(pid),
+        fetchCrime(pid),
+        fetchPEAApi({ si: pid }),
+        fetchInstallment(pid)
+      ]);
+
+      let msg = `🔎ผลการค้นหา [PID]\nเลขบัตร: ${pid}\n-------------------\n`;
+
+      msg += `\n🏥 ข้อมูลบุคคล/สิทธิรักษา\n`;
+      msg += hRes.status === 'fulfilled'
+        ? limitAllSection(hRes.value, 900)
+        : '❌ ดึงข้อมูล h% ไม่สำเร็จ';
+
+      msg += `\n\n-------------------\n🚨 หมายจับ\n`;
+      msg += cRes.status === 'fulfilled'
+        ? limitAllSection(formatCrime(cRes.value, pid), 900)
+        : '❌ ดึงข้อมูล c# ไม่สำเร็จ';
+
+      msg += `\n\n-------------------\n👔 ประกันสังคม\n`;
+      msg += siRes.status === 'fulfilled'
+        ? summarizeSI(siRes.value)
+        : '❌ ดึงข้อมูล si% ไม่สำเร็จ';
+
+      msg += `\n\n-------------------\n📺 ผ่อนสินค้า\n`;
+      msg += sRes.status === 'fulfilled'
+        ? limitAllSection(formatInstallment(sRes.value), 1200)
+        : '❌ ดึงข้อมูล s% ไม่สำเร็จ';
+
+      return reply(event.replyToken, {
+        type: 'text',
+        text: limitLineMessage(msg)
+      });
+
+    } catch (err) {
+      console.error('all lookup error:', err?.response?.data || err.message);
+      return reply(event.replyToken, {
+        type: 'text',
+        text: '❌ ดึงข้อมูลรวมไม่สำเร็จ'
+      });
+    }
+  }
 
  return;
 }
