@@ -36,6 +36,8 @@ async function fetchHlrLookup(msisdn) {
 
 const app = express();
 
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 const CHANNEL_ACCESS_TOKEN = process.env.CHANNEL_ACCESS_TOKEN;
 const CHANNEL_SECRET = process.env.CHANNEL_SECRET;
 const PORT = process.env.PORT || 3000;
