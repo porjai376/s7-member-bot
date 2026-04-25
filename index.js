@@ -1309,24 +1309,73 @@ function buildPEAAddressCarouselFlex(peaData, page = 0) {
   };
 }
 
-function formatPEABillHistory(billResponseData, ca, peano) {
+function buildPEABillHistoryCarouselFlex(billResponseData, ca, peano) {
   if (!billResponseData?.result || !Array.isArray(billResponseData?.data)) {
-    return '❌ ไม่สามารถดึงข้อมูลได้: ' + (billResponseData?.message || 'ระบบขัดข้อง');
+    return {
+      type: 'text',
+      text: '❌ ไม่สามารถดึงข้อมูลได้: ' + (billResponseData?.message || 'ระบบขัดข้อง')
+    };
   }
 
   const billData = billResponseData.data;
-  if (!billData.length) return '❌ ไม่พบข้อมูลประวัติการชำระเงินของหมายเลขนี้';
+  if (!billData.length) {
+    return {
+      type: 'text',
+      text: '❌ ไม่พบข้อมูลประวัติการชำระเงินของหมายเลขนี้'
+    };
+  }
 
-  let msg = `⚡ ประวัติการใช้ไฟฟ้า (PEA)\n🏠 CA: ${ca} | PEA NO: ${peano}\n====================\n`;
-  billData.forEach(item => {
-    msg += `📅 งวดเดือน: ${item.billperiod}\n`;
-    msg += `🔌 หน่วยที่ใช้: ${item.unit} หน่วย\n`;
-    msg += `💰 ยอดเงิน: ${Number(item.totalAmountPay).toLocaleString()} บาท\n`;
-    msg += `✅ วันที่จ่าย: ${item.paydate || 'ยังไม่ได้ชำระ'}\n`;
-    msg += `--------------------\n`;
+  const bubbles = billData.slice(0, 10).map((item, index) => {
+    const amount = Number(item.totalAmountPay || 0).toLocaleString();
+
+    return {
+      type: 'bubble',
+      size: 'mega',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        backgroundColor: '#0F172A',
+        paddingAll: '16px',
+        contents: [
+          {
+            type: 'text',
+            text: `⚡ งวดที่ ${index + 1}`,
+            color: '#FFFFFF',
+            weight: 'bold',
+            size: 'lg'
+          },
+          {
+            type: 'text',
+            text: `CA: ${ca} | PEA: ${peano}`,
+            color: '#CBD5E1',
+            size: 'sm',
+            margin: 'sm',
+            wrap: true
+          }
+        ]
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'md',
+        contents: [
+          infoLine('งวดเดือน', item.billperiod || '-'),
+          infoLine('หน่วยที่ใช้', `${item.unit || '-'} หน่วย`),
+          infoLine('ยอดเงิน', `${amount} บาท`),
+          infoLine('วันที่จ่าย', item.paydate || 'N/A')
+        ]
+      }
+    };
   });
 
-  return limitLineMessage(msg);
+  return {
+    type: 'flex',
+    altText: `ประวัติการใช้ไฟฟ้า PEA ${ca}`,
+    contents: {
+      type: 'carousel',
+      contents: bubbles
+    }
+  };
 }
 
 function infoLine(label, value) {
@@ -3092,9 +3141,10 @@ async function handleText(event) {
       return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุข้อมูลให้ครบ เช่น peab%020006438778 6300096416' });
     }
     try {
-      const data = await fetchPEAApi({ peab: ca, peano });
-      const result = formatPEABillHistory(data, ca, peano);
-      return reply(event.replyToken, { type: 'text', text: result });
+      return reply(
+  event.replyToken,
+  buildPEABillHistoryCarouselFlex(data, ca, peano)
+);
     } catch (err) {
       console.error('peab error:', err?.response?.data || err.message);
       return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูลประวัติค่าไฟ PEA ไม่สำเร็จ: ' + err.message });
