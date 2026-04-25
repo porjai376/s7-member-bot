@@ -2856,41 +2856,41 @@ async function handleText(event) {
         if (page >= totalPages) return reply(event.replyToken, { type: 'text', text: `ไม่พบข้อมูลหน้าที่ ${page + 1} (มีทั้งหมด ${totalPages} หน้า)` });
         const startIndex = page * itemsPerPage;
         const pageItems = data.content.slice(startIndex, Math.min(startIndex + itemsPerPage, data.content.length));
-        let result = `🚨 ข้อมูลหมายศาล (หน้า ${page + 1}/${totalPages})\n====================\n`;
+        let result = `🔎ข้อมูลหมายจับศาล(หน้า ${page + 1}/${totalPages})\n- - - - - - - - - - - - -\n`;
         pageItems.forEach((warrant, idx) => {
-          result += `\n📄 หมายจับที่ ${startIndex + idx + 1}\nเลขที่: ${warrant.woaNo}/${warrant.woaYear}\nศาล: ${warrant.courtCodeText}\n\n👤 ข้อมูลผู้ต้องหา\nชื่อ-สกุล: ${warrant.accFullName}\nเลขบัตรประชาชน: ${warrant.accCardId}\nสัญชาติ: ${warrant.accNationText}\nอาชีพ: ${warrant.accOccupation}\n\n📍 ที่อยู่\nตำบล/แขวง: ${warrant.accSubDistrictText || warrant.accSubDistrict}\nอำเภอ/เขต: ${warrant.accDistrictText}\n\n⚖️ ข้อมูลคดี\nสถานะ: ${warrant.arrestStatus}\nข้อหา: ${warrant.charge}\nผู้ร้อง: ${warrant.plaintiff}\nผู้พิพากษา: ${warrant.judgeName}\n\n📅 วันที่\nออกหมาย: ${new Date(warrant.woaDate).toLocaleDateString('th-TH')}\nเริ่มต้น: ${new Date(warrant.woaStartDate).toLocaleDateString('th-TH')}\nสิ้นสุด: ${new Date(warrant.woaEndDate).toLocaleDateString('th-TH')}\n-------------------`;
+          result += `\n📄หมายจับที่ ${startIndex + idx + 1}\nเลขที่:${warrant.woaNo}/${warrant.woaYear}\nศาล:${warrant.courtCodeText}\n\n👤 ข้อมูลผู้ต้องหา\nชื่อ-สกุล: ${warrant.accFullName}\nเลขบัตรประชาชน: ${warrant.accCardId}\nสัญชาติ: ${warrant.accNationText}\nอาชีพ: ${warrant.accOccupation}\n\n📍 ที่อยู่\nตำบล/แขวง: ${warrant.accSubDistrictText || warrant.accSubDistrict}\nอำเภอ/เขต: ${warrant.accDistrictText}\n\n⚖️ ข้อมูลคดี\nสถานะ: ${warrant.arrestStatus}\nข้อหา: ${warrant.charge}\nผู้ร้อง: ${warrant.plaintiff}\nผู้พิพากษา: ${warrant.judgeName}\n\n📅 วันที่\nออกหมาย: ${new Date(warrant.woaDate).toLocaleDateString('th-TH')}\nเริ่มต้น: ${new Date(warrant.woaStartDate).toLocaleDateString('th-TH')}\nสิ้นสุด: ${new Date(warrant.woaEndDate).toLocaleDateString('th-TH')}\n-------------------`;
         });
-        result += `\n📊 แสดง ${pageItems.length} จาก ${data.content.length} รายการ`;
+        result += `\n📊แสดง ${pageItems.length} จาก ${data.content.length} รายการ`;
         if (totalPages > 1) result += `\nพิมพ์ doc#${accCardId} [1-${totalPages}] เพื่อดูหน้าอื่น`;
         return reply(event.replyToken, { type: 'text', text: result });
       } else {
         return reply(event.replyToken, { type: 'text', text: 'ไม่พบข้อมูลหมายศาล' });
       }
     } catch (err) {
-      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูลหมายศาลไม่สำเร็จ' });
+      return reply(event.replyToken, { type: 'text', text: '❌ดึงข้อมูลหมายศาลไม่สำเร็จ' });
     }
   }
 
   // ใบขับขี่: dl#เลขบัตร
   if (text.startsWith('dl#')) {
     const cid = text.replace(/^dl#/, '').trim();
-    if (!cid) return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขบัตรประชาชน เช่น dl#1234567890123' });
+    if (!cid) return reply(event.replyToken, { type: 'text', text: '❌กรุณาระบุเลขบัตรประชาชน เช่น dl#1234567890123' });
     try {
       const { data: res } = await axios.get(`http://103.91.204.203:4000/?dl=${cid}`);
       if (!res.success) return reply(event.replyToken, { type: 'text', text: `❌ ${res.message || 'ดึงข้อมูลไม่สำเร็จ'}` });
       const data = res.data;
       if (data.content && data.content.length > 0) {
-        let result = `🚗 ข้อมูลใบขับขี่\n====================\n`;
+        let result = `🔎ข้อมูลใบขับขี่\n- - - - - - - - - - - - -\n`;
         data.content.forEach((license, idx) => {
-          result += `\n📄 ใบขับขี่ที่ ${idx + 1}\n👤 ชื่อ-นามสกุล: ${license.fullName}\n🆔 เลขบัตรประชาชน: ${license.citizenCardNumber}\n🚗 ประเภทใบขับขี่: ${license.type}\n📝 เลขที่ใบขับขี่: ${license.licenseNumber}\n📅 วันที่ออกใบอนุญาต: ${new Date(license.licenseIssueDate).toLocaleDateString('th-TH')}\n📅 วันที่หมดอายุ: ${new Date(license.licenseExpirationDate).toLocaleDateString('th-TH')}\n⭐ สถานะ: ${license.status}\n🏠 ที่อยู่: ${license.address}\n-------------------`;
+          result += `\n📄ใบขับขี่ที่${idx + 1}\n👤ชื่อ:${license.fullName}\n🆔เลขบัตร:${license.citizenCardNumber}\n🪪ประเภทใบขับขี่: ${license.type}\n📝 เลขที่ใบขับขี่: ${license.licenseNumber}\n📅 วันที่ออกใบอนุญาต: ${new Date(license.licenseIssueDate).toLocaleDateString('th-TH')}\n📅 วันที่หมดอายุ: ${new Date(license.licenseExpirationDate).toLocaleDateString('th-TH')}\n⭐ สถานะ: ${license.status}\n🏠 ที่อยู่: ${license.address}\n-------------------`;
         });
-        result += `\n📊 พบข้อมูลทั้งหมด ${data.totalElements} รายการ`;
+        result += `\n📊พบข้อมูลทั้งหมด ${data.totalElements} รายการ`;
         return reply(event.replyToken, { type: 'text', text: result });
       } else {
         return reply(event.replyToken, { type: 'text', text: 'ไม่พบข้อมูลใบขับขี่' });
       }
     } catch (err) {
-      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูลใบขับขี่ไม่สำเร็จ' });
+      return reply(event.replyToken, { type: 'text', text: '❌ดึงข้อมูลใบขับขี่ไม่สำเร็จ' });
     }
   }
 
@@ -2903,17 +2903,17 @@ async function handleText(event) {
       if (!res.success) return reply(event.replyToken, { type: 'text', text: `❌ ${res.message || 'ดึงข้อมูลไม่สำเร็จ'}` });
       const data = res.data;
       if (data.content && data.content.length > 0) {
-        let result = `🚗 ข้อมูลทะเบียนรถ (จาก CID)\n====================\n`;
+        let result = `🚗ข้อมูลทะเบียนรถ (จาก CID)\n- - - - - - - - - - - - -\n`;
         data.content.slice(0, 5).forEach((vehicle, idx) => {
-          result += `\n📄 รถคันที่ ${idx + 1}\n🚘 ทะเบียน: ${vehicle.plate1 || ''}${vehicle.plate2 || ''}\n🚗 ยี่ห้อ: ${vehicle.brnDesc || 'ไม่ระบุ'}\n🎨 สี: ${(vehicle.carChkMasColorList && vehicle.carChkMasColorList[0]?.colorDesc) || 'ไม่ระบุ'}\n🔧 ประเภท: ${vehicle.vehTypeDesc || 'ไม่ระบุ'}\n👤 เจ้าของ: ${vehicle.owner1 || 'ไม่ระบุ'}\n📅 หมดอายุ: ${vehicle.expDate ? new Date(vehicle.expDate).toLocaleDateString('th-TH') : 'ไม่ระบุ'}\n-------------------`;
+          result += `\n📄รถคันที่${idx + 1}\n🚘ทะเบียน: ${vehicle.plate1 || ''}${vehicle.plate2 || ''}\n🚗ยี่ห้อ: ${vehicle.brnDesc || 'ไม่ระบุ'}\n🎨 สี: ${(vehicle.carChkMasColorList && vehicle.carChkMasColorList[0]?.colorDesc) || 'ไม่ระบุ'}\n🔧 ประเภท: ${vehicle.vehTypeDesc || 'ไม่ระบุ'}\n👤 เจ้าของ: ${vehicle.owner1 || 'ไม่ระบุ'}\n📅 หมดอายุ: ${vehicle.expDate ? new Date(vehicle.expDate).toLocaleDateString('th-TH') : 'ไม่ระบุ'}\n-------------------`;
         });
-        result += `\n📊 พบทั้งหมด ${data.content.length} คัน`;
+        result += `\n📊พบทั้งหมด ${data.content.length} คัน`;
         return reply(event.replyToken, { type: 'text', text: result });
       } else {
         return reply(event.replyToken, { type: 'text', text: 'ไม่พบข้อมูลทะเบียนรถ' });
       }
     } catch (err) {
-      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูลทะเบียนรถไม่สำเร็จ' });
+      return reply(event.replyToken, { type: 'text', text: '❌ดึงข้อมูลทะเบียนรถไม่สำเร็จ' });
     }
   }
 
@@ -2941,9 +2941,9 @@ async function handleText(event) {
         if (page >= totalPages) return reply(event.replyToken, { type: 'text', text: `ไม่พบข้อมูลหน้าที่ ${page + 1} (มีทั้งหมด ${totalPages} หน้า)` });
         const startIndex = page * itemsPerPage;
         const pageItems = data.content.slice(startIndex, Math.min(startIndex + itemsPerPage, data.content.length));
-        let result = `🚗 ข้อมูลทะเบียนรถ (หน้า ${page + 1}/${totalPages})\n====================\n`;
+        let result = `🚗 ข้อมูลทะเบียนรถ (หน้า ${page + 1}/${totalPages})\n- - - - - - - - - - - - -\n`;
         pageItems.forEach((vehicle, idx) => {
-          result += `\n📄 รถคันที่ ${startIndex + idx + 1}\n🚘 ทะเบียน: ${vehicle.plate1 || ''}${vehicle.plate2 || ''}\n🏢 สำนักงาน: ${vehicle.offLocDesc || 'ไม่ระบุ'}\n🚗 ยี่ห้อ: ${vehicle.brnDesc || 'ไม่ระบุ'}\n📝 รุ่น: ${vehicle.modelName || 'ไม่ระบุ'}\n🎨 สี: ${(vehicle.carChkMasColorList && vehicle.carChkMasColorList[0]?.colorDesc) || 'ไม่ระบุ'}\n🔧 ประเภทรถ: ${vehicle.vehTypeDesc || 'ไม่ระบุ'}\n📋 หมายเลขตัวถัง: ${vehicle.numBody || 'ไม่ระบุ'}\n📅 วันที่จดทะเบียน: ${vehicle.regDate ? new Date(vehicle.regDate).toLocaleDateString('th-TH') : 'ไม่ระบุ'}\n📅 วันที่หมดอายุ: ${vehicle.expDate ? new Date(vehicle.expDate).toLocaleDateString('th-TH') : 'ไม่ระบุ'}\n\n👤 ข้อมูลเจ้าของ\nเจ้าของที่ 1:\nเลขประจำตัว: ${vehicle.docNo1 || 'ไม่ระบุ'}\nชื่อ: ${vehicle.owner1 || 'ไม่ระบุ'}\nที่อยู่: ${vehicle.addressOwner1 || 'ไม่ระบุ'}\n${vehicle.docNo2 ? `\nเจ้าของที่ 2:\nเลขประจำตัว: ${vehicle.docNo2}\nชื่อ: ${vehicle.owner2 || 'ไม่ระบุ'}` : ''}\n-------------------`;
+          result += `\n📄รถคันที่${startIndex + idx + 1}\n🚘ทะเบียน:${vehicle.plate1 || ''}${vehicle.plate2 || ''}\n🏢สำนักงาน:${vehicle.offLocDesc || 'ไม่ระบุ'}\n🚗ยี่ห้อ:${vehicle.brnDesc || 'ไม่ระบุ'}\n📝รุ่น:${vehicle.modelName || 'ไม่ระบุ'}\n🎨 สี: ${(vehicle.carChkMasColorList && vehicle.carChkMasColorList[0]?.colorDesc) || 'ไม่ระบุ'}\n🔧 ประเภทรถ: ${vehicle.vehTypeDesc || 'ไม่ระบุ'}\n📋 หมายเลขตัวถัง: ${vehicle.numBody || 'ไม่ระบุ'}\n📅 วันที่จดทะเบียน: ${vehicle.regDate ? new Date(vehicle.regDate).toLocaleDateString('th-TH') : 'ไม่ระบุ'}\n📅 วันที่หมดอายุ: ${vehicle.expDate ? new Date(vehicle.expDate).toLocaleDateString('th-TH') : 'ไม่ระบุ'}\n\n👤 ข้อมูลเจ้าของ\nเจ้าของที่ 1:\nเลขประจำตัว: ${vehicle.docNo1 || 'ไม่ระบุ'}\nชื่อ:${vehicle.owner1 || 'ไม่ระบุ'}\nที่อยู่:${vehicle.addressOwner1 || 'ไม่ระบุ'}\n${vehicle.docNo2 ? `\nเจ้าของที่2:\nเลขประจำตัว:${vehicle.docNo2}\nชื่อ:${vehicle.owner2 || 'ไม่ระบุ'}` : ''}\n- - - - - - - - - - - - -`;
         });
         result += `\n📊 แสดง ${pageItems.length} จาก ${data.content.length} รายการ`;
         if (totalPages > 1) result += `\nพิมพ์ car#${province} ${plate1} ${plate2} ${vehTypeRef} [หน้า] เพื่อดูหน้าอื่น`;
@@ -2952,14 +2952,14 @@ async function handleText(event) {
         return reply(event.replyToken, { type: 'text', text: 'ไม่พบข้อมูลทะเบียนรถ' });
       }
     } catch (err) {
-      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูลทะเบียนรถไม่สำเร็จ' });
+      return reply(event.replyToken, { type: 'text', text: '❌ดึงข้อมูลทะเบียนรถไม่สำเร็จ' });
     }
   }
 
   if (text.startsWith('h%')) {
     const pidToSearch = text.replace(/^h%/, '').trim();
     if (!pidToSearch) {
-      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขบัตรประชาชน เช่น h%1234567890123' });
+      return reply(event.replyToken, { type: 'text', text: '❌กรุณาระบุเลขบัตรประชาชน เช่น h%1234567890123' });
     }
     const result = await searchJediHp(pidToSearch);
     return reply(event.replyToken, { type: 'text', text: result });
@@ -2968,7 +2968,7 @@ async function handleText(event) {
   if (text.startsWith('tic%')) {
     const trackingId = text.replace(/^tic%/, '').trim();
     if (!trackingId) {
-      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขพัสดุ เช่น tic%THT123456789TH' });
+      return reply(event.replyToken, { type: 'text', text: '❌กรุณาระบุเลขพัสดุ เช่น tic%THT123456789TH' });
     }
     const result = await trackFlashExpress(trackingId);
     return reply(event.replyToken, { type: 'text', text: result });
@@ -2982,7 +2982,7 @@ async function handleText(event) {
       return reply(event.replyToken, { type: 'text', text: result });
     } catch (err) {
       console.error('atm lookup error:', err?.response?.data || err.message);
-      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูล ATM ไม่สำเร็จ: ' + err.message });
+      return reply(event.replyToken, { type: 'text', text: '❌ดึงข้อมูล ATM ไม่สำเร็จ: ' + err.message });
     }
   }
 
@@ -2994,7 +2994,7 @@ async function handleText(event) {
       return reply(event.replyToken, { type: 'text', text: result });
     } catch (err) {
       console.error('cell lookup error:', err?.response?.data || err.message);
-      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูล cell site ไม่สำเร็จ: ' + err.message });
+      return reply(event.replyToken, { type: 'text', text: '❌ดึงข้อมูล cell site ไม่สำเร็จ: ' + err.message });
     }
   }
 
@@ -3010,7 +3010,7 @@ async function handleText(event) {
   if (text.startsWith('imei%')) {
     const imei = text.replace(/^imei%/, '').trim();
     if (!imei) {
-      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุหมายเลข IMEI เช่น imei%123456789012345' });
+      return reply(event.replyToken, { type: 'text', text: '❌กรุณาระบุหมายเลข IMEI เช่น imei%123456789012345' });
     }
     const result = await searchIMEI(imei);
     return reply(event.replyToken, { type: 'text', text: result });
@@ -3019,7 +3019,7 @@ async function handleText(event) {
   if (text.startsWith('imsi%')) {
     const imsiNumber = text.replace(/^imsi%/, '').trim();
     if (!imsiNumber) {
-      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุหมายเลข IMSI เช่น imsi%520044020881702' });
+      return reply(event.replyToken, { type: 'text', text: '❌กรุณาระบุหมายเลข IMSI เช่น imsi%520044020881702' });
     }
     const result = await searchIMSI(imsiNumber);
     return reply(event.replyToken, { type: 'text', text: result });
@@ -3028,7 +3028,7 @@ async function handleText(event) {
   if (text.startsWith('icc%')) {
     const iccidNumber = text.replace(/^icc%/, '').trim();
     if (!iccidNumber) {
-      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุหมายเลข ICCID เช่น icc%89660448216080569814' });
+      return reply(event.replyToken, { type: 'text', text: '❌กรุณาระบุหมายเลข ICCID เช่น icc%89660448216080569814' });
     }
     const result = await searchICCID(iccidNumber);
     return reply(event.replyToken, { type: 'text', text: result });
@@ -3037,21 +3037,21 @@ async function handleText(event) {
   if (text.startsWith('wf%')) {
     const citizenId = text.replace(/^wf%/i, '').trim();
     if (!/^\d{13}$/.test(citizenId)) {
-      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขบัตร 13 หลัก เช่น wf%3460300290391' });
+      return reply(event.replyToken, { type: 'text', text: '❌กรุณาระบุเลขบัตร 13 หลัก เช่น wf%3460300290391' });
     }
     try {
       const result = await checkWelfareDLA(citizenId);
       return reply(event.replyToken, { type: 'text', text: result });
     } catch (err) {
       console.error('wf error:', err?.response?.data || err.message);
-      return reply(event.replyToken, { type: 'text', text: '❌ ตรวจสอบเบี้ยยังชีพไม่สำเร็จ: ' + err.message });
+      return reply(event.replyToken, { type: 'text', text: '❌ตรวจสอบเบี้ยยังชีพไม่สำเร็จ: ' + err.message });
     }
   }
 
   if (text.startsWith('map%')) {
     const coordinates = text.replace(/^map%/, '').trim();
     if (!coordinates) {
-      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุพิกัด เช่น map%13.7563,100.5018' });
+      return reply(event.replyToken, { type: 'text', text: '❌กรุณาระบุพิกัด เช่น map%13.7563,100.5018' });
     }
     const result = await createMapLink(coordinates);
     return reply(event.replyToken, { type: 'text', text: result });
@@ -3060,7 +3060,7 @@ async function handleText(event) {
   if (text.startsWith('web%')) {
     const url = text.replace(/^web%/, '').trim();
     if (!url) {
-      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเว็บไซต์ เช่น web%example.com' });
+      return reply(event.replyToken, { type: 'text', text: '❌กรุณาระบุเว็บไซต์ เช่น web%example.com' });
     }
     const result = await getWebInfo(url);
     return reply(event.replyToken, { type: 'text', text: result });
@@ -3069,7 +3069,7 @@ async function handleText(event) {
   if (text.startsWith('psi#')) {
     const input = text.replace(/^psi#/, '').trim();
     if (!input) {
-      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขบัตรประชาชน เช่น psi#1234567890123' });
+      return reply(event.replyToken, { type: 'text', text: '❌กรุณาระบุเลขบัตรประชาชน เช่น psi#1234567890123' });
     }
     try {
       const data = await fetchPEAApi({ psi: input });
@@ -3077,14 +3077,14 @@ async function handleText(event) {
       return reply(event.replyToken, { type: 'text', text: result });
     } catch (err) {
       console.error('psi error:', err?.response?.data || err.message);
-      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูลผู้ต้องขังไม่สำเร็จ: ' + err.message });
+      return reply(event.replyToken, { type: 'text', text: '❌ดึงข้อมูลผู้ต้องขังไม่สำเร็จ: ' + err.message });
     }
   }
 
   if (text.startsWith('ps#')) {
     const input = text.replace(/^ps#/, '').trim();
     if (!input) {
-      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขบัตรประชาชน เช่น ps#1234567890123' });
+      return reply(event.replyToken, { type: 'text', text: '❌กรุณาระบุเลขบัตรประชาชน เช่น ps#1234567890123' });
     }
     try {
       const data = await fetchPEAApi({ ps: input });
@@ -3092,7 +3092,7 @@ async function handleText(event) {
       return reply(event.replyToken, { type: 'text', text: result });
     } catch (err) {
       console.error('ps error:', err?.response?.data || err.message);
-      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูลผู้ต้องขัง (ยังไม่พิพากษา) ไม่สำเร็จ: ' + err.message });
+      return reply(event.replyToken, { type: 'text', text: '❌ดึงข้อมูลผู้ต้องขัง (ยังไม่พิพากษา) ไม่สำเร็จ: ' + err.message });
     }
   }
 
@@ -3101,7 +3101,7 @@ async function handleText(event) {
     const ca = parts[0];
     const peano = parts[1];
     if (!ca || !peano) {
-      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุข้อมูลให้ครบ เช่น peab%020006438778 6300096416' });
+      return reply(event.replyToken, { type: 'text', text: '❌กรุณาระบุข้อมูลให้ครบ เช่น peab%020006438778 6300096416' });
     }
     try {
       const data = await fetchPEAApi({ peab: ca, peano });
@@ -3109,7 +3109,7 @@ async function handleText(event) {
       return reply(event.replyToken, { type: 'text', text: result });
     } catch (err) {
       console.error('peab error:', err?.response?.data || err.message);
-      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูลประวัติค่าไฟ PEA ไม่สำเร็จ: ' + err.message });
+      return reply(event.replyToken, { type: 'text', text: '❌ดึงข้อมูลประวัติค่าไฟ PEA ไม่สำเร็จ: ' + err.message });
     }
   }
 
@@ -3118,7 +3118,7 @@ async function handleText(event) {
     const ca = parts[0];
     const page = parts[1] ? parseInt(parts[1], 10) - 1 : 0;
     if (!ca) {
-      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลข CA เช่น peac%020006438778' });
+      return reply(event.replyToken, { type: 'text', text: '❌กรุณาระบุเลข CA เช่น peac%020006438778' });
     }
     try {
       const data = await fetchPEAApi({ peac: ca });
@@ -3126,7 +3126,7 @@ async function handleText(event) {
       return reply(event.replyToken, { type: 'text', text: result });
     } catch (err) {
       console.error('peac error:', err?.response?.data || err.message);
-      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูล PEA จากเลข CA ไม่สำเร็จ: ' + err.message });
+      return reply(event.replyToken, { type: 'text', text: '❌ดึงข้อมูล PEA จากเลข CA ไม่สำเร็จ: ' + err.message });
     }
   }
 
@@ -3139,7 +3139,7 @@ async function handleText(event) {
     }
     const name = parts.join(' ');
     if (!name) {
-      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาใส่ชื่อเต็มและนามสกุล เช่น pean%เย็น เก่งสาริกิจ' });
+      return reply(event.replyToken, { type: 'text', text: '❌กรุณาใส่ชื่อเต็มและนามสกุล เช่น pean%เย็น เก่งสาริกิจ' });
     }
     try {
       const data = await fetchPEAApi({ pean: name });
@@ -3147,7 +3147,7 @@ async function handleText(event) {
       return reply(event.replyToken, { type: 'text', text: result });
     } catch (err) {
       console.error('pean error:', err?.response?.data || err.message);
-      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูล PEA จากชื่อไม่สำเร็จ: ' + err.message });
+      return reply(event.replyToken, { type: 'text', text: '❌ดึงข้อมูล PEA จากชื่อไม่สำเร็จ: ' + err.message });
     }
   }
 
@@ -3160,7 +3160,7 @@ async function handleText(event) {
     }
     const address = parts.join(' ');
     if (!address) {
-      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุที่อยู่ เช่น peau%นครสวรรค์' });
+      return reply(event.replyToken, { type: 'text', text: '❌กรุณาระบุที่อยู่ เช่น peau%11 ม.1 ต.ทดสอบ อ.ทดสอบ' });
     }
     try {
       const data = await fetchPEAApi({ peau: address });
@@ -3168,7 +3168,7 @@ async function handleText(event) {
       return reply(event.replyToken, { type: 'text', text: result });
     } catch (err) {
       console.error('peau error:', err?.response?.data || err.message);
-      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูล PEA จากที่อยู่ไม่สำเร็จ: ' + err.message });
+      return reply(event.replyToken, { type: 'text', text: '❌ดึงข้อมูล PEA จากที่อยู่ไม่สำเร็จ: ' + err.message });
     }
   }
 
@@ -3184,7 +3184,7 @@ async function handleImage(event) {
 if (!member) {
   return reply(event.replyToken, {
     type: 'text',
-    text: '❌ กรุณาสมัครสมาชิกก่อน โดยพิมพ์: ยินยอมรับข้อตกลง'
+    text: '❌กรุณาสมัครสมาชิกก่อน โดยพิมพ์: ยินยอมรับข้อตกลง'
   });
 }
 
@@ -3193,7 +3193,7 @@ if (member.status === 'waiting_card') {
 } else if (!isActiveMember(member)) {
   return reply(event.replyToken, {
     type: 'text',
-    text: '⏳ บัญชีของคุณยังไม่ได้รับการอนุมัติจากแอดมิน หรือสมาชิกหมดอายุ'
+    text: '⏳บัญชีของคุณยังไม่ได้รับการอนุมัติจากแอดมิน หรือสมาชิกหมดอายุ'
   });
 }
 
