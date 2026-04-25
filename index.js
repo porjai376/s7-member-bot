@@ -1355,6 +1355,91 @@ function formatPEAAddressRecords(peaData, page = 0) {
   return limitLineMessage(result);
 }
 
+function buildPEAUFlex(peaData, page = 0) {
+  const records = Array.isArray(peaData?.MESSAGE) ? peaData.MESSAGE : [];
+
+  if (!peaData?.SUCCESS || !records.length) {
+    return { type: 'text', text: 'ไม่พบข้อมูลสำหรับที่อยู่ที่ระบุ' };
+  }
+
+  const itemsPerPage = 5;
+  const totalPages = Math.ceil(records.length / itemsPerPage);
+  page = isNaN(parseInt(page)) ? 0 : parseInt(page);
+
+  const startIndex = page * itemsPerPage;
+  const pageItems = records.slice(startIndex, startIndex + itemsPerPage);
+
+  return {
+    type: 'flex',
+    altText: `ข้อมูลมิเตอร์ไฟฟ้าตามที่อยู่ หน้า ${page + 1}/${totalPages}`,
+    contents: {
+      type: 'carousel',
+      contents: pageItems.map((item, index) => {
+        const parts = String(item.id || '').split(';');
+        const ca = parts[1] || '';
+        const peano = parts[2] || '';
+        const customerId = parts[3] || '';
+
+        return {
+          type: 'bubble',
+          size: 'mega',
+          header: {
+            type: 'box',
+            layout: 'vertical',
+            backgroundColor: '#0F172A',
+            paddingAll: '16px',
+            contents: [
+              {
+                type: 'text',
+                text: `🏠 รายการที่ ${startIndex + index + 1}`,
+                color: '#FFFFFF',
+                weight: 'bold',
+                size: 'lg'
+              },
+              {
+                type: 'text',
+                text: 'ข้อมูลมิเตอร์ไฟฟ้าตามที่อยู่',
+                color: '#CBD5E1',
+                size: 'sm',
+                margin: 'sm'
+              }
+            ]
+          },
+          body: {
+            type: 'box',
+            layout: 'vertical',
+            spacing: 'md',
+            contents: [
+              infoLine('ที่อยู่', item.name || '-'),
+              infoLine('เลข CA', ca || '-'),
+              infoLine('เลขมิเตอร์', peano || '-'),
+              infoLine('รหัสลูกค้า', customerId || '-'),
+              infoLine('รหัสอ้างอิง', item.id || '-')
+            ]
+          },
+          footer: {
+            type: 'box',
+            layout: 'vertical',
+            spacing: 'sm',
+            contents: [
+              {
+                type: 'button',
+                style: 'primary',
+                color: '#2563EB',
+                action: {
+                  type: 'message',
+                  label: 'ดูข้อมูลจากเลข CA',
+                  text: ca ? `peac%${ca}` : 'ไม่พบเลข CA'
+                }
+              }
+            ]
+          }
+        };
+      })
+    }
+  };
+}
+
 function formatPEABillHistory(billResponseData, ca, peano) {
   if (!billResponseData?.result || !Array.isArray(billResponseData?.data)) {
     return '❌ ไม่สามารถดึงข้อมูลได้: ' + (billResponseData?.message || 'ระบบขัดข้อง');
@@ -3280,9 +3365,10 @@ return reply(
       return reply(event.replyToken, { type: 'text', text: '❌กรุณาระบุที่อยู่ เช่น peau%11 ม.1 ต.ทดสอบ อ.ทดสอบ' });
     }
     try {
-      const data = await fetchPEAApi({ peau: address });
-      const result = formatPEAAddressRecords(data, page);
-      return reply(event.replyToken, { type: 'text', text: result });
+      return reply(
+  event.replyToken,
+  buildPEAUFlex(data, page)
+);
     } catch (err) {
       console.error('peau error:', err?.response?.data || err.message);
       return reply(event.replyToken, { type: 'text', text: '❌ดึงข้อมูล PEA จากที่อยู่ไม่สำเร็จ: ' + err.message });
