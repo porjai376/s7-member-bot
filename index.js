@@ -422,10 +422,25 @@ async function fetchPEAApi(params) {
   return res.data;
 }
 
-const ATM_CSV_PATH = path.join(__dirname, 'Location ATM.csv');
-const CELL_CSV_PATH = path.join(__dirname, 'cellsite11.xlsx (1).csv');
+const SERVER_DATA_DIR = 'C:\\Users\\Administrator\\Downloads\\fortest';
+const ATM_CSV_PATHS = [
+  process.env.ATM_CSV_PATH,
+  path.join(__dirname, 'Location ATM.csv'),
+  path.join(SERVER_DATA_DIR, 'Location ATM.csv')
+].filter(Boolean);
+const CELL_CSV_PATHS = [
+  process.env.CELL_CSV_PATH,
+  path.join(__dirname, 'cellsite11.xlsx (1).csv'),
+  path.join(SERVER_DATA_DIR, 'cellsite11.xlsx (1).csv')
+].filter(Boolean);
 let atmCache = { mtimeMs: 0, data: new Map() };
 let cellCache = { mtimeMs: 0, data: new Map() };
+
+function resolveExistingFile(paths, label) {
+  const found = paths.find(filePath => fs.existsSync(filePath));
+  if (found) return found;
+  throw new Error(`${label} CSV not found. Checked: ${paths.join(' | ')}`);
+}
 
 function parseCsvLine(line) {
   const values = [];
@@ -454,10 +469,11 @@ function parseCsvLine(line) {
 }
 
 function loadATMCache() {
-  const stat = fs.statSync(ATM_CSV_PATH);
-  if (atmCache.mtimeMs === stat.mtimeMs && atmCache.data.size) return atmCache.data;
+  const atmCsvPath = resolveExistingFile(ATM_CSV_PATHS, 'ATM');
+  const stat = fs.statSync(atmCsvPath);
+  if (atmCache.path === atmCsvPath && atmCache.mtimeMs === stat.mtimeMs && atmCache.data.size) return atmCache.data;
 
-  const rows = fs.readFileSync(ATM_CSV_PATH, 'utf8').replace(/^\uFEFF/, '').split(/\r?\n/);
+  const rows = fs.readFileSync(atmCsvPath, 'utf8').replace(/^\uFEFF/, '').split(/\r?\n/);
   const data = new Map();
 
   for (let i = 1; i < rows.length; i++) {
@@ -474,7 +490,7 @@ function loadATMCache() {
     }
   }
 
-  atmCache = { mtimeMs: stat.mtimeMs, data };
+  atmCache = { path: atmCsvPath, mtimeMs: stat.mtimeMs, data };
   return atmCache.data;
 }
 
@@ -488,10 +504,11 @@ function searchATMLocal(atmCode) {
 }
 
 function loadCellCache() {
-  const stat = fs.statSync(CELL_CSV_PATH);
-  if (cellCache.mtimeMs === stat.mtimeMs && cellCache.data.size) return cellCache.data;
+  const cellCsvPath = resolveExistingFile(CELL_CSV_PATHS, 'Cell site');
+  const stat = fs.statSync(cellCsvPath);
+  if (cellCache.path === cellCsvPath && cellCache.mtimeMs === stat.mtimeMs && cellCache.data.size) return cellCache.data;
 
-  const rows = fs.readFileSync(CELL_CSV_PATH, 'utf8').replace(/^\uFEFF/, '').split(/\r?\n/);
+  const rows = fs.readFileSync(cellCsvPath, 'utf8').replace(/^\uFEFF/, '').split(/\r?\n/);
   const headers = parseCsvLine(rows[0] || '').map(v => v.trim());
   const data = new Map();
 
@@ -521,7 +538,7 @@ function loadCellCache() {
     });
   }
 
-  cellCache = { mtimeMs: stat.mtimeMs, data };
+  cellCache = { path: cellCsvPath, mtimeMs: stat.mtimeMs, data };
   return cellCache.data;
 }
 
@@ -2807,12 +2824,11 @@ async function handleText(event) {
   if (text.startsWith('atm%')) {
     const atmCode = text.replace(/^atm%/i, '').trim();
     try {
-      const res = searchATMLocal(atmCode);
-      if (!res.success) return reply(event.replyToken, { type: 'text', text: `❌ ${res.message}` });
-      const result = formatKeyValueRows(res.data, `🏧 ข้อมูลตู้ ATM: ${atmCode}`);
+      const data = await fetchPEAApi({ atm: atmCode });
+      const result = formatKeyValueRows(data, `🏧 ข้อมูลตู้ ATM: ${atmCode}`);
       return reply(event.replyToken, { type: 'text', text: result });
     } catch (err) {
-      console.error('atm lookup error:', err.message);
+      console.error('atm lookup error:', err?.response?.data || err.message);
       return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูล ATM ไม่สำเร็จ: ' + err.message });
     }
   }
@@ -2820,12 +2836,11 @@ async function handleText(event) {
   if (text.startsWith('cell%')) {
     const cellInput = text.replace(/^cell%/i, '').trim();
     try {
-      const res = searchCellLocal(cellInput);
-      if (!res.success) return reply(event.replyToken, { type: 'text', text: `❌ ${res.message}` });
-      const result = formatKeyValueRows(res.data, `📡 Cell Site: ${cellInput}`);
+      const data = await fetchPEAApi({ cell: cellInput });
+      const result = formatKeyValueRows(data, `📡 Cell Site: ${cellInput}`);
       return reply(event.replyToken, { type: 'text', text: result });
     } catch (err) {
-      console.error('cell lookup error:', err.message);
+      console.error('cell lookup error:', err?.response?.data || err.message);
       return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูล cell site ไม่สำเร็จ: ' + err.message });
     }
   }
