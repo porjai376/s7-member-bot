@@ -1604,6 +1604,70 @@ function buildCarTypeFlex() {
   };
 }
 
+function buildCarCidFlex(data) {
+  const cars = Array.isArray(data?.content) ? data.content : [];
+
+  if (!cars.length) {
+    return {
+      type: 'text',
+      text: '❌ ไม่พบข้อมูลทะเบียนรถ'
+    };
+  }
+
+  const bubbles = cars.slice(0, 10).map((car, index) => {
+    const plate = `${car.plate1 || ''}${car.plate2 || ''}`.trim() || '-';
+
+    return {
+      type: 'bubble',
+      size: 'mega',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        backgroundColor: '#0F172A',
+        paddingAll: '16px',
+        contents: [
+          {
+            type: 'text',
+            text: `🚗 รถคันที่ ${index + 1}/${cars.length}`,
+            color: '#FFFFFF',
+            weight: 'bold',
+            size: 'lg'
+          },
+          {
+            type: 'text',
+            text: plate,
+            color: '#CBD5E1',
+            size: 'sm',
+            margin: 'sm'
+          }
+        ]
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'md',
+        contents: [
+          infoLine('ทะเบียน', plate),
+          infoLine('ยี่ห้อ', car.brand || '-'),
+          infoLine('สี', car.color || '-'),
+          infoLine('ประเภท', car.type || '-'),
+          infoLine('เจ้าของ', car.owner || '-'),
+          infoLine('หมดอายุ', car.expireDate || car.expire || '-')
+        ]
+      }
+    };
+  });
+
+  return {
+    type: 'flex',
+    altText: `ข้อมูลทะเบียนรถ พบทั้งหมด ${cars.length} คัน`,
+    contents: {
+      type: 'carousel',
+      contents: bubbles
+    }
+  };
+}
+
 function buildMenuCarouselFlex() {
   return {
     type: 'flex',
@@ -3171,12 +3235,10 @@ if (text === 'cartype%') {
       if (!res.success) return reply(event.replyToken, { type: 'text', text: `❌ ${res.message || 'ดึงข้อมูลไม่สำเร็จ'}` });
       const data = res.data;
       if (data.content && data.content.length > 0) {
-        let result = `🚗 ข้อมูลทะเบียนรถ (จาก CID)\n====================\n`;
-        data.content.slice(0, 5).forEach((vehicle, idx) => {
-          result += `\n📄 รถคันที่ ${idx + 1}\n🚘 ทะเบียน: ${vehicle.plate1 || ''}${vehicle.plate2 || ''}\n🚗 ยี่ห้อ: ${vehicle.brnDesc || 'ไม่ระบุ'}\n🎨 สี: ${(vehicle.carChkMasColorList && vehicle.carChkMasColorList[0]?.colorDesc) || 'ไม่ระบุ'}\n🔧 ประเภท: ${vehicle.vehTypeDesc || 'ไม่ระบุ'}\n👤 เจ้าของ: ${vehicle.owner1 || 'ไม่ระบุ'}\n📅 หมดอายุ: ${vehicle.expDate ? new Date(vehicle.expDate).toLocaleDateString('th-TH') : 'ไม่ระบุ'}\n-------------------`;
-        });
-        result += `\n📊 พบทั้งหมด ${data.content.length} คัน`;
-        return reply(event.replyToken, { type: 'text', text: result });
+      return reply(
+  event.replyToken,
+  buildCarCidFlex(data)
+);
       } else {
         return reply(event.replyToken, { type: 'text', text: 'ไม่พบข้อมูลทะเบียนรถ' });
       }
