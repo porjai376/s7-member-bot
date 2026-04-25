@@ -3354,26 +3354,41 @@ return reply(
   }
 
   if (text.startsWith('peau%')) {
-    const input = text.replace(/^peau%/, '').trim();
-    const parts = input.split(/\s+/);
-    let page = 0;
-    if (parts.length > 1 && /^\d+$/.test(parts[parts.length - 1])) {
-      page = parseInt(parts.pop(), 10) - 1;
-    }
-    const address = parts.join(' ');
-    if (!address) {
-      return reply(event.replyToken, { type: 'text', text: '❌กรุณาระบุที่อยู่ เช่น peau%11 ม.1 ต.ทดสอบ อ.ทดสอบ' });
-    }
-    try {
-      return reply(
-  event.replyToken,
-  buildPEAUFlex(data, page)
-);
-    } catch (err) {
-      console.error('peau error:', err?.response?.data || err.message);
-      return reply(event.replyToken, { type: 'text', text: '❌ดึงข้อมูล PEA จากที่อยู่ไม่สำเร็จ: ' + err.message });
-    }
+  const input = text.replace(/^peau%/, '').trim();
+  const parts = input.split(/\s+/);
+
+  let page = 0;
+  if (parts.length > 1 && /^\d+$/.test(parts[parts.length - 1])) {
+    page = parseInt(parts.pop(), 10) - 1;
   }
+
+  const address = parts.join(' ');
+
+  if (!address) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ กรุณาระบุที่อยู่ เช่น peau%นครสวรรค์'
+    });
+  }
+
+  try {
+    // ✅ ต้องมีบรรทัดนี้
+    const data = await fetchPEAApi({ peau: address });
+
+    // ✅ แล้วค่อยใช้
+    return reply(
+      event.replyToken,
+      buildPEAUFlex(data, page)
+    );
+
+  } catch (err) {
+    console.error('peau error:', err?.response?.data || err.message);
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ ดึงข้อมูล PEA จากที่อยู่ไม่สำเร็จ'
+    });
+  }
+}
 
  return;
 }
