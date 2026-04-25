@@ -1045,19 +1045,24 @@ function formatPrisonerRecords(data, input, isRemand = false) {
 
     if (isRemand) {
       msg += `[${idx + 1}]
-ชื่อ-สกุล: ${item.firstName || '-'} ${item.lastName || '-'}
-เลขบัตรประชาชน: ${item.citizenCardNumber || '-'}
-วันเกิด: ${item.dateOfBirth || '-'}
-เพศ: ${sex}
-สัญชาติ: ${item.nationality || '-'}
-ศาสนา: ${item.religious || '-'}
-การศึกษา: ${item.educationLevel || '-'} (${item.educationSchool || '-'} ${item.educationProvince || '-'})
-เรือนจำ: ${item.prisonName || '-'}
-เลขผู้ต้องขัง: ${item.prisonerId || '-'}
-วันที่รับตัว: ${item.receiveDate || '-'}
-วันที่ปล่อย: ${item.releaseDate || '-'}
-ข้อหา: ${item.allegation || '-'}
-ที่อยู่: ${formatPrisonerAddress(item)}
+┌● ชื่อ-สกุล: ${item.firstName || '-'} ${item.lastName || '-'}
+├● เลขบัตร: ${item.citizenCardNumber || '-'}
+├● วันเกิด: ${item.dateOfBirth || '-'}
+├● เพศ: ${sex}
+├● สัญชาติ: ${item.nationality || '-'}
+├● ศาสนา: ${item.religious || '-'}
+├● การศึกษา: ${item.educationLevel || '-'} (${item.educationSchool || '-'} ${item.educationProvince || '-'})
+├● เรือนจำ: ${item.prisonName || '-'}
+├● เลขผู้ต้องขัง: ${item.prisonerId || '-'}
+├● วันรับตัว: ${item.receiveDate || '-'}
+├● วันปล่อยตัว: ${item.releaseDate || '-'}
+├● ข้อหา: ${item.allegation || '-'}
+├● คดีแดง/ดำ: ${item.decidedCaseId || '-'} / ${item.undecidedCaseId || '-'}
+├● ศาล: ${item.courtName || '-'}
+├● วันตัดสิน: ${item.sentenceDate || '-'}
+├● บิดา: ${fatherName}
+├● มารดา: ${motherName}
+└● ที่อยู่: ${formatPrisonerAddress(item)}
 --------------------\n`;
       return;
     }
