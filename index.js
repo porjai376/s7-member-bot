@@ -1603,6 +1603,12 @@ function buildCarTypeFlex() {
   };
 }
 
+function formatDate(dateStr) {
+  if (!dateStr) return '-';
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('th-TH');
+}
+
 function buildCarCidFlex(data) {
   const cars = Array.isArray(data?.content) ? data.content : [];
 
@@ -1647,10 +1653,15 @@ function buildCarCidFlex(data) {
   spacing: 'md',
 contents: [
   infoLine('ทะเบียน', plate),
-  infoLine('ยี่ห้อ', car.modelName || '-'),
-  infoLine('สี', car.colorDesc || car.carChkMasColorListText || '-'),
+  infoLine('ยี่ห้อ', car.brnDesc || '-'),
+  infoLine('รุ่น', car.modelName || '-'),
+  infoLine('สี', car.carChkMasColorListText || '-'),
   infoLine('ประเภท', car.vehTypeDesc || car.kindDesc || '-'),
   infoLine('เจ้าของ', car.owner1 || '-'),
+  infoLine('จังหวัดจดทะเบียน', car.offLocDesc || '-'),
+  infoLine('เลขตัวถัง', car.numBody || '-'),
+  infoLine('เลขเครื่อง', car.numEng || '-'),
+  infoLine('จดทะเบียน', formatDate(car.regDate)),
   infoLine('หมดอายุ', formatDate(car.expDate))
 ]
 }
