@@ -36,8 +36,6 @@ async function fetchHlrLookup(msisdn) {
 
 const app = express();
 
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
 const CHANNEL_ACCESS_TOKEN = process.env.CHANNEL_ACCESS_TOKEN;
 const CHANNEL_SECRET = process.env.CHANNEL_SECRET;
 const PORT = process.env.PORT || 3000;
@@ -301,9 +299,10 @@ function formatInstallment(data) {
 
   const safe = (v, fallback = 'N/A') => {
     if (v === null || v === undefined || v === '') return fallback;
-    return String(v).trim();
+    return String(v);
   };
 
+  // 🎯 แปลงวันเกิดเป็นไทย
   const formatThaiBirth = (dateStr) => {
     if (!dateStr) return 'N/A';
     const d = new Date(dateStr);
@@ -315,36 +314,23 @@ function formatInstallment(data) {
     return `${th} (${dateStr})`;
   };
 
+  // 🎯 ย่อที่อยู่
   const shortAddr = (a) => {
     if (!a || !a.full_address) return '-';
     return a.full_address
       .replace(/ตำบล/g, 'ต.')
       .replace(/อำเภอ/g, 'อ.')
-      .replace(/จังหวัด/g, 'จ.')
-      .replace(/\s+/g, ' ')
-      .trim();
-  };
-
-  const addrPhone = (a) => {
-    const tel = safe(a.tel, '-');
-    return tel === '-' ? '-' : tel;
+      .replace(/จังหวัด/g, 'จ.');
   };
 
   const homes = addresses.filter(a => (a.type || '').toUpperCase() === 'HOME');
   const works = addresses.filter(a => (a.type || '').toUpperCase() === 'WORK');
 
-  const allPhones = [
-    p.mobile,
-    ...addresses.map(a => a.tel)
-  ]
-    .map(v => safe(v, ''))
-    .filter(v => v && v !== '-' && v !== 'N/A');
-
-  const uniquePhones = [...new Set(allPhones)];
-
   const accountStatus = safe(p.is_active) === 'YES'
     ? '🟢 ใช้งานอยู่'
     : '🔴 ไม่ใช้งาน';
+
+  const totalAddr = homes.length + works.length;
 
   let msg = `[${safe(p.nationid)}] MEGABOT🤖\n`;
   msg += `┌● Name: ${safe(p.fullname)}\n`;
@@ -352,34 +338,25 @@ function formatInstallment(data) {
   msg += `├● วันเกิด: ${formatThaiBirth(p.birth)}\n`;
   msg += `├● สถานะสมรส: ${safe(p.marital_status)}\n`;
   msg += `├● สถานะบัญชี: ${accountStatus}\n`;
-  msg += `├● เบอร์หลัก: ${safe(p.mobile)}\n`;
-  msg += `├● เบอร์ทั้งหมด: ${uniquePhones.length ? uniquePhones.join(', ') : 'N/A'}\n`;
+  msg += `├● เบอร์โทรศัพท์: ${safe(p.mobile)}\n`;
   msg += `├● อีเมล: ${safe(p.email)}\n`;
   msg += `├● Line ID: ${safe(p.lineid)}\n`;
   msg += `├● วันที่สร้างข้อมูล: ${safe(p.created_at)}\n`;
   msg += `└● ติดต่อล่าสุดเมื่อ: ${safe(p.updated_at)}\n`;
 
-  msg += `\n🏚️ [ที่อยู่ทั้งหมด ${addresses.length} รายการ]\n`;
+  if (totalAddr > 0) {
+    msg += `\n🏚️ [ที่อยู่ ${totalAddr} รายการ]\n\n`;
 
-  if (homes.length) {
-    msg += `\n🏠 HOME ${homes.length} รายการ\n`;
     homes.forEach((h, i) => {
-      msg += `\n┌● HOME [${i + 1}]\n`;
-      msg += `├● ที่อยู่: ${shortAddr(h)}\n`;
-      msg += `└● เบอร์: ${addrPhone(h)}\n`;
+      msg += `┌● HOME [${i + 1}]:\n${shortAddr(h)}\n\n`;
     });
-  }
 
-  if (works.length) {
-    msg += `\n🏢 WORK ${works.length} รายการ\n`;
     works.forEach((w, i) => {
-      msg += `\n┌● WORK [${i + 1}]\n`;
-      msg += `├● ที่อยู่: ${shortAddr(w)}\n`;
-      msg += `└● เบอร์: ${addrPhone(w)}\n`;
+      msg += `└● WORK [${i + 1}]:\n${shortAddr(w)}\n\n`;
     });
   }
 
-  return limitLineMessage(msg.trim());
+  return msg.trim();
 }
 
 function formatCrime(data, keyword = '') {
@@ -578,7 +555,7 @@ function searchCellLocal(input) {
 
 function formatKeyValueRows(data, title) {
   const rows = Array.isArray(data) ? data : [data];
-  let result = `${title}\n--------------------`;
+  let result = `${title}\n====================`;
 
   rows.slice(0, 10).forEach((row, index) => {
     if (rows.length > 1) result += `\n\nรายการที่ ${index + 1}`;
@@ -589,114 +566,6 @@ function formatKeyValueRows(data, title) {
 
   if (rows.length > 10) result += `\n\n...แสดง 10 จาก ${rows.length} รายการ`;
   return limitLineMessage(result);
-}
-
-function buildCellSiteFlex(data, input) {
-  const row = Array.isArray(data) ? data[0] : data;
-  const lat = row?.Latitude;
-  const lon = row?.Longitude;
-  const mapUrl = lat && lon ? `https://www.google.com/maps?q=${lat},${lon}` : null;
-
-  return {
-    type: 'flex',
-    altText: `Cell Site ${input}`,
-    contents: {
-      type: 'bubble',
-      size: 'mega',
-      header: {
-        type: 'box',
-        layout: 'vertical',
-        backgroundColor: '#0F172A',
-        paddingAll: '16px',
-        contents: [
-          { type: 'text', text: '📡 Cell Site', color: '#FFFFFF', weight: 'bold', size: 'lg' },
-          { type: 'text', text: input, color: '#CBD5E1', size: 'sm', margin: 'sm' }
-        ]
-      },
-      body: {
-        type: 'box',
-        layout: 'vertical',
-        spacing: 'md',
-        contents: [
-          infoLine('Home MCC', row && row['Home MCC'] ? row['Home MCC'] : '-'),
-          infoLine('Home MNC', row && row['Home MNC'] ? row['Home MNC'] : '-'),
-          infoLine('LAC/TAC', row && row['LAC/TAC'] ? row['LAC/TAC'] : '-'),
-          infoLine('CID/eCID', row && row['CID/eCID'] ? row['CID/eCID'] : '-'),
-          infoLine('Latitude', lat || '-'),
-          infoLine('Longitude', lon || '-'),
-          infoLine('Type', row && row.Type ? row.Type : '-'),
-          infoLine('Signal type', row && row['Signal type'] ? row['Signal type'] : '-')
-        ]
-      },
-      footer: {
-        type: 'box',
-        layout: 'vertical',
-        spacing: 'sm',
-        contents: [
-          mapUrl
-            ? {
-                type: 'button',
-                style: 'primary',
-                color: '#2563EB',
-                action: {
-                  type: 'uri',
-                  label: 'เปิด Google Maps',
-                  uri: mapUrl
-                }
-              }
-            : {
-                type: 'button',
-                style: 'secondary',
-                action: {
-                  type: 'message',
-                  label: 'ไม่มีพิกัด',
-                  text: 'ไม่มีพิกัด'
-                }
-              }
-        ]
-      }
-    }
-  };
-}
-
-function buildTopupQrFlex(packageLabel) {
-
-  const qrUrl = `${BASE_URL}/uploads/promptpay.jpg`;
-
-  return {
-    type: 'flex',
-    altText: 'ช่องทางสนับสนุนเซิฟเวอร์',
-    contents: {
-      type: 'bubble',
-      size: 'mega',
-      body: {
-        type: 'box',
-        layout: 'vertical',
-        contents: [
-          {
-            type: 'image',
-            url: qrUrl,
-            size: 'full',
-            aspectRatio: '1:1'
-          },
-          {
-            type: 'text',
-            text: 'ช่องทางสนับสนุนเซิฟเวอร์',
-            weight: 'bold',
-            size: 'md',
-            margin: 'md'
-          },
-          {
-            type: 'text',
-            text: packageLabel,
-            size: 'sm',
-            color: '#666666',
-            margin: 'sm'
-          }
-        ]
-      }
-    }
-  };
 }
 
 async function trackFlashExpress(trackingId) {
@@ -731,7 +600,7 @@ async function trackFlashExpress(trackingId) {
       : null;
 
     let resultText = `📦 Flash Express Tracking
---------------------
+====================
 เลขพัสดุ: ${parcel.pno_display || trackingId}
 สถานะ: ${parcel.state_text || '-'}
 ต้นทาง: ${parcel.src_province_name || '-'}
@@ -881,11 +750,11 @@ async function createMapLink(coordinates) {
     const [lat, long] = coordinates.split(',').map(coord => coord.trim());
     if (!lat || !long) return 'กรุณาระบุพิกัดในรูปแบบ: latitude,longitude';
     return `🗺️ Google Map Link
---------------------
+====================
 📍 พิกัด: ${lat}, ${long}
 🌐 Maps: https://www.google.com/maps?q=${lat},${long}
 🌐 Street View: https://www.google.com/maps/@${lat},${long},3a,75y,0h,90t/data=!3m6!1e1!3m4!1s
---------------------`;
+====================`;
   } catch (error) {
     return 'เกิดข้อผิดพลาดในการสร้างลิงค์แผนที่';
   }
@@ -1149,7 +1018,7 @@ function formatPrisonerRecords(data, input, isRemand = false) {
   const label = isRemand ? 'ผู้ต้องขัง (ยังไม่พิพากษา)' : 'ผู้ต้องขัง';
   if (!content.length) return `❌ ไม่พบข้อมูล${label} สำหรับ "${input}"`;
 
-  let msg = `👮‍♂️ ข้อมูล${label}: ${input}\n--------------------\n`;
+  let msg = `👮‍♂️ ข้อมูล${label}: ${input}\n====================\n`;
   content.forEach((item, idx) => {
     const sex = item.sex === 'MALE' ? 'ชาย' : item.sex === 'FEMALE' ? 'หญิง' : item.sex || '-';
 
@@ -1175,24 +1044,27 @@ function formatPrisonerRecords(data, input, isRemand = false) {
     const fatherName = `${item.fatherPrefix || ''}${item.fatherFirstName || '-'} ${item.fatherLastName || ''}`.trim();
     const motherName = `${item.motherPrefix || ''}${item.motherFirstName || '-'} ${item.motherLastName || ''}`.trim();
     msg += `[${idx + 1}]
-┌● ชื่อ-สกุล: ${item.firstName || '-'} ${item.lastName || '-'}
-├● เลขบัตร: ${item.citizenCardNumber || '-'}
-├● วันเกิด: ${item.dateOfBirth || '-'}
-├● เพศ: ${sex}
-├● สัญชาติ: ${item.nationality || '-'}
-├● ศาสนา: ${item.religious || '-'}
-├● การศึกษา: ${item.educationLevel || '-'} (${item.educationSchool || '-'} ${item.educationProvince || '-'})
-├● เรือนจำ: ${item.prisonName || '-'}
-├● เลขผู้ต้องขัง: ${item.prisonerId || '-'}
-├● วันรับตัว: ${item.receiveDate || '-'}
-├● วันปล่อยตัว: ${item.releaseDate || '-'}
-├● ข้อหา: ${item.allegation || '-'}
-├● คดีแดง/ดำ: ${item.decidedCaseId || '-'} / ${item.undecidedCaseId || '-'}
-├● ศาล: ${item.courtName || '-'}
-├● วันตัดสิน: ${item.sentenceDate || '-'}
-├● บิดา: ${fatherName}
-├● มารดา: ${motherName}
-└● ที่อยู่: ${formatPrisonerAddress(item)}
+👤 ชื่อ-สกุล: ${item.firstName || '-'} ${item.lastName || '-'}
+🆔 เลขบัตร: ${item.citizenCardNumber || '-'}
+🎂 วันเกิด: ${item.dateOfBirth || '-'}
+🚻 เพศ: ${sex}
+🇹🇭 สัญชาติ: ${item.nationality || '-'}
+🙏 ศาสนา: ${item.religious || '-'}
+📚 การศึกษา: ${item.educationLevel || '-'} (${item.educationSchool || '-'} ${item.educationProvince || '-'})
+
+🏢 เรือนจำ: ${item.prisonName || '-'}
+🔢 เลขผู้ต้องขัง: ${item.prisonerId || '-'}
+📥 วันรับตัว: ${item.receiveDate || '-'}
+📤 วันปล่อยตัว: ${item.releaseDate || '-'}
+⚖️ ข้อหา: ${item.allegation || '-'}
+📜 คดีแดง/ดำ: ${item.decidedCaseId || '-'} / ${item.undecidedCaseId || '-'}
+⚖️ ศาล: ${item.courtName || '-'}
+📅 วันตัดสิน: ${item.sentenceDate || '-'}
+
+👨 บิดา: ${fatherName}
+👩 มารดา: ${motherName}
+
+🏠 ที่อยู่: ${formatPrisonerAddress(item)}
 --------------------\n`;
   });
 
@@ -1200,7 +1072,7 @@ function formatPrisonerRecords(data, input, isRemand = false) {
   return limitLineMessage(msg);
 }
 
-function buildPEAMeterCarouselFlex(peaData, title, page = 0, exactName = '') {
+function formatPEAMeterRecords(peaData, title, page = 0, exactName = '') {
   let records = Array.isArray(peaData?.MESSAGE) ? peaData.MESSAGE : [];
 
   if (exactName) {
@@ -1215,208 +1087,71 @@ function buildPEAMeterCarouselFlex(peaData, title, page = 0, exactName = '') {
     });
   }
 
-  if (!peaData?.SUCCESS || !records.length) {
-    return {
-      type: 'text',
-      text: 'ไม่พบข้อมูลสำหรับเงื่อนไขที่ระบุ'
-    };
-  }
+  if (!peaData?.SUCCESS || !records.length) return 'ไม่พบข้อมูลสำหรับเงื่อนไขที่ระบุ';
 
   const itemsPerPage = 5;
   const totalPages = Math.ceil(records.length / itemsPerPage);
   page = parseInt(page, 10);
   if (isNaN(page) || page < 0) page = 0;
+  if (page >= totalPages) return `ไม่พบข้อมูลหน้าที่ ${page + 1} (มีทั้งหมด ${totalPages} หน้า)`;
 
   const startIndex = page * itemsPerPage;
   const pageItems = records.slice(startIndex, startIndex + itemsPerPage);
+  let result = `${title} (หน้า ${page + 1}/${totalPages})\n====================\n`;
 
-  const bubbles = pageItems.map((item, index) => {
+  pageItems.forEach((item, index) => {
     const data = item.data || {};
-    const latLon = convertUTMToLatLon(data.POS_X, data.POS_Y, 47, false);
-
-    const fullName = `${data.PREFIX || ''}${data.CUSTOMERNAME || ''} ${data.CUSTOMERSIRNAME || ''}`.trim();
-
-    const address = [
+    result += `
+📍 รายการที่ ${startIndex + index + 1}
+👤 ข้อมูลผู้ใช้ไฟฟ้า
+ชื่อ-สกุล: ${(data.PREFIX || '')}${data.CUSTOMERNAME || ''} ${data.CUSTOMERSIRNAME || ''}
+เลขCA: ${data.CA || '-'}
+เลขมิเตอร์: ${data.PEANO || '-'}
+📫 ที่อยู่: ${[
       data.ADDRESSNO,
       data.MOO && data.MOO !== '-' ? `หมู่ ${data.MOO}` : '',
       data.TUMBOL ? `ต.${data.TUMBOL}` : '',
       data.AMPHOE ? `อ.${data.AMPHOE}` : '',
       data.CHANGWAT ? `จ.${data.CHANGWAT}` : '',
       data.POSTCODE ? `รหัสไปรษณีย์ ${data.POSTCODE}` : ''
-    ].filter(Boolean).join(' ') || '-';
-
-    return {
-      type: 'bubble',
-      size: 'mega',
-      header: {
-        type: 'box',
-        layout: 'vertical',
-        backgroundColor: '#0F172A',
-        paddingAll: '16px',
-        contents: [
-          {
-            type: 'text',
-            text: `⚡ รายการที่ ${startIndex + index + 1}`,
-            color: '#FFFFFF',
-            weight: 'bold',
-            size: 'lg'
-          },
-          {
-            type: 'text',
-            text: title,
-            color: '#CBD5E1',
-            size: 'sm',
-            margin: 'sm',
-            wrap: true
-          }
-        ]
-      },
-      body: {
-        type: 'box',
-        layout: 'vertical',
-        spacing: 'md',
-        contents: [
-          infoLine('ชื่อ-สกุล', fullName || '-'),
-          infoLine('เลข CA', data.CA || '-'),
-          infoLine('เลขมิเตอร์', data.PEANO || '-'),
-          infoLine('ที่อยู่', address),
-          infoLine('พิกัด X', data.POS_X || '-'),
-          infoLine('พิกัด Y', data.POS_Y || '-'),
-          infoLine('Lat, Lon', latLon ? `${latLon.lat}, ${latLon.lon}` : '-')
-        ]
-      },
-      footer: {
-        type: 'box',
-        layout: 'vertical',
-        spacing: 'sm',
-        contents: [
-          latLon
-            ? {
-                type: 'button',
-                style: 'primary',
-                color: '#2563EB',
-                action: {
-                  type: 'uri',
-                  label: 'เปิดแผนที่',
-                  uri: `https://www.google.com/maps?q=${latLon.lat},${latLon.lon}`
-                }
-              }
-            : {
-                type: 'button',
-                style: 'secondary',
-                action: {
-                  type: 'message',
-                  label: 'ไม่มีพิกัด',
-                  text: 'ไม่มีพิกัด'
-                }
-              }
-        ]
-      }
-    };
+    ].filter(Boolean).join(' ') || '-'}
+พิกัด GPS: X=${data.POS_X || '-'} Y=${data.POS_Y || '-'}
+${formatLatLonLink(data.POS_X, data.POS_Y)}
+-------------------`;
   });
 
-  return {
-    type: 'flex',
-    altText: `${title} หน้า ${page + 1}/${totalPages}`,
-    contents: {
-      type: 'carousel',
-      contents: bubbles
-    }
-  };
+  result += `\n📊 แสดง ${pageItems.length} จาก ${records.length} รายการ`;
+  return limitLineMessage(result);
 }
 
-function buildPEAAddressCarouselFlex(peaData, page = 0) {
+function formatPEAAddressRecords(peaData, page = 0) {
   const records = Array.isArray(peaData?.MESSAGE) ? peaData.MESSAGE : [];
-
-  if (!peaData?.SUCCESS || !records.length) {
-    return {
-      type: 'text',
-      text: 'ไม่พบข้อมูลสำหรับที่อยู่ที่ระบุ'
-    };
-  }
+  if (!peaData?.SUCCESS || !records.length) return 'ไม่พบข้อมูลสำหรับที่อยู่ที่ระบุ';
 
   const itemsPerPage = 5;
   const totalPages = Math.ceil(records.length / itemsPerPage);
   page = parseInt(page, 10);
   if (isNaN(page) || page < 0) page = 0;
+  if (page >= totalPages) return `ไม่พบข้อมูลหน้าที่ ${page + 1} (มีทั้งหมด ${totalPages} หน้า)`;
 
   const startIndex = page * itemsPerPage;
   const pageItems = records.slice(startIndex, startIndex + itemsPerPage);
+  let result = `🏠 ข้อมูลมิเตอร์ไฟฟ้าตามที่อยู่ (หน้า ${page + 1}/${totalPages})\n====================\n`;
 
-  const bubbles = pageItems.map((item, index) => {
+  pageItems.forEach((item, index) => {
     const parts = String(item.id || '').split(';');
-
-    const address = item.name || '-';
-    const ca = parts[1] || 'ไม่ระบุ';
-    const meter = parts[2] || 'ไม่ระบุ';
-    const customerId = parts[3] || 'ไม่ระบุ';
-    const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
-
-    return {
-      type: 'bubble',
-      size: 'mega',
-      header: {
-        type: 'box',
-        layout: 'vertical',
-        backgroundColor: '#0F172A',
-        paddingAll: '16px',
-        contents: [
-          {
-            type: 'text',
-            text: `🏠 รายการที่ ${startIndex + index + 1}`,
-            color: '#FFFFFF',
-            weight: 'bold',
-            size: 'lg'
-          },
-          {
-            type: 'text',
-            text: `หน้า ${page + 1}/${totalPages}`,
-            color: '#CBD5E1',
-            size: 'sm',
-            margin: 'sm'
-          }
-        ]
-      },
-      body: {
-        type: 'box',
-        layout: 'vertical',
-        spacing: 'md',
-        contents: [
-          infoLine('ที่อยู่', address),
-          infoLine('เลข CA', ca),
-          infoLine('เลขมิเตอร์', meter),
-          infoLine('รหัสลูกค้า', customerId),
-          infoLine('รหัสอ้างอิง', item.id || '-')
-        ]
-      },
-      footer: {
-        type: 'box',
-        layout: 'vertical',
-        spacing: 'sm',
-        contents: [
-          {
-            type: 'button',
-            style: 'primary',
-            color: '#2563EB',
-            action: {
-              type: 'uri',
-              label: 'เปิดแผนที่',
-              uri: mapUrl
-            }
-          }
-        ]
-      }
-    };
+    result += `
+📍 รายการที่ ${startIndex + index + 1}
+ที่อยู่: ${item.name || '-'}
+📋 เลขCA: ${parts[1] || 'ไม่ระบุ'}
+📝 เลขมิเตอร์: ${parts[2] || 'ไม่ระบุ'}
+👤 รหัสลูกค้า: ${parts[3] || 'ไม่ระบุ'}
+🆔 รหัสอ้างอิง: ${item.id || '-'}
+-------------------`;
   });
 
-  return {
-    type: 'flex',
-    altText: `ข้อมูลมิเตอร์ไฟฟ้าตามที่อยู่ หน้า ${page + 1}/${totalPages}`,
-    contents: {
-      type: 'carousel',
-      contents: bubbles
-    }
-  };
+  result += `\n📊 แสดง ${pageItems.length} จาก ${records.length} รายการ`;
+  return limitLineMessage(result);
 }
 
 function formatPEABillHistory(billResponseData, ca, peano) {
@@ -1427,7 +1162,7 @@ function formatPEABillHistory(billResponseData, ca, peano) {
   const billData = billResponseData.data;
   if (!billData.length) return '❌ ไม่พบข้อมูลประวัติการชำระเงินของหมายเลขนี้';
 
-  let msg = `⚡ ประวัติการใช้ไฟฟ้า (PEA)\n🏠 CA: ${ca} | PEA NO: ${peano}\n--------------------\n`;
+  let msg = `⚡ ประวัติการใช้ไฟฟ้า (PEA)\n🏠 CA: ${ca} | PEA NO: ${peano}\n====================\n`;
   billData.forEach(item => {
     msg += `📅 งวดเดือน: ${item.billperiod}\n`;
     msg += `🔌 หน่วยที่ใช้: ${item.unit} หน่วย\n`;
@@ -1443,21 +1178,22 @@ function infoLine(label, value) {
   return {
     type: 'box',
     layout: 'baseline',
+    spacing: 'sm',
     contents: [
       {
         type: 'text',
         text: label,
         size: 'sm',
-        flex: 3,
-        color: '#555'
+        color: '#6B7280',
+        flex: 3
       },
       {
         type: 'text',
-        text: value,
+        text: String(value || '-'),
         size: 'sm',
-        flex: 5,
+        color: '#111827',
         wrap: true,
-        color: '#111'
+        flex: 7
       }
     ]
   };
@@ -1529,155 +1265,6 @@ function buildMenuFooter() {
   };
 }
 
-function buildCarTypeFlex() {
-  const types = [
-    ['1', 'รถยนต์นั่งไม่เกิน 7 คน'],
-    ['2', 'รถยนต์นั่งเกิน 7 คน'],
-    ['3', 'รถบรรทุกส่วนบุคคล'],
-    ['4', 'สามล้อส่วนบุคคล'],
-    ['5', 'รับจ้างระหว่างจังหวัด'],
-    ['6', 'รับจ้างไม่เกิน 7 คน'],
-    ['7', 'สี่ล้อเล็กรับจ้าง'],
-    ['8', 'รับจ้างสามล้อ'],
-    ['9', 'บริการธุรกิจ'],
-    ['10', 'บริการทัศนาจร'],
-    ['11', 'บริการให้เช่า'],
-    ['12', 'จักรยานยนต์'],
-    ['13', 'รถแทร็กเตอร์'],
-    ['14', 'รถบดถนน'],
-    ['15', 'รถงานเกษตรกรรม'],
-    ['16', 'รถพ่วง'],
-    ['17', 'จักรยานยนต์สาธารณะ'],
-    ['30', 'รถโดยสารประจำทาง'],
-    ['31', 'รถขนาดเล็ก'],
-    ['32', 'โดยสารไม่ประจำทาง'],
-    ['33', 'โดยสารส่วนบุคคล'],
-    ['34', 'บรรทุกไม่ประจำทาง'],
-    ['35', 'บรรทุกส่วนบุคคล']
-  ];
-
-  const chunks = [];
-  for (let i = 0; i < types.length; i += 4) {
-    chunks.push(types.slice(i, i + 4));
-  }
-
-  return {
-    type: 'flex',
-    altText: 'เลือกประเภทรถ',
-    contents: {
-      type: 'carousel',
-      contents: chunks.map((group, pageIndex) => ({
-        type: 'bubble',
-        size: 'mega',
-        header: {
-          type: 'box',
-          layout: 'vertical',
-          backgroundColor: '#0F172A',
-          paddingAll: '16px',
-          contents: [
-            {
-              type: 'text',
-              text: `🚗 ประเภทรถ ${pageIndex + 1}/${chunks.length}`,
-              color: '#FFFFFF',
-              weight: 'bold',
-              size: 'lg'
-            }
-          ]
-        },
-        body: {
-          type: 'box',
-          layout: 'vertical',
-          spacing: 'sm',
-          contents: group.map(([code, name]) => ({
-            type: 'button',
-            style: 'secondary',
-            action: {
-              type: 'message',
-              label: `${code} ${name}`,
-              text: `typecar%${code}`
-            }
-          }))
-        }
-      }))
-    }
-  };
-}
-
-function formatDate(dateStr) {
-  if (!dateStr) return '-';
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('th-TH');
-}
-
-function buildCarCidFlex(data) {
-  const cars = Array.isArray(data?.content) ? data.content : [];
-
-  if (!cars.length) {
-    return {
-      type: 'text',
-      text: '❌ ไม่พบข้อมูลทะเบียนรถ'
-    };
-  }
-
-  const bubbles = cars.slice(0, 10).map((car, index) => {
-    const plate = `${car.plate1 || ''}${car.plate2 || ''}`.trim() || '-';
-
-    return {
-      type: 'bubble',
-      size: 'mega',
-      header: {
-        type: 'box',
-        layout: 'vertical',
-        backgroundColor: '#0F172A',
-        paddingAll: '16px',
-        contents: [
-          {
-            type: 'text',
-            text: `🚗 รถคันที่ ${index + 1}/${cars.length}`,
-            color: '#FFFFFF',
-            weight: 'bold',
-            size: 'lg'
-          },
-          {
-            type: 'text',
-            text: plate,
-            color: '#CBD5E1',
-            size: 'sm',
-            margin: 'sm'
-          }
-        ]
-      },
-    body: {
-  type: 'box',
-  layout: 'vertical',
-  spacing: 'md',
-contents: [
-  infoLine('ทะเบียน', plate),
-  infoLine('ยี่ห้อ', car.brnDesc || '-'),
-  infoLine('รุ่น', car.modelName || '-'),
-  infoLine('สี', car.carChkMasColorListText || '-'),
-  infoLine('ประเภท', car.vehTypeDesc || car.kindDesc || '-'),
-  infoLine('เจ้าของ', car.owner1 || '-'),
-  infoLine('จังหวัดจดทะเบียน', car.offLocDesc || '-'),
-  infoLine('เลขตัวถัง', car.numBody || '-'),
-  infoLine('เลขเครื่อง', car.numEng || '-'),
-  infoLine('จดทะเบียน', formatDate(car.regDate)),
-  infoLine('หมดอายุ', formatDate(car.expDate))
-]
-}
-    };
-  });
-
-  return {
-    type: 'flex',
-    altText: `ข้อมูลทะเบียนรถ พบทั้งหมด ${cars.length} คัน`,
-    contents: {
-      type: 'carousel',
-      contents: bubbles
-    }
-  };
-}
-
 function buildMenuCarouselFlex() {
   return {
     type: 'flex',
@@ -1696,7 +1283,7 @@ function buildMenuCarouselFlex() {
             contents: [
               {
                 type: 'text',
-                text: 'MEGABOT 1/4',
+                text: 'MEGABOT 1/3',
                 color: '#FFFFFF',
                 weight: 'bold',
                 size: 'lg'
@@ -1745,7 +1332,7 @@ function buildMenuCarouselFlex() {
             contents: [
               {
                 type: 'text',
-                text: 'MEGABOT 2/4',
+                text: 'MEGABOT 2/3',
                 color: '#FFFFFF',
                 weight: 'bold',
                 size: 'lg'
@@ -1783,131 +1370,69 @@ function buildMenuCarouselFlex() {
           },
           footer: buildMenuFooter()
         },
-        {
-          type: 'bubble',
-          size: 'mega',
-          header: {
-            type: 'box',
-            layout: 'vertical',
-            backgroundColor: '#334155',
-            paddingAll: '16px',
-            contents: [
-              {
-                type: 'text',
-                text: 'MEGABOT 3/4',
-                color: '#FFFFFF',
-                weight: 'bold',
-                size: 'lg'
-              },
-              {
-                type: 'text',
-                text: 'หมายจับ / ไฟฟ้า / อื่น ๆ',
-                color: '#CBD5E1',
-                size: 'sm',
-                margin: 'sm'
-              }
-            ]
-          },
-          body: {
-            type: 'box',
-            layout: 'vertical',
-            spacing: 'md',
-            contents: [
-              menuSection('🔎 บุคคล', [
-                '┌● ประกันสังคม si%เลขบัตร',
-                '├● ใบขับขี่ dl#เลขบัตร',
-                '├● ผู้ต้องขัง psi#เลขบัตร',
-                '├● ผู้ต้องขังยังไม่พิพากษา ps#เลขบัตร',
-                '├● เช็ครถจากเลขบัตร cid#เลขบัตร',
-                '├● เช็คทะเบียนรถ car#จังหวัด หมวด ตัวเลข ประเภทรถ',
-                '└● ตัวอย่าง car#กรุงเทพ 1กก 334 1'
-              ]),
-              menuSection('⚖️ หมายจับ', [
-                '┗ ╾ c#เลขบัตร / doc#เลขบัตร'
-              ]),
-              menuSection('⚡ ไฟฟ้า / อื่นๆ', [
-                '┣ ╾ mea%ชื่อสกุล',
-                '┣ ╾ kru%เลขมิเตอร์',
-                '┣ ╾ peab%เลข CA เลขมิเตอร์',
-                '┣ ╾ peac%เลข CA',
-                '┣ ╾ pean%ชื่อสกุล',
-                '┣ ╾ peau%ที่อยู่',
-                '┣ ╾ ip%เลข IP',
-                '┣ ╾ imei%เลข IMEI',
-                '┣ ╾ imsi%เลข IMSI',
-                '┣ ╾ icc%เลข ICCID',
-                '┣ ╾ map%ละติจูด,ลองจิจูด',
-                '┣ ╾ web%ชื่อเว็บไซต์',
-                '┗ ╾ se%รหัสสาขา7-11'
-              ]),
-              menuSection('📺 ผ่อนสินค้า', [
-                '┗ ╾ s%เลขบัตร'
-              ])
-            ]
-          },
-          footer: buildMenuFooter()
-        },
-        {
-          type: 'bubble',
-          size: 'mega',
-          header: {
-            type: 'box',
-            layout: 'vertical',
-            backgroundColor: '#475569',
-            paddingAll: '16px',
-            contents: [
-              {
-                type: 'text',
-                text: 'MEGABOT 4/4',
-                color: '#FFFFFF',
-                weight: 'bold',
-                size: 'lg'
-              },
-              {
-                type: 'text',
-                text: 'ตารางประเภทรถ',
-                color: '#CBD5E1',
-                size: 'sm',
-                margin: 'sm'
-              }
-            ]
-          },
-          body: {
-            type: 'box',
-            layout: 'vertical',
-            spacing: 'md',
-            contents: [
-              menuSection('🚗 ประเภทรถ 1-17', [
-                '1 รถยนต์นั่งไม่เกิน 7 คน',
-                '2 รถยนต์นั่งเกิน 7 คน',
-                '3 รถบรรทุกส่วนบุคคล',
-                '4 สามล้อส่วนบุคคล',
-                '5 รับจ้างระหว่างจังหวัด',
-                '6 รับจ้างไม่เกิน 7 คน',
-                '7 สี่ล้อเล็กรับจ้าง',
-                '8 รับจ้างสามล้อ',
-                '9 บริการธุรกิจ',
-                '10 บริการทัศนาจร',
-                '11 บริการให้เช่า',
-                '12 จักรยานยนต์'
-              ]),
-              menuSection('🚍 ประเภทรถต่อ', [
-                '13 รถแทร็กเตอร์',
-                '14 รถบดถนน',
-                '15 รถใช้ในงานเกษตรกรรม',
-                '16 รถพ่วง',
-                '17 จักรยานยนต์สาธารณะ',
-                '30 รถโดยสารประจำทาง',
-                '31 รถขนาดเล็ก',
-                '32 โดยสารไม่ประจำทาง',
-                '33 โดยสารส่วนบุคคล',
-                '34 บรรทุกไม่ประจำทาง',
-                '35 บรรทุกส่วนบุคคล'
-              ])
-            ]
-          },
-          footer: buildMenuFooter()
-        }
+    {
+  type: 'bubble',
+  size: 'mega',
+  header: {
+    type: 'box',
+    layout: 'vertical',
+    backgroundColor: '#334155',
+    paddingAll: '16px',
+    contents: [
+      {
+        type: 'text',
+        text: 'MEGABOT 3/3',
+        color: '#FFFFFF',
+        weight: 'bold',
+        size: 'lg'
+      },
+      {
+        type: 'text',
+        text: 'หมายจับ / ไฟฟ้า / อื่น ๆ',
+        color: '#CBD5E1',
+        size: 'sm',
+        margin: 'sm'
+      }
+    ]
+  },
+  body: {
+    type: 'box',
+    layout: 'vertical',
+    spacing: 'md',
+    contents: [
+      menuSection('🔎 บุคคล', [
+        '┌● ประกันสังคม si%เลขบัตร',
+        '├● ใบขับขี่ dl#เลขบัตร',
+        '├● ผู้ต้องขัง psi#เลขบัตร',
+        '├● ผู้ต้องขังยังไม่พิพากษา ps#เลขบัตร',
+        '├● เช็คทะเบียนรถ car#จังหวัด หมวด ตัวเลข ประเภทรถ',
+        '└● ตัวอย่าง car#กรุงเทพ 1กก 334 1'
+      ]),
+      menuSection('⚖️ หมายจับ', [
+        '┗ ╾ c#เลขบัตร / doc#เลขบัตร'
+      ]),
+      menuSection('⚡ ไฟฟ้า / อื่นๆ', [
+        '┣ ╾ mea%ชื่อสกุล',
+        '┣ ╾ kru%เลขมิเตอร์',
+        '┣ ╾ peab%เลข CA เลขมิเตอร์',
+        '┣ ╾ peac%เลข CA',
+        '┣ ╾ pean%ชื่อสกุล',
+        '┣ ╾ peau%ที่อยู่',
+        '┣ ╾ ip%เลข IP',
+        '┣ ╾ imei%เลข IMEI',
+        '┣ ╾ imsi%เลข IMSI',
+        '┣ ╾ icc%เลข ICCID',
+        '┣ ╾ map%ละติจูด,ลองจิจูด',
+        '┣ ╾ web%ชื่อเว็บไซต์',
+        '┗ ╾ se%รหัสสาขา7-11'
+      ]),
+      menuSection('📺 ผ่อนสินค้า', [
+        '┗ ╾ s%เลขบัตร'
+      ])
+    ]
+  },
+  footer: buildMenuFooter()
+}
       ]
     }
   };
@@ -2736,22 +2261,6 @@ async function handleText(event) {
       });
     }
 
-if (text === '30') {
-  return reply(event.replyToken, buildTopupQrFlex('แพ็กเกจ 30 วัน'));
-}
-
-if (text === '90') {
-  return reply(event.replyToken, buildTopupQrFlex('แพ็กเกจ 90 วัน'));
-}
-
-if (text === '180') {
-  return reply(event.replyToken, buildTopupQrFlex('แพ็กเกจ 180 วัน'));
-}
-
-if (text === '365') {
-  return reply(event.replyToken, buildTopupQrFlex('แพ็กเกจ 365 วัน'));
-}
-
     return reply(event.replyToken, {
       type: 'text',
       text: '❌ คุณไม่มีสิทธิ์ใช้งานคำสั่งนี้'
@@ -2767,10 +2276,6 @@ if (text === '365') {
       buildMenuCarouselFlex()
     ]);
   }
-
-if (text === 'cartype%') {
-  return reply(event.replyToken, buildCarTypeFlex());
-}
 
   if (text === 'hadmin') {
     if (!isAdmin(userId)) {
@@ -3167,7 +2672,7 @@ if (text === 'cartype%') {
       if (!res.success) return reply(event.replyToken, { type: 'text', text: `❌ ${res.message || 'ดึงข้อมูลไม่สำเร็จ'}` });
       const data = res.data;
       if (data.content && data.content.length > 0) {
-        let result = `👔 ประวัติการทำงานประกันสังคม\n--------------------\n🆔 เลขประกันสังคม: ${ssoNum}\n📊 จำนวนที่พบ: ${data.totalElements} รายการ\n`;
+        let result = `👔 ประวัติการทำงานประกันสังคม\n====================\n🆔 เลขประกันสังคม: ${ssoNum}\n📊 จำนวนที่พบ: ${data.totalElements} รายการ\n`;
         data.content.forEach((item, idx) => {
           result += `\n🏢 บริษัท ${idx + 1}\nชื่อบริษัท: ${item.companyName || 'ไม่ระบุ'}\nรหัสสาขา: ${item.accBran || 'ไม่ระบุ'}\nเลขที่บัญชี: ${item.accNo || 'ไม่ระบุ'}\nวันที่เริ่มงาน: ${item.expStartDateText || 'ไม่ระบุ'}\nวันที่ลาออก: ${item.empResignDateText || '-'}\nสถานะ: ${item.employStatusDesc || 'ไม่ระบุ'}\n--------------------`;
         });
@@ -3244,12 +2749,13 @@ if (text === 'cartype%') {
       const { data: res } = await axios.get(`http://103.91.204.203:4000/?cid=${cid}`);
       if (!res.success) return reply(event.replyToken, { type: 'text', text: `❌ ${res.message || 'ดึงข้อมูลไม่สำเร็จ'}` });
       const data = res.data;
-      console.log('CID RAW:', JSON.stringify(data.content?.[0], null, 2));
       if (data.content && data.content.length > 0) {
-      return reply(
-  event.replyToken,
-  buildCarCidFlex(data)
-);
+        let result = `🚗 ข้อมูลทะเบียนรถ (จาก CID)\n====================\n`;
+        data.content.slice(0, 5).forEach((vehicle, idx) => {
+          result += `\n📄 รถคันที่ ${idx + 1}\n🚘 ทะเบียน: ${vehicle.plate1 || ''}${vehicle.plate2 || ''}\n🚗 ยี่ห้อ: ${vehicle.brnDesc || 'ไม่ระบุ'}\n🎨 สี: ${(vehicle.carChkMasColorList && vehicle.carChkMasColorList[0]?.colorDesc) || 'ไม่ระบุ'}\n🔧 ประเภท: ${vehicle.vehTypeDesc || 'ไม่ระบุ'}\n👤 เจ้าของ: ${vehicle.owner1 || 'ไม่ระบุ'}\n📅 หมดอายุ: ${vehicle.expDate ? new Date(vehicle.expDate).toLocaleDateString('th-TH') : 'ไม่ระบุ'}\n-------------------`;
+        });
+        result += `\n📊 พบทั้งหมด ${data.content.length} คัน`;
+        return reply(event.replyToken, { type: 'text', text: result });
       } else {
         return reply(event.replyToken, { type: 'text', text: 'ไม่พบข้อมูลทะเบียนรถ' });
       }
@@ -3331,10 +2837,8 @@ if (text === 'cartype%') {
     const cellInput = text.replace(/^cell%/i, '').trim();
     try {
       const data = await fetchPEAApi({ cell: cellInput });
-return reply(
-  event.replyToken,
-  buildCellSiteFlex(data, cellInput)
-);
+      const result = formatKeyValueRows(data, `📡 Cell Site: ${cellInput}`);
+      return reply(event.replyToken, { type: 'text', text: result });
     } catch (err) {
       console.error('cell lookup error:', err?.response?.data || err.message);
       return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูล cell site ไม่สำเร็จ: ' + err.message });
@@ -3450,12 +2954,9 @@ return reply(
       return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลข CA เช่น peac%020006438778' });
     }
     try {
-      const peaData = await fetchPEAApi({ peac: ca });
-
-return reply(
-  event.replyToken,
-  buildPEAMeterCarouselFlex(peaData, '⚡ ข้อมูลมิเตอร์ไฟฟ้าตามเลข CA', page)
-);
+      const data = await fetchPEAApi({ peac: ca });
+      const result = formatPEAMeterRecords(data, '⚡ ข้อมูลมิเตอร์ไฟฟ้า PEA', page);
+      return reply(event.replyToken, { type: 'text', text: result });
     } catch (err) {
       console.error('peac error:', err?.response?.data || err.message);
       return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูล PEA จากเลข CA ไม่สำเร็จ: ' + err.message });
@@ -3474,12 +2975,9 @@ return reply(
       return reply(event.replyToken, { type: 'text', text: '❌ กรุณาใส่ชื่อเต็มและนามสกุล เช่น pean%เย็น เก่งสาริกิจ' });
     }
     try {
-     const peaData = await fetchPEAApi({ pean: name });
-
-return reply(
-  event.replyToken,
-  buildPEAMeterCarouselFlex(peaData, '⚡ ข้อมูลมิเตอร์ไฟฟ้าตามชื่อ', page, name)
-);
+      const data = await fetchPEAApi({ pean: name });
+      const result = formatPEAMeterRecords(data, '⚡ ข้อมูลมิเตอร์ไฟฟ้าตามชื่อ', page, name);
+      return reply(event.replyToken, { type: 'text', text: result });
     } catch (err) {
       console.error('pean error:', err?.response?.data || err.message);
       return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูล PEA จากชื่อไม่สำเร็จ: ' + err.message });
@@ -3498,12 +2996,9 @@ return reply(
       return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุที่อยู่ เช่น peau%นครสวรรค์' });
     }
     try {
-     const peaData = await fetchPEAApi({ peau: address });
-
-return reply(
-  event.replyToken,
-  buildPEAAddressCarouselFlex(peaData, page)
-);
+      const data = await fetchPEAApi({ peau: address });
+      const result = formatPEAAddressRecords(data, page);
+      return reply(event.replyToken, { type: 'text', text: result });
     } catch (err) {
       console.error('peau error:', err?.response?.data || err.message);
       return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูล PEA จากที่อยู่ไม่สำเร็จ: ' + err.message });
