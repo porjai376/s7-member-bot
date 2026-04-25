@@ -1090,7 +1090,7 @@ function formatPrisonerRecords(data, input, isRemand = false) {
   return limitLineMessage(msg);
 }
 
-function formatPEAMeterRecords(peaData, title, page = 0, exactName = '') {
+function buildPEAMeterCarouselFlex(peaData, title, page = 0, exactName = '') {
   let records = Array.isArray(peaData?.MESSAGE) ? peaData.MESSAGE : [];
 
   if (exactName) {
@@ -1105,41 +1105,114 @@ function formatPEAMeterRecords(peaData, title, page = 0, exactName = '') {
     });
   }
 
-  if (!peaData?.SUCCESS || !records.length) return 'ไม่พบข้อมูลสำหรับเงื่อนไขที่ระบุ';
+  if (!peaData?.SUCCESS || !records.length) {
+    return {
+      type: 'text',
+      text: 'ไม่พบข้อมูลสำหรับเงื่อนไขที่ระบุ'
+    };
+  }
 
   const itemsPerPage = 5;
   const totalPages = Math.ceil(records.length / itemsPerPage);
   page = parseInt(page, 10);
   if (isNaN(page) || page < 0) page = 0;
-  if (page >= totalPages) return `ไม่พบข้อมูลหน้าที่ ${page + 1} (มีทั้งหมด ${totalPages} หน้า)`;
 
   const startIndex = page * itemsPerPage;
   const pageItems = records.slice(startIndex, startIndex + itemsPerPage);
-  let result = `${title} (หน้า ${page + 1}/${totalPages})\n====================\n`;
 
-  pageItems.forEach((item, index) => {
+  const bubbles = pageItems.map((item, index) => {
     const data = item.data || {};
-    result += `
-📍 รายการที่ ${startIndex + index + 1}
-👤 ข้อมูลผู้ใช้ไฟฟ้า
-ชื่อ-สกุล: ${(data.PREFIX || '')}${data.CUSTOMERNAME || ''} ${data.CUSTOMERSIRNAME || ''}
-เลขCA: ${data.CA || '-'}
-เลขมิเตอร์: ${data.PEANO || '-'}
-📫 ที่อยู่: ${[
+    const latLon = convertUTMToLatLon(data.POS_X, data.POS_Y, 47, false);
+
+    const fullName = `${data.PREFIX || ''}${data.CUSTOMERNAME || ''} ${data.CUSTOMERSIRNAME || ''}`.trim();
+
+    const address = [
       data.ADDRESSNO,
       data.MOO && data.MOO !== '-' ? `หมู่ ${data.MOO}` : '',
       data.TUMBOL ? `ต.${data.TUMBOL}` : '',
       data.AMPHOE ? `อ.${data.AMPHOE}` : '',
       data.CHANGWAT ? `จ.${data.CHANGWAT}` : '',
       data.POSTCODE ? `รหัสไปรษณีย์ ${data.POSTCODE}` : ''
-    ].filter(Boolean).join(' ') || '-'}
-พิกัด GPS: X=${data.POS_X || '-'} Y=${data.POS_Y || '-'}
-${formatLatLonLink(data.POS_X, data.POS_Y)}
--------------------`;
+    ].filter(Boolean).join(' ') || '-';
+
+    return {
+      type: 'bubble',
+      size: 'mega',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        backgroundColor: '#0F172A',
+        paddingAll: '16px',
+        contents: [
+          {
+            type: 'text',
+            text: `⚡ รายการที่ ${startIndex + index + 1}`,
+            color: '#FFFFFF',
+            weight: 'bold',
+            size: 'lg'
+          },
+          {
+            type: 'text',
+            text: title,
+            color: '#CBD5E1',
+            size: 'sm',
+            margin: 'sm',
+            wrap: true
+          }
+        ]
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'md',
+        contents: [
+          infoLine('ชื่อ-สกุล', fullName || '-'),
+          infoLine('เลข CA', data.CA || '-'),
+          infoLine('เลขมิเตอร์', data.PEANO || '-'),
+          infoLine('ที่อยู่', address),
+          infoLine('พิกัด X', data.POS_X || '-'),
+          infoLine('พิกัด Y', data.POS_Y || '-'),
+          infoLine('Lat, Lon', latLon ? `${latLon.lat}, ${latLon.lon}` : '-')
+        ]
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'sm',
+        contents: [
+          latLon
+            ? {
+                type: 'button',
+                style: 'primary',
+                color: '#2563EB',
+                action: {
+                  type: 'uri',
+                  label: 'เปิดแผนที่',
+                  uri: `https://www.google.com/maps?q=${latLon.lat},${latLon.lon}`
+                }
+              }
+            : {
+                type: 'button',
+                style: 'secondary',
+                action: {
+                  type: 'message',
+                  label: 'ไม่มีพิกัด',
+                  text: 'ไม่มีพิกัด'
+                }
+              }
+        ]
+      }
+    };
   });
 
-  result += `\n📊 แสดง ${pageItems.length} จาก ${records.length} รายการ`;
-  return limitLineMessage(result);
+  return {
+    type: 'flex',
+    altText: `${title} หน้า ${page + 1}/${totalPages}`,
+    contents: {
+      type: 'carousel',
+      contents: bubbles
+    }
+  };
 }
 
 function formatPEAAddressRecords(peaData, page = 0) {
@@ -2993,9 +3066,12 @@ async function handleText(event) {
       return reply(event.replyToken, { type: 'text', text: '❌ กรุณาใส่ชื่อเต็มและนามสกุล เช่น pean%เย็น เก่งสาริกิจ' });
     }
     try {
-      const data = await fetchPEAApi({ pean: name });
-      const result = formatPEAMeterRecords(data, '⚡ ข้อมูลมิเตอร์ไฟฟ้าตามชื่อ', page, name);
-      return reply(event.replyToken, { type: 'text', text: result });
+     const peaData = await fetchPEAApi({ pean: name });
+
+return reply(
+  event.replyToken,
+  buildPEAMeterCarouselFlex(peaData, '⚡ ข้อมูลมิเตอร์ไฟฟ้าตามชื่อ', page, name)
+);
     } catch (err) {
       console.error('pean error:', err?.response?.data || err.message);
       return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูล PEA จากชื่อไม่สำเร็จ: ' + err.message });
