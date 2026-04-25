@@ -1622,7 +1622,7 @@ function buildMenuCarouselFlex() {
             contents: [
               {
                 type: 'text',
-                text: 'MEGABOT 1/3',
+                text: 'MEGABOT 1/4',
                 color: '#FFFFFF',
                 weight: 'bold',
                 size: 'lg'
@@ -1671,7 +1671,7 @@ function buildMenuCarouselFlex() {
             contents: [
               {
                 type: 'text',
-                text: 'MEGABOT 2/3',
+                text: 'MEGABOT 2/4',
                 color: '#FFFFFF',
                 weight: 'bold',
                 size: 'lg'
@@ -1709,70 +1709,131 @@ function buildMenuCarouselFlex() {
           },
           footer: buildMenuFooter()
         },
-    {
-  type: 'bubble',
-  size: 'mega',
-  header: {
-    type: 'box',
-    layout: 'vertical',
-    backgroundColor: '#334155',
-    paddingAll: '16px',
-    contents: [
-      {
-        type: 'text',
-        text: 'MEGABOT 3/3',
-        color: '#FFFFFF',
-        weight: 'bold',
-        size: 'lg'
-      },
-      {
-        type: 'text',
-        text: 'หมายจับ / ไฟฟ้า / อื่น ๆ',
-        color: '#CBD5E1',
-        size: 'sm',
-        margin: 'sm'
-      }
-    ]
-  },
-  body: {
-    type: 'box',
-    layout: 'vertical',
-    spacing: 'md',
-    contents: [
-      menuSection('🔎 บุคคล', [
-        '┌● ประกันสังคม si%เลขบัตร',
-        '├● ใบขับขี่ dl#เลขบัตร',
-        '├● ผู้ต้องขัง psi#เลขบัตร',
-        '├● ผู้ต้องขังยังไม่พิพากษา ps#เลขบัตร',
-        '├● เช็ครถจากเลขบัตร cid#เลขบัตร',
-        '├● เช็คทะเบียนรถ car#จังหวัด หมวด ตัวเลข ประเภทรถ',
-        '└● ตัวอย่าง car#กรุงเทพ 1กก 334 1'
-      ]),
-      menuSection('⚖️ หมายจับ', [
-        '┗ ╾ c#เลขบัตร / doc#เลขบัตร'
-      ]),
-      menuSection('⚡ ไฟฟ้า / อื่นๆ', [
-        '┣ ╾ mea%ชื่อสกุล',
-        '┣ ╾ kru%เลขมิเตอร์',
-        '┣ ╾ peab%เลข CA เลขมิเตอร์',
-        '┣ ╾ peac%เลข CA',
-        '┣ ╾ pean%ชื่อสกุล',
-        '┣ ╾ peau%ที่อยู่',
-        '┣ ╾ ip%เลข IP',
-        '┣ ╾ imei%เลข IMEI',
-        '┣ ╾ imsi%เลข IMSI',
-        '┣ ╾ icc%เลข ICCID',
-        '┣ ╾ map%ละติจูด,ลองจิจูด',
-        '┣ ╾ web%ชื่อเว็บไซต์',
-        '┗ ╾ se%รหัสสาขา7-11'
-      ]),
-      menuSection('📺 ผ่อนสินค้า', [
-        '┗ ╾ s%เลขบัตร'
-      ])
-    ]
-  },
-  footer: buildMenuFooter()
-}
+        {
+          type: 'bubble',
+          size: 'mega',
+          header: {
+            type: 'box',
+            layout: 'vertical',
+            backgroundColor: '#334155',
+            paddingAll: '16px',
+            contents: [
+              {
+                type: 'text',
+                text: 'MEGABOT 3/4',
+                color: '#FFFFFF',
+                weight: 'bold',
+                size: 'lg'
+              },
+              {
+                type: 'text',
+                text: 'หมายจับ / ไฟฟ้า / อื่น ๆ',
+                color: '#CBD5E1',
+                size: 'sm',
+                margin: 'sm'
+              }
+            ]
+          },
+          body: {
+            type: 'box',
+            layout: 'vertical',
+            spacing: 'md',
+            contents: [
+              menuSection('🔎 บุคคล', [
+                '┌● ประกันสังคม si%เลขบัตร',
+                '├● ใบขับขี่ dl#เลขบัตร',
+                '├● ผู้ต้องขัง psi#เลขบัตร',
+                '├● ผู้ต้องขังยังไม่พิพากษา ps#เลขบัตร',
+                '├● เช็ครถจากเลขบัตร cid#เลขบัตร',
+                '├● เช็คทะเบียนรถ car#จังหวัด หมวด ตัวเลข ประเภทรถ',
+                '└● ตัวอย่าง car#กรุงเทพ 1กก 334 1'
+              ]),
+              menuSection('⚖️ หมายจับ', [
+                '┗ ╾ c#เลขบัตร / doc#เลขบัตร'
+              ]),
+              menuSection('⚡ ไฟฟ้า / อื่นๆ', [
+                '┣ ╾ mea%ชื่อสกุล',
+                '┣ ╾ kru%เลขมิเตอร์',
+                '┣ ╾ peab%เลข CA เลขมิเตอร์',
+                '┣ ╾ peac%เลข CA',
+                '┣ ╾ pean%ชื่อสกุล',
+                '┣ ╾ peau%ที่อยู่',
+                '┣ ╾ ip%เลข IP',
+                '┣ ╾ imei%เลข IMEI',
+                '┣ ╾ imsi%เลข IMSI',
+                '┣ ╾ icc%เลข ICCID',
+                '┣ ╾ map%ละติจูด,ลองจิจูด',
+                '┣ ╾ web%ชื่อเว็บไซต์',
+                '┗ ╾ se%รหัสสาขา7-11'
+              ]),
+              menuSection('📺 ผ่อนสินค้า', [
+                '┗ ╾ s%เลขบัตร'
+              ])
+            ]
+          },
+          footer: buildMenuFooter()
+        },
+        {
+          type: 'bubble',
+          size: 'mega',
+          header: {
+            type: 'box',
+            layout: 'vertical',
+            backgroundColor: '#475569',
+            paddingAll: '16px',
+            contents: [
+              {
+                type: 'text',
+                text: 'MEGABOT 4/4',
+                color: '#FFFFFF',
+                weight: 'bold',
+                size: 'lg'
+              },
+              {
+                type: 'text',
+                text: 'ตารางประเภทรถ',
+                color: '#CBD5E1',
+                size: 'sm',
+                margin: 'sm'
+              }
+            ]
+          },
+          body: {
+            type: 'box',
+            layout: 'vertical',
+            spacing: 'md',
+            contents: [
+              menuSection('🚗 ประเภทรถ 1-17', [
+                '1 รถยนต์นั่งไม่เกิน 7 คน',
+                '2 รถยนต์นั่งเกิน 7 คน',
+                '3 รถบรรทุกส่วนบุคคล',
+                '4 สามล้อส่วนบุคคล',
+                '5 รับจ้างระหว่างจังหวัด',
+                '6 รับจ้างไม่เกิน 7 คน',
+                '7 สี่ล้อเล็กรับจ้าง',
+                '8 รับจ้างสามล้อ',
+                '9 บริการธุรกิจ',
+                '10 บริการทัศนาจร',
+                '11 บริการให้เช่า',
+                '12 จักรยานยนต์'
+              ]),
+              menuSection('🚍 ประเภทรถต่อ', [
+                '13 รถแทร็กเตอร์',
+                '14 รถบดถนน',
+                '15 รถใช้ในงานเกษตรกรรม',
+                '16 รถพ่วง',
+                '17 จักรยานยนต์สาธารณะ',
+                '30 รถโดยสารประจำทาง',
+                '31 รถขนาดเล็ก',
+                '32 โดยสารไม่ประจำทาง',
+                '33 โดยสารส่วนบุคคล',
+                '34 บรรทุกไม่ประจำทาง',
+                '35 บรรทุกส่วนบุคคล'
+              ])
+            ]
+          },
+          footer: buildMenuFooter()
+        }
       ]
     }
   };
