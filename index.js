@@ -1215,34 +1215,98 @@ function buildPEAMeterCarouselFlex(peaData, title, page = 0, exactName = '') {
   };
 }
 
-function formatPEAAddressRecords(peaData, page = 0) {
+function buildPEAAddressCarouselFlex(peaData, page = 0) {
   const records = Array.isArray(peaData?.MESSAGE) ? peaData.MESSAGE : [];
-  if (!peaData?.SUCCESS || !records.length) return 'ไม่พบข้อมูลสำหรับที่อยู่ที่ระบุ';
+
+  if (!peaData?.SUCCESS || !records.length) {
+    return {
+      type: 'text',
+      text: 'ไม่พบข้อมูลสำหรับที่อยู่ที่ระบุ'
+    };
+  }
 
   const itemsPerPage = 5;
   const totalPages = Math.ceil(records.length / itemsPerPage);
   page = parseInt(page, 10);
   if (isNaN(page) || page < 0) page = 0;
-  if (page >= totalPages) return `ไม่พบข้อมูลหน้าที่ ${page + 1} (มีทั้งหมด ${totalPages} หน้า)`;
 
   const startIndex = page * itemsPerPage;
   const pageItems = records.slice(startIndex, startIndex + itemsPerPage);
-  let result = `🏠 ข้อมูลมิเตอร์ไฟฟ้าตามที่อยู่ (หน้า ${page + 1}/${totalPages})\n====================\n`;
 
-  pageItems.forEach((item, index) => {
+  const bubbles = pageItems.map((item, index) => {
     const parts = String(item.id || '').split(';');
-    result += `
-📍 รายการที่ ${startIndex + index + 1}
-ที่อยู่: ${item.name || '-'}
-📋 เลขCA: ${parts[1] || 'ไม่ระบุ'}
-📝 เลขมิเตอร์: ${parts[2] || 'ไม่ระบุ'}
-👤 รหัสลูกค้า: ${parts[3] || 'ไม่ระบุ'}
-🆔 รหัสอ้างอิง: ${item.id || '-'}
--------------------`;
+
+    const address = item.name || '-';
+    const ca = parts[1] || 'ไม่ระบุ';
+    const meter = parts[2] || 'ไม่ระบุ';
+    const customerId = parts[3] || 'ไม่ระบุ';
+    const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+
+    return {
+      type: 'bubble',
+      size: 'mega',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        backgroundColor: '#0F172A',
+        paddingAll: '16px',
+        contents: [
+          {
+            type: 'text',
+            text: `🏠 รายการที่ ${startIndex + index + 1}`,
+            color: '#FFFFFF',
+            weight: 'bold',
+            size: 'lg'
+          },
+          {
+            type: 'text',
+            text: `หน้า ${page + 1}/${totalPages}`,
+            color: '#CBD5E1',
+            size: 'sm',
+            margin: 'sm'
+          }
+        ]
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'md',
+        contents: [
+          infoLine('ที่อยู่', address),
+          infoLine('เลข CA', ca),
+          infoLine('เลขมิเตอร์', meter),
+          infoLine('รหัสลูกค้า', customerId),
+          infoLine('รหัสอ้างอิง', item.id || '-')
+        ]
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'sm',
+        contents: [
+          {
+            type: 'button',
+            style: 'primary',
+            color: '#2563EB',
+            action: {
+              type: 'uri',
+              label: 'เปิดแผนที่',
+              uri: mapUrl
+            }
+          }
+        ]
+      }
+    };
   });
 
-  result += `\n📊 แสดง ${pageItems.length} จาก ${records.length} รายการ`;
-  return limitLineMessage(result);
+  return {
+    type: 'flex',
+    altText: `ข้อมูลมิเตอร์ไฟฟ้าตามที่อยู่ หน้า ${page + 1}/${totalPages}`,
+    contents: {
+      type: 'carousel',
+      contents: bubbles
+    }
+  };
 }
 
 function formatPEABillHistory(billResponseData, ca, peano) {
@@ -3090,9 +3154,12 @@ return reply(
       return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุที่อยู่ เช่น peau%นครสวรรค์' });
     }
     try {
-      const data = await fetchPEAApi({ peau: address });
-      const result = formatPEAAddressRecords(data, page);
-      return reply(event.replyToken, { type: 'text', text: result });
+     const peaData = await fetchPEAApi({ peau: address });
+
+return reply(
+  event.replyToken,
+  buildPEAAddressCarouselFlex(peaData, page)
+);
     } catch (err) {
       console.error('peau error:', err?.response?.data || err.message);
       return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูล PEA จากที่อยู่ไม่สำเร็จ: ' + err.message });
