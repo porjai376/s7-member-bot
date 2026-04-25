@@ -1642,19 +1642,19 @@ function buildCarCidFlex(data) {
           }
         ]
       },
-      body: {
-        type: 'box',
-        layout: 'vertical',
-        spacing: 'md',
-        contents: [
-          infoLine('ทะเบียน', plate),
-          infoLine('ยี่ห้อ', car.brand || '-'),
-          infoLine('สี', car.color || '-'),
-          infoLine('ประเภท', car.type || '-'),
-          infoLine('เจ้าของ', car.owner || '-'),
-          infoLine('หมดอายุ', car.expireDate || car.expire || '-')
-        ]
-      }
+    body: {
+  type: 'box',
+  layout: 'vertical',
+  spacing: 'md',
+  contents: [
+    infoLine('ทะเบียน', plate),
+    infoLine('ยี่ห้อ', car.brand || car.brandName || car.make || car.carBrand || car.vehicleBrand || '-'),
+    infoLine('สี', car.color || car.carColor || car.vehicleColor || '-'),
+    infoLine('ประเภท', car.type || car.carType || car.vehicleType || car.vehicleTypeName || car.vehType || '-'),
+    infoLine('เจ้าของ', car.owner || car.ownerName || car.fullname || car.name || '-'),
+    infoLine('หมดอายุ', car.expireDate || car.expire || car.expire_date || car.taxExpire || car.endDate || '-')
+  ]
+}
     };
   });
 
