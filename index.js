@@ -659,6 +659,46 @@ function buildCellSiteFlex(data, input) {
   };
 }
 
+function buildTopupQrFlex(packageLabel) {
+
+  const qrUrl = `${BASE_URL}/uploads/promptpay.jpg`;
+
+  return {
+    type: 'flex',
+    altText: 'ช่องทางสนับสนุนเซิฟเวอร์',
+    contents: {
+      type: 'bubble',
+      size: 'mega',
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        contents: [
+          {
+            type: 'image',
+            url: qrUrl,
+            size: 'full',
+            aspectRatio: '1:1'
+          },
+          {
+            type: 'text',
+            text: 'ช่องทางสนับสนุนเซิฟเวอร์',
+            weight: 'bold',
+            size: 'md',
+            margin: 'md'
+          },
+          {
+            type: 'text',
+            text: packageLabel,
+            size: 'sm',
+            color: '#666666',
+            margin: 'sm'
+          }
+        ]
+      }
+    }
+  };
+}
+
 async function trackFlashExpress(trackingId) {
   try {
     const response = await axios({
@@ -2485,6 +2525,22 @@ async function handleText(event) {
           'กรุณาติดต่อแอดมินเพื่อต่ออายุ'
       });
     }
+
+if (text === '30') {
+  return reply(event.replyToken, buildTopupQrFlex('แพ็กเกจ 30 วัน'));
+}
+
+if (text === '90') {
+  return reply(event.replyToken, buildTopupQrFlex('แพ็กเกจ 90 วัน'));
+}
+
+if (text === '180') {
+  return reply(event.replyToken, buildTopupQrFlex('แพ็กเกจ 180 วัน'));
+}
+
+if (text === '365') {
+  return reply(event.replyToken, buildTopupQrFlex('แพ็กเกจ 365 วัน'));
+}
 
     return reply(event.replyToken, {
       type: 'text',
