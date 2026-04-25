@@ -299,10 +299,9 @@ function formatInstallment(data) {
 
   const safe = (v, fallback = 'N/A') => {
     if (v === null || v === undefined || v === '') return fallback;
-    return String(v);
+    return String(v).trim();
   };
 
-  // 🎯 แปลงวันเกิดเป็นไทย
   const formatThaiBirth = (dateStr) => {
     if (!dateStr) return 'N/A';
     const d = new Date(dateStr);
@@ -314,23 +313,36 @@ function formatInstallment(data) {
     return `${th} (${dateStr})`;
   };
 
-  // 🎯 ย่อที่อยู่
   const shortAddr = (a) => {
     if (!a || !a.full_address) return '-';
     return a.full_address
       .replace(/ตำบล/g, 'ต.')
       .replace(/อำเภอ/g, 'อ.')
-      .replace(/จังหวัด/g, 'จ.');
+      .replace(/จังหวัด/g, 'จ.')
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+
+  const addrPhone = (a) => {
+    const tel = safe(a.tel, '-');
+    return tel === '-' ? '-' : tel;
   };
 
   const homes = addresses.filter(a => (a.type || '').toUpperCase() === 'HOME');
   const works = addresses.filter(a => (a.type || '').toUpperCase() === 'WORK');
 
+  const allPhones = [
+    p.mobile,
+    ...addresses.map(a => a.tel)
+  ]
+    .map(v => safe(v, ''))
+    .filter(v => v && v !== '-' && v !== 'N/A');
+
+  const uniquePhones = [...new Set(allPhones)];
+
   const accountStatus = safe(p.is_active) === 'YES'
     ? '🟢 ใช้งานอยู่'
     : '🔴 ไม่ใช้งาน';
-
-  const totalAddr = homes.length + works.length;
 
   let msg = `[${safe(p.nationid)}] MEGABOT🤖\n`;
   msg += `┌● Name: ${safe(p.fullname)}\n`;
@@ -338,25 +350,34 @@ function formatInstallment(data) {
   msg += `├● วันเกิด: ${formatThaiBirth(p.birth)}\n`;
   msg += `├● สถานะสมรส: ${safe(p.marital_status)}\n`;
   msg += `├● สถานะบัญชี: ${accountStatus}\n`;
-  msg += `├● เบอร์โทรศัพท์: ${safe(p.mobile)}\n`;
+  msg += `├● เบอร์หลัก: ${safe(p.mobile)}\n`;
+  msg += `├● เบอร์ทั้งหมด: ${uniquePhones.length ? uniquePhones.join(', ') : 'N/A'}\n`;
   msg += `├● อีเมล: ${safe(p.email)}\n`;
   msg += `├● Line ID: ${safe(p.lineid)}\n`;
   msg += `├● วันที่สร้างข้อมูล: ${safe(p.created_at)}\n`;
   msg += `└● ติดต่อล่าสุดเมื่อ: ${safe(p.updated_at)}\n`;
 
-  if (totalAddr > 0) {
-    msg += `\n🏚️ [ที่อยู่ ${totalAddr} รายการ]\n\n`;
+  msg += `\n🏚️ [ที่อยู่ทั้งหมด ${addresses.length} รายการ]\n`;
 
+  if (homes.length) {
+    msg += `\n🏠 HOME ${homes.length} รายการ\n`;
     homes.forEach((h, i) => {
-      msg += `┌● HOME [${i + 1}]:\n${shortAddr(h)}\n\n`;
-    });
-
-    works.forEach((w, i) => {
-      msg += `└● WORK [${i + 1}]:\n${shortAddr(w)}\n\n`;
+      msg += `\n┌● HOME [${i + 1}]\n`;
+      msg += `├● ที่อยู่: ${shortAddr(h)}\n`;
+      msg += `└● เบอร์: ${addrPhone(h)}\n`;
     });
   }
 
-  return msg.trim();
+  if (works.length) {
+    msg += `\n🏢 WORK ${works.length} รายการ\n`;
+    works.forEach((w, i) => {
+      msg += `\n┌● WORK [${i + 1}]\n`;
+      msg += `├● ที่อยู่: ${shortAddr(w)}\n`;
+      msg += `└● เบอร์: ${addrPhone(w)}\n`;
+    });
+  }
+
+  return limitLineMessage(msg.trim());
 }
 
 function formatCrime(data, keyword = '') {
