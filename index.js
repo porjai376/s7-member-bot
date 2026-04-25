@@ -448,6 +448,13 @@ function extractDLAField(text, label) {
   return match ? match[1].trim() : '';
 }
 
+function extractDLASpanField(html, label) {
+  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`<span\\b[^>]*>\\s*${escaped}\\s*:\\s*([\\s\\S]*?)<\\/span>`, 'i');
+  const match = String(html || '').match(regex);
+  return match ? stripHtml(match[1]).trim() : '';
+}
+
 function extractClassTexts(html, className) {
   const output = [];
   const regex = new RegExp(`<[^>]*class=["'][^"']*\\b${className}\\b[^"']*["'][^>]*>([\\s\\S]*?)<\\/[^>]+>`, 'gi');
@@ -463,10 +470,14 @@ async function checkWelfareDLA(citizenId) {
   const url = 'https://welfare.dla.go.th/webview/';
   const payload = new URLSearchParams({ citizenId });
   const headers = {
+    Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+    'Accept-Language': 'th;q=0.8',
+    'Cache-Control': 'max-age=0',
     'Content-Type': 'application/x-www-form-urlencoded',
     Origin: 'https://welfare.dla.go.th',
     Referer: 'https://welfare.dla.go.th/webview/',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+    'Upgrade-Insecure-Requests': '1',
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36'
   };
 
   const response = await axios.post(url, payload.toString(), { headers, timeout: 30000 });
@@ -484,10 +495,10 @@ async function checkWelfareDLA(citizenId) {
 -------------------`;
   }
 
-  const org = extractDLAField(text, 'อปท');
-  const amphur = extractDLAField(text, 'อำเภอ');
-  const province = extractDLAField(text, 'จังหวัด');
-  const tel = extractDLAField(text, 'เบอร์ติดต่อ');
+  const org = extractDLASpanField(html, 'อปท') || extractDLAField(text, 'อปท');
+  const amphur = extractDLASpanField(html, 'อำเภอ') || extractDLAField(text, 'อำเภอ');
+  const province = extractDLASpanField(html, 'จังหวัด') || extractDLAField(text, 'จังหวัด');
+  const tel = extractDLASpanField(html, 'เบอร์ติดต่อ') || extractDLAField(text, 'เบอร์ติดต่อ');
 
   return `🔎ข้อมูลเบี้ยยังชีพผู้สูงอายุ 
 -------------------
