@@ -3234,6 +3234,7 @@ if (text === 'cartype%') {
       const { data: res } = await axios.get(`http://103.91.204.203:4000/?cid=${cid}`);
       if (!res.success) return reply(event.replyToken, { type: 'text', text: `❌ ${res.message || 'ดึงข้อมูลไม่สำเร็จ'}` });
       const data = res.data;
+      console.log('CID RAW:', JSON.stringify(data.content?.[0], null, 2));
       if (data.content && data.content.length > 0) {
       return reply(
   event.replyToken,
