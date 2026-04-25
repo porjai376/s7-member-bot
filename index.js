@@ -422,6 +422,85 @@ async function fetchPEAApi(params) {
   return res.data;
 }
 
+function stripHtml(value) {
+  return String(value || '')
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function firstMatch(text, regex, fallback = '') {
+  const match = String(text || '').match(regex);
+  return match ? match[1].trim() : fallback;
+}
+
+function extractDLAField(text, label) {
+  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = text.match(new RegExp(`${escaped}\\s*:\\s*([^:]+?)(?=\\s*(?:อปท|อำเภอ|จังหวัด|เบอร์ติดต่อ)\\s*:|$)`));
+  return match ? match[1].trim() : '';
+}
+
+function extractClassTexts(html, className) {
+  const output = [];
+  const regex = new RegExp(`<[^>]*class=["'][^"']*\\b${className}\\b[^"']*["'][^>]*>([\\s\\S]*?)<\\/[^>]+>`, 'gi');
+  let match;
+  while ((match = regex.exec(html))) {
+    const value = stripHtml(match[1]);
+    if (value) output.push(value);
+  }
+  return output;
+}
+
+async function checkWelfareDLA(citizenId) {
+  const url = 'https://welfare.dla.go.th/webview/';
+  const payload = new URLSearchParams({ citizenId });
+  const headers = {
+    'Content-Type': 'application/x-www-form-urlencoded',
+    Origin: 'https://welfare.dla.go.th',
+    Referer: 'https://welfare.dla.go.th/webview/',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+  };
+
+  const response = await axios.post(url, payload.toString(), { headers, timeout: 30000 });
+  const html = String(response.data || '');
+  const text = stripHtml(html);
+  const citizenValue = firstMatch(html, /name=["']citizenId["'][^>]*value=["']([^"']*)/i, citizenId) || citizenId;
+  const statusText = extractClassTexts(html, 'fieldBold').find(value => value.includes('เบี้ยยังชีพ')) || '';
+  const found = !!statusText;
+
+  if (!found) {
+    return `🔎ข้อมูลเบี้ยยังชีพผู้สูงอายุ 
+-------------------
+🪪เลขบัตร: ${citizenValue}
+❌ไม่พบข้อมูลของผู้มีสิทธิ์
+-------------------`;
+  }
+
+  const org = extractDLAField(text, 'อปท');
+  const amphur = extractDLAField(text, 'อำเภอ');
+  const province = extractDLAField(text, 'จังหวัด');
+  const tel = extractDLAField(text, 'เบอร์ติดต่อ');
+
+  return `🔎ข้อมูลเบี้ยยังชีพผู้สูงอายุ 
+-------------------
+🪪เลขบัตร: ${citizenValue}
+✅พบข้อมูลของผู้มีสิทธิ์
+--------------------
+อปท: ${org || '-'}
+อำเภอ: ${amphur || '-'}
+จังหวัด: ${province || '-'}
+เบอร์ติดต่อ: ${tel || '-'}
+--------------------`;
+}
+
 const SERVER_DATA_DIR = 'C:\\Users\\Administrator\\Downloads\\fortest';
 const ATM_CSV_PATHS = [
   process.env.ATM_CSV_PATH,
@@ -1420,12 +1499,13 @@ function buildMenuCarouselFlex() {
                 '┣ ╾ pean%ชื่อสกุล',
                 '┣ ╾ peau%ที่อยู่',
                 '┣ ╾ ip%เลข IP',
-                '┣ ╾ imei%เลข IMEI',
-                '┣ ╾ imsi%เลข IMSI',
-                '┣ ╾ icc%เลข ICCID',
-                '┣ ╾ map%ละติจูด,ลองจิจูด',
-                '┣ ╾ web%ชื่อเว็บไซต์',
-                '┗ ╾ se%รหัสสาขา7-11'
+        '┣ ╾ imei%เลข IMEI',
+        '┣ ╾ imsi%เลข IMSI',
+        '┣ ╾ icc%เลข ICCID',
+        '┣ ╾ wf%เลขบัตร',
+        '┣ ╾ map%ละติจูด,ลองจิจูด',
+        '┣ ╾ web%ชื่อเว็บไซต์',
+        '┗ ╾ se%รหัสสาขา7-11'
               ]),
               menuSection('📺 ผ่อนสินค้า', [
                 '┗ ╾ s%เลขบัตร'
@@ -2941,6 +3021,20 @@ async function handleText(event) {
     }
     const result = await searchICCID(iccidNumber);
     return reply(event.replyToken, { type: 'text', text: result });
+  }
+
+  if (text.startsWith('wf%')) {
+    const citizenId = text.replace(/^wf%/i, '').trim();
+    if (!/^\d{13}$/.test(citizenId)) {
+      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขบัตร 13 หลัก เช่น wf%3460300290391' });
+    }
+    try {
+      const result = await checkWelfareDLA(citizenId);
+      return reply(event.replyToken, { type: 'text', text: result });
+    } catch (err) {
+      console.error('wf error:', err?.response?.data || err.message);
+      return reply(event.replyToken, { type: 'text', text: '❌ ตรวจสอบเบี้ยยังชีพไม่สำเร็จ: ' + err.message });
+    }
   }
 
   if (text.startsWith('map%')) {
