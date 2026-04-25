@@ -1530,6 +1530,80 @@ function buildMenuFooter() {
   };
 }
 
+function buildCarTypeFlex() {
+  const types = [
+    ['1', 'รถยนต์นั่งไม่เกิน 7 คน'],
+    ['2', 'รถยนต์นั่งเกิน 7 คน'],
+    ['3', 'รถบรรทุกส่วนบุคคล'],
+    ['4', 'สามล้อส่วนบุคคล'],
+    ['5', 'รับจ้างระหว่างจังหวัด'],
+    ['6', 'รับจ้างไม่เกิน 7 คน'],
+    ['7', 'สี่ล้อเล็กรับจ้าง'],
+    ['8', 'รับจ้างสามล้อ'],
+    ['9', 'บริการธุรกิจ'],
+    ['10', 'บริการทัศนาจร'],
+    ['11', 'บริการให้เช่า'],
+    ['12', 'จักรยานยนต์'],
+    ['13', 'รถแทร็กเตอร์'],
+    ['14', 'รถบดถนน'],
+    ['15', 'รถงานเกษตรกรรม'],
+    ['16', 'รถพ่วง'],
+    ['17', 'จักรยานยนต์สาธารณะ'],
+    ['30', 'รถโดยสารประจำทาง'],
+    ['31', 'รถขนาดเล็ก'],
+    ['32', 'โดยสารไม่ประจำทาง'],
+    ['33', 'โดยสารส่วนบุคคล'],
+    ['34', 'บรรทุกไม่ประจำทาง'],
+    ['35', 'บรรทุกส่วนบุคคล']
+  ];
+
+  const chunks = [];
+  for (let i = 0; i < types.length; i += 4) {
+    chunks.push(types.slice(i, i + 4));
+  }
+
+  return {
+    type: 'flex',
+    altText: 'เลือกประเภทรถ',
+    contents: {
+      type: 'carousel',
+      contents: chunks.map((group, pageIndex) => ({
+        type: 'bubble',
+        size: 'mega',
+        header: {
+          type: 'box',
+          layout: 'vertical',
+          backgroundColor: '#0F172A',
+          paddingAll: '16px',
+          contents: [
+            {
+              type: 'text',
+              text: `🚗 ประเภทรถ ${pageIndex + 1}/${chunks.length}`,
+              color: '#FFFFFF',
+              weight: 'bold',
+              size: 'lg'
+            }
+          ]
+        },
+        body: {
+          type: 'box',
+          layout: 'vertical',
+          spacing: 'sm',
+          contents: group.map(([code, name]) => ({
+            type: 'button',
+            style: 'secondary',
+            action: {
+              type: 'message',
+              label: `${code} ${name}`,
+              text: `typecar%${code}`
+            }
+          }))
+        }
+      }))
+    }
+  };
+}
+
 function buildMenuCarouselFlex() {
   return {
     type: 'flex',
@@ -2558,6 +2632,10 @@ if (text === '365') {
       buildMenuCarouselFlex()
     ]);
   }
+
+if (text === 'cartype%') {
+  return reply(event.replyToken, buildCarTypeFlex());
+}
 
   if (text === 'hadmin') {
     if (!isAdmin(userId)) {
