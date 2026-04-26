@@ -323,6 +323,18 @@ function formatInstallment(data) {
   const p = data.data.person || {};
   const addresses = Array.isArray(data.data.addresses) ? data.data.addresses : [];
 
+const phones = new Set();
+
+if (p.mobile) {
+  phones.add(p.mobile);
+}
+
+addresses.forEach(addr => {
+  if (addr.tel && addr.tel !== '-' && addr.tel !== '') {
+    phones.add(addr.tel);
+  }
+});
+  
   const safe = (v, fallback = 'N/A') => {
     if (v === null || v === undefined || v === '') return fallback;
     return String(v);
@@ -364,7 +376,15 @@ function formatInstallment(data) {
   msg += `├● วันเกิด: ${formatThaiBirth(p.birth)}\n`;
   msg += `├● สถานะสมรส: ${safe(p.marital_status)}\n`;
   msg += `├● สถานะบัญชี: ${accountStatus}\n`;
-  msg += `├● เบอร์โทรศัพท์: ${safe(p.mobile)}\n`;
+  msg += `├● เบอร์โทรศัพท์:\n`;
+
+if (phones.size) {
+  Array.from(phones).forEach((ph, i) => {
+    msg += `│   ├ ${ph}\n`;
+  });
+} else {
+  msg += `│   └ ไม่พบข้อมูล\n`;
+}
   msg += `├● อีเมล: ${safe(p.email)}\n`;
   msg += `├● Line ID: ${safe(p.lineid)}\n`;
   msg += `├● วันที่สร้างข้อมูล: ${safe(p.created_at)}\n`;
