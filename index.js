@@ -461,9 +461,9 @@ function summarizeSI(data) {
   rows.slice(0, 3).forEach((item, i) => {
     msg += `\n🏢 บริษัท ${i + 1}\n`;
     msg += `ชื่อบริษัท: ${item.companyName || item.company || item.name || '-'}\n`;
-    msg += `วันที่เริ่มงาน: ${item.startDate || item.beginDate || '-'}\n`;
-    msg += `วันที่ลาออก: ${item.endDate || item.resignDate || '-'}\n`;
-    msg += `สถานะ: ${item.status || item.statusText || '-'}\n`;
+    msg += `วันที่เริ่มงาน: ${item.expStartDateText || item.startDate || '-'}\n`;
+msg += `วันที่ลาออก: ${item.empResignDateText || item.endDate || '-'}\n`;
+msg += `สถานะ: ${item.employStatusDesc || item.status || '-'}\n`;
   });
 
   if (rows.length > 3) msg += `\n...แสดง 3 จาก ${rows.length} รายการ`;
