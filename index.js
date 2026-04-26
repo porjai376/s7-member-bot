@@ -2642,6 +2642,19 @@ async function handleText(event) {
   const db = loadDB();
   const member = db.members[userId];
 
+  if (
+    text.startsWith('fx#') ||
+    text.startsWith('a#') ||
+    text.startsWith('d#')
+  ) {
+    await notifyAdminsUserCommand(userId, text);
+
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '⏳ ระบบกำลังตรวจสอบข้อมูล...'
+    });
+  }
+
   if (!canUseBotCommands(userId, member, text)) {
     if (!member) {
       return reply(event.replyToken, {
