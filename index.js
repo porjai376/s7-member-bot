@@ -3437,22 +3437,22 @@ return reply(
       msg += `\n🏥 ข้อมูลบุคคล/สิทธิรักษา\n`;
       msg += hRes.status === 'fulfilled'
         ? limitAllSection(hRes.value, 900)
-        : '❌ ดึงข้อมูล h% ไม่สำเร็จ';
+        : '❌ไม่พบข้อมูล';
 
       msg += `\n\n-------------------\n🚨 หมายจับ\n`;
       msg += cRes.status === 'fulfilled'
         ? limitAllSection(formatCrime(cRes.value, pid), 900)
-        : '❌ ดึงข้อมูล c# ไม่สำเร็จ';
+        : '❌ไม่พบข้อมูลหมายจับ [CRIME]';
 
       msg += `\n\n-------------------\n👔 ประกันสังคม\n`;
       msg += siRes.status === 'fulfilled'
         ? summarizeSI(siRes.value)
-        : '❌ ดึงข้อมูล si% ไม่สำเร็จ';
+        : '❌ไม่พบข้อมูลประกันสังคม';
 
       msg += `\n\n-------------------\n📺 ผ่อนสินค้า\n`;
       msg += sRes.status === 'fulfilled'
         ? limitAllSection(formatInstallment(sRes.value), 1200)
-        : '❌ ดึงข้อมูล s% ไม่สำเร็จ';
+        : '❌ไม่พบข้อมูลผ่อนสินค้า';
 
       return reply(event.replyToken, {
         type: 'text',
