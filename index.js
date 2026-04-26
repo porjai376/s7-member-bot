@@ -478,6 +478,14 @@ async function fetchPEAApi(params) {
   return res.data;
 }
 
+async function fetchPEAApiFull(params) {
+  const { data: res } = await axios.get(SEARCH_API_BASE, { params, timeout: 30000 });
+  if (!res.success) {
+    throw new Error(res.message || 'ดึงข้อมูลไม่สำเร็จ');
+  }
+  return res;
+}
+
 function stripHtml(value) {
   return String(value || '')
     .replace(/<script[\s\S]*?<\/script>/gi, '')
@@ -3197,8 +3205,8 @@ if (text.startsWith('send#')) {
       return reply(event.replyToken, { type: 'text', text: '❌กรุณาระบุเลขบัตรประชาชน 13 หลัก เช่น pb%3100502131342' });
     }
     try {
-      const data = await fetchPEAApi({ pb: citizenId });
-      return reply(event.replyToken, { type: 'text', text: data.message || '❌ไม่พบข้อมูลคุมประพฤติ' });
+      const res = await fetchPEAApiFull({ pb: citizenId });
+      return reply(event.replyToken, { type: 'text', text: res.message || '❌ไม่พบข้อมูลคุมประพฤติ' });
     } catch (err) {
       console.error('pb error:', err?.response?.data || err.message);
       return reply(event.replyToken, { type: 'text', text: '❌ดึงข้อมูลคุมประพฤติไม่สำเร็จ: ' + err.message });
