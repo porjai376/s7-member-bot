@@ -1719,6 +1719,7 @@ function buildMenuCarouselFlex() {
               menuSection('🔎 บุคคล', [
                 '┌● ประกันสังคม si%เลขบัตร',
                 '├● ใบขับขี่ dl#เลขบัตร',
+                '├● คุมประพฤติ pb%เลขบัตร',
                 '├● ผู้ต้องขัง psi#เลขบัตร',
                 '├● ผู้ต้องขังยังไม่พิพากษา ps#เลขบัตร',
                 '├● เช็ครถจากเลขบัตร cid#เลขบัตร',
@@ -3120,6 +3121,21 @@ async function handleText(event) {
     }
   }
 
+  // คุมประพฤติ: pb%เลขบัตร
+  if (text.startsWith('pb%')) {
+    const citizenId = text.replace(/^pb%/i, '').trim();
+    if (!/^\d{13}$/.test(citizenId)) {
+      return reply(event.replyToken, { type: 'text', text: '❌กรุณาระบุเลขบัตรประชาชน 13 หลัก เช่น pb%3100502131342' });
+    }
+    try {
+      const data = await fetchPEAApi({ pb: citizenId });
+      return reply(event.replyToken, { type: 'text', text: data.message || '❌ไม่พบข้อมูลคุมประพฤติ' });
+    } catch (err) {
+      console.error('pb error:', err?.response?.data || err.message);
+      return reply(event.replyToken, { type: 'text', text: '❌ดึงข้อมูลคุมประพฤติไม่สำเร็จ: ' + err.message });
+    }
+  }
+
   // เช็ครถจาก CID: cid#เลขบัตร
   if (text.startsWith('cid#')) {
     const cid = text.replace(/^cid#/, '').trim();
@@ -3432,24 +3448,24 @@ return reply(
         fetchInstallment(pid)
       ]);
 
-      let msg = `🔎ผลการค้นหา [PID]\nเลขบัตร: ${pid}\n-------------------\n`;
+      let msg = `🔎ผลการค้นหา[PID]\nเลขบัตร:${pid}\n-------------------\n`;
 
-      msg += `\n🏥 ข้อมูลบุคคล/สิทธิรักษา\n`;
+      msg += `\n🔎ข้อมูลบุคคล/สิทธิรักษา\n`;
       msg += hRes.status === 'fulfilled'
         ? limitAllSection(hRes.value, 900)
-        : '❌ไม่พบข้อมูล';
+        : '❌ไม่พบข้อมูลสิทธิ';
 
-      msg += `\n\n-------------------\n🚨 หมายจับ\n`;
+      msg += `\n\n-------------------\n🔎หมายจับ[CRIME]\n`;
       msg += cRes.status === 'fulfilled'
         ? limitAllSection(formatCrime(cRes.value, pid), 900)
-        : '❌ไม่พบข้อมูลหมายจับ [CRIME]';
+        : '❌ไม่พบข้อมูลหมายจับ[CRIME]';
 
-      msg += `\n\n-------------------\n👔 ประกันสังคม\n`;
+      msg += `\n\n-------------------\n🔎ประกันสังคม\n`;
       msg += siRes.status === 'fulfilled'
         ? summarizeSI(siRes.value)
         : '❌ไม่พบข้อมูลประกันสังคม';
 
-      msg += `\n\n-------------------\n📺 ผ่อนสินค้า\n`;
+      msg += `\n\n-------------------\n🔎ผ่อนสินค้า\n`;
       msg += sRes.status === 'fulfilled'
         ? limitAllSection(formatInstallment(sRes.value), 1200)
         : '❌ไม่พบข้อมูลผ่อนสินค้า';
