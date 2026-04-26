@@ -3052,9 +3052,9 @@ async function handleText(event) {
       if (!res.success) return reply(event.replyToken, { type: 'text', text: `❌ ${res.message || 'ดึงข้อมูลไม่สำเร็จ'}` });
       const data = res.data;
       if (data.content && data.content.length > 0) {
-        let result = `👔 ประวัติการทำงานประกันสังคม\n====================\n🆔 เลขประกันสังคม: ${ssoNum}\n📊 จำนวนที่พบ: ${data.totalElements} รายการ\n`;
+        let result = `🔎ประวัติการทำงานประกันสังคม\n-------------------\n🆔เลขประกันสังคม:${ssoNum}\n📊จำนวนที่พบ:${data.totalElements}รายการ\n`;
         data.content.forEach((item, idx) => {
-          result += `\n🏢 บริษัท ${idx + 1}\nชื่อบริษัท: ${item.companyName || 'ไม่ระบุ'}\nรหัสสาขา: ${item.accBran || 'ไม่ระบุ'}\nเลขที่บัญชี: ${item.accNo || 'ไม่ระบุ'}\nวันที่เริ่มงาน: ${item.expStartDateText || 'ไม่ระบุ'}\nวันที่ลาออก: ${item.empResignDateText || '-'}\nสถานะ: ${item.employStatusDesc || 'ไม่ระบุ'}\n--------------------`;
+          result += `\n🏢บริษัท${idx + 1}\nชื่อบริษัท:${item.companyName || 'ไม่ระบุ'}\nรหัสสาขา:${item.accBran || 'ไม่ระบุ'}\nเลขที่บัญชี:${item.accNo || 'ไม่ระบุ'}\nวันที่เริ่มงาน:${item.expStartDateText || 'ไม่ระบุ'}\nวันที่ลาออก:${item.empResignDateText || '-'}\nสถานะ:${item.employStatusDesc || 'ไม่ระบุ'}\n-------------------`;
         });
         return reply(event.replyToken, { type: 'text', text: result });
       } else {
