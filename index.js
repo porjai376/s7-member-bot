@@ -227,6 +227,32 @@ async function getProfile(userId) {
   }
 }
 
+async function notifyAdminsUserCommand(userId, text) {
+  const profile = await getProfile(userId);
+
+  const msg =
+`📩 มีสมาชิกใช้คำสั่ง
+
+ชื่อไลน์:
+${profile.displayName || '-'}
+
+UID:
+${userId}
+
+ข้อความที่ส่งมา:
+${text}
+
+ตอบกลับสมาชิก:
+send#${userId}#ข้อความที่ต้องการส่ง`;
+
+  for (const adminId of ADMIN_IDS) {
+    await push(adminId, {
+      type: 'text',
+      text: msg
+    });
+  }
+}
+
 async function downloadLineImage(messageId, savePath) {
   const resp = await axios.get(
     `https://api-data.line.me/v2/bot/message/${messageId}/content`,
@@ -1668,8 +1694,8 @@ function buildMenuCarouselFlex() {
             spacing: 'md',
             contents: [
               menuSection('📦 ขนส่ง', [
-                '┣ ╾ f#เบอร์โทร',
-                '┣ ╾ fx#เบอร์โทร/ชื่อสกุล',
+                '┣ ╾ f#เบอร์โทร/พัสดุค่ายรอง',
+                '┣ ╾ fx#เบอร์โทร/ชื่อสกุล/พัสดุละเอียด',
                 '┗ ╾ tic%เลขพัสดุ'
               ]),
               menuSection('🏦 พิกัด ATM/ธนาคาร', [
@@ -2674,6 +2700,36 @@ async function handleText(event) {
       text: `Your userId:\n${userId}`
     });
   }
+
+if (text.startsWith('send#')) {
+  if (!isAdmin(userId)) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ คำสั่งนี้ใช้ได้เฉพาะแอดมิน'
+    });
+  }
+
+  const parts = text.split('#');
+  const targetUserId = parts[1];
+  const message = parts.slice(2).join('#').trim();
+
+  if (!targetUserId || !message) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ รูปแบบ: send#UID#ข้อความ'
+    });
+  }
+
+  await push(targetUserId, {
+    type: 'text',
+    text: message
+  });
+
+  return reply(event.replyToken, {
+    type: 'text',
+    text: '✅ ส่งข้อความถึงสมาชิกแล้ว'
+  });
+}
 
   if (text === 'ยินยอมรับข้อตกลง') {
     return reply(event.replyToken, buildRegisterGuideFlex());
