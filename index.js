@@ -2651,7 +2651,7 @@ async function handleText(event) {
 
     return reply(event.replyToken, {
       type: 'text',
-      text: '⏳ ระบบกำลังตรวจสอบข้อมูล...'
+      text: '⏳The System is Searching Please wait⏳'
     });
   }
 
