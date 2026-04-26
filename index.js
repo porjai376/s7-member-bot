@@ -596,6 +596,41 @@ async function checkWelfareDLA(citizenId) {
 --------------------`;
 }
 
+async function searchCJExpress(phone, idCard) {
+  const puppeteer = require('puppeteer');
+  let browser;
+  try {
+    browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
+    const page = await browser.newPage();
+
+    await page.goto('https://www.cjexpress.co.th/member/checkpoint', {
+      waitUntil: 'networkidle2',
+      timeout: 30000
+    });
+
+    await page.type('#PhoneNumber', String(phone).trim(), { delay: 15 });
+    await page.type('#IDCard', String(idCard).trim(), { delay: 15 });
+    await page.click('#btn-checkpoint');
+
+    await page.waitForSelector('span.clr-blue', { timeout: 10000 });
+    const points = await page.$eval('span.clr-blue', el => el.innerText.trim());
+
+    return `CJ Express สมาชิก
+--------------------
+เบอร์: ${phone}
+เลขบัตร: ${idCard}
+คะแนนสะสม: คุณมีแต้มในบัตร ${points}
+--------------------`;
+  } catch (err) {
+    return `❌ ไม่พบคะแนนหรือข้อมูลผิดพลาด: ${err.message}`;
+  } finally {
+    if (browser) await browser.close().catch(() => {});
+  }
+}
+
 const SERVER_DATA_DIR = 'C:\\Users\\Administrator\\Downloads\\fortest';
 const ATM_CSV_PATHS = [
   process.env.ATM_CSV_PATH,
@@ -1790,6 +1825,7 @@ function buildMenuCarouselFlex() {
                 '┣ ╾ peac%เลข CA',
                 '┣ ╾ pean%ชื่อสกุล',
                 '┣ ╾ peau%ที่อยู่',
+                '┣ ╾ cj%เบอร์ เลขบัตร',
                 '┣ ╾ ip%เลข IP',
         '┣ ╾ imei%เลข IMEI',
         '┣ ╾ imsi%เลข IMSI',
@@ -3384,6 +3420,23 @@ if (text.startsWith('send#')) {
     } catch (err) {
       console.error('wf error:', err?.response?.data || err.message);
       return reply(event.replyToken, { type: 'text', text: '❌ตรวจสอบเบี้ยยังชีพไม่สำเร็จ: ' + err.message });
+    }
+  }
+
+  if (text.startsWith('cj%')) {
+    const payload = text.replace(/^cj%/i, '').trim();
+    const parts = payload.split(/\s+/).filter(Boolean);
+    const phone = parts[0] || '';
+    const idCard = parts[1] || '';
+    if (!/^0\d{9}$/.test(phone) || !/^\d{13}$/.test(idCard)) {
+      return reply(event.replyToken, { type: 'text', text: '❌รูปแบบไม่ถูกต้อง\nตัวอย่าง: cj%0823458109 1401000124449' });
+    }
+    try {
+      const result = await searchCJExpress(phone, idCard);
+      return reply(event.replyToken, { type: 'text', text: limitLineMessage(result) });
+    } catch (err) {
+      console.error('cj error:', err?.response?.data || err.message);
+      return reply(event.replyToken, { type: 'text', text: '❌ดึงข้อมูล CJ Express ไม่สำเร็จ: ' + err.message });
     }
   }
 
