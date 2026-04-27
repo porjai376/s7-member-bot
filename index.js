@@ -1308,21 +1308,29 @@ function formatPrisonerRecords(data, input, isRemand = false) {
     const sex = item.sex === 'MALE' ? 'ชาย' : item.sex === 'FEMALE' ? 'หญิง' : item.sex || '-';
 
     if (isRemand) {
-      msg += `[${idx + 1}]
-ชื่อ-สกุล: ${item.firstName || '-'} ${item.lastName || '-'}
-เลขบัตรประชาชน: ${item.citizenCardNumber || '-'}
-วันเกิด: ${item.dateOfBirth || '-'}
-เพศ: ${sex}
-สัญชาติ: ${item.nationality || '-'}
-ศาสนา: ${item.religious || '-'}
-การศึกษา: ${item.educationLevel || '-'} (${item.educationSchool || '-'} ${item.educationProvince || '-'})
-เรือนจำ: ${item.prisonName || '-'}
-เลขผู้ต้องขัง: ${item.prisonerId || '-'}
-วันที่รับตัว: ${item.receiveDate || '-'}
-วันที่ปล่อย: ${item.releaseDate || '-'}
-ข้อหา: ${item.allegation || '-'}
-ที่อยู่: ${formatPrisonerAddress(item)}
---------------------\n`;
+      msg += `[${idx + 1}]\n`;
+
+msg += `┌● ชื่อ-สกุล: ${item.firstName || '-'} ${item.lastName || '-'}\n`;
+msg += `├● เลขบัตร: ${item.citizenCardNumber || '-'}\n`;
+msg += `├● วันเกิด: ${item.dateOfBirth || '-'}\n`;
+msg += `├● เพศ: ${sex}\n`;
+msg += `├● สัญชาติ: ${item.nationality || '-'}\n`;
+msg += `├● ศาสนา: ${item.religious || '-'}\n`;
+msg += `├● การศึกษา: ${item.educationLevel || '-'} (${item.educationSchool || '-'})\n`;
+
+msg += `├● เรือนจำ: ${item.prisonName || '-'}\n`;
+msg += `├● เลขผู้ต้องขัง: ${item.prisonerId || '-'}\n`;
+msg += `├● วันรับตัว: ${item.receiveDate || '-'}\n`;
+msg += `├● วันปล่อยตัว: ${item.releaseDate || '-'}\n`;
+msg += `├● ข้อหา: ${item.allegation || '-'}\n`;
+msg += `├● คดีแดง/ดำ: ${item.decidedCaseId || '-'} / ${item.undecidedCaseId || '-'}\n`;
+msg += `├● ศาล: ${item.courtName || '-'}\n`;
+msg += `└● วันตัดสิน: ${item.sentenceDate || '-'}\n`;
+
+msg += `┌● บิดา: ${fatherName}\n`;
+msg += `├● มารดา: ${motherName}\n`;
+msg += `└● ที่อยู่: ${formatPrisonerAddress(item)}\n`;
+msg += `--------------------\n`;
       return;
     }
 
