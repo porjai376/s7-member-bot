@@ -3189,8 +3189,14 @@ if (text.startsWith('send#')) {
       if (data.content && data.content.length > 0) {
         let result = `🔎ประวัติการทำงานประกันสังคม\n-------------------\n🆔เลขประกันสังคม:${ssoNum}\n📊จำนวนที่พบ:${data.totalElements}รายการ\n`;
         data.content.forEach((item, idx) => {
-          result += `\n🏢บริษัท${idx + 1}\nชื่อบริษัท:${item.companyName || 'ไม่ระบุ'}\nรหัสสาขา:${item.accBran || 'ไม่ระบุ'}\nเลขที่บัญชี:${item.accNo || 'ไม่ระบุ'}\nวันที่เริ่มงาน:${item.expStartDateText || 'ไม่ระบุ'}\nวันที่ลาออก:${item.empResignDateText || '-'}\nสถานะ:${item.employStatusDesc || 'ไม่ระบุ'}\n-------------------`;
-        });
+  result += `\n├🏢 บริษัท ${idx + 1}\n`;
+  result += `│  ชื่อบริษัท: ${item.companyName || '-'}\n`;
+  result += `│  รหัสสาขา: ${item.accBran || item.branchCode || '-'}\n`;
+  result += `│  เลขที่บัญชี: ${item.accNo || item.accountNo || '-'}\n`;
+  result += `│  วันที่เริ่มงาน: ${item.expStartDateText || '-'}\n`;
+  result += `│  วันที่ลาออก: ${item.empResignDateText || '-'}\n`;
+  result += `│  สถานะ: ${item.employStatusDesc || '-'}\n`;
+});
         return reply(event.replyToken, { type: 'text', text: result });
       } else {
         return reply(event.replyToken, { type: 'text', text: 'ไม่พบข้อมูลประวัติการทำงานประกันสังคม' });
