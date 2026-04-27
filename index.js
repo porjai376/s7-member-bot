@@ -405,6 +405,82 @@ if (phones.size) {
   return msg.trim();
 }
 
+function buildCallerInfoFlex(number, location, details) {
+  const cleanNumber = String(number || '').replace(/\s+/g, '');
+
+  let carrier = 'UNKNOWN';
+  let color = '#0F172A';
+  let logoUrl = null;
+
+  if (/AIS/i.test(details)) {
+    carrier = 'AIS';
+    color = '#16A34A';
+    logoUrl = `${BASE_URL}/uploads/ais.png`;
+  } else if (/DTAC/i.test(details)) {
+    carrier = 'DTAC';
+    color = '#2563EB';
+    logoUrl = `${BASE_URL}/uploads/dtac.png`;
+  } else if (/TRUE/i.test(details)) {
+    carrier = 'TRUE';
+    color = '#DC2626';
+    logoUrl = `${BASE_URL}/uploads/true.png`;
+  }
+
+  const headerContents = [
+    {
+      type: 'text',
+      text: '📡 ข้อมูลเครือข่าย',
+      color: '#FFFFFF',
+      weight: 'bold',
+      size: 'lg'
+    },
+    {
+      type: 'text',
+      text: carrier,
+      color: '#E5E7EB',
+      size: 'sm',
+      margin: 'sm'
+    }
+  ];
+
+  if (logoUrl) {
+    headerContents.unshift({
+      type: 'image',
+      url: logoUrl,
+      size: 'sm',
+      aspectMode: 'fit',
+      align: 'start'
+    });
+  }
+
+  return {
+    type: 'flex',
+    altText: `ข้อมูลเครือข่าย ${cleanNumber}`,
+    contents: {
+      type: 'bubble',
+      size: 'mega',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        backgroundColor: color,
+        paddingAll: '16px',
+        contents: headerContents
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'md',
+        contents: [
+          infoLine('หมายเลข', cleanNumber || '-'),
+          infoLine('ตำแหน่ง', location || '-'),
+          infoLine('เครือข่าย', carrier),
+          infoLine('รายละเอียด', details || '-')
+        ]
+      }
+    }
+  };
+}
+
 function formatCrime(data, keyword = '') {
   try {
     if (!data || data.status === false || data.status === 'error') {
@@ -1068,12 +1144,8 @@ async function fetchCallerInfo(phone) {
       details = 'หมายเลขไม่ถูกต้อง';
     }
 
-    return `📡ข้อมูลเครือข่าย
-- - - - - - - - - - -
-┌● หมายเลข: ${cleanNumber(number)}
-├● ตำแหน่ง: ${location}
-└● รายละเอียด: ${details}
-- - - - - - - - - - -`;
+    return buildCallerInfoFlex(number, location, details);
+
   } catch (error) {
     return 'ไม่สามารถดึงข้อมูลได้: ' + error.message;
   }
@@ -2956,10 +3028,7 @@ if (text.startsWith('send#')) {
     }
 
     const result = await fetchCallerInfo(phone);
-    return reply(event.replyToken, {
-      type: 'text',
-      text: result
-    });
+return reply(event.replyToken, result);
   }
 
   if (text.startsWith('regis%')) {
