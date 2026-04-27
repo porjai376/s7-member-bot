@@ -3226,8 +3226,18 @@ if (text.startsWith('send#')) {
         const pageItems = data.content.slice(startIndex, Math.min(startIndex + itemsPerPage, data.content.length));
         let result = `🔎ข้อมูลหมายจับศาล(หน้า ${page + 1}/${totalPages})\n- - - - - - - - - - - - -\n`;
         pageItems.forEach((warrant, idx) => {
-          result += `\n📄หมายจับที่ ${startIndex + idx + 1}\nเลขที่:${warrant.woaNo}/${warrant.woaYear}\nศาล:${warrant.courtCodeText}\n\n👤 ข้อมูลผู้ต้องหา\nชื่อ-สกุล: ${warrant.accFullName}\nเลขบัตรประชาชน: ${warrant.accCardId}\nสัญชาติ: ${warrant.accNationText}\nอาชีพ: ${warrant.accOccupation}\n\n📍 ที่อยู่\nตำบล/แขวง: ${warrant.accSubDistrictText || warrant.accSubDistrict}\nอำเภอ/เขต: ${warrant.accDistrictText}\n\n⚖️ ข้อมูลคดี\nสถานะ: ${warrant.arrestStatus}\nข้อหา: ${warrant.charge}\nผู้ร้อง: ${warrant.plaintiff}\nผู้พิพากษา: ${warrant.judgeName}\n\n📅 วันที่\nออกหมาย: ${new Date(warrant.woaDate).toLocaleDateString('th-TH')}\nเริ่มต้น: ${new Date(warrant.woaStartDate).toLocaleDateString('th-TH')}\nสิ้นสุด: ${new Date(warrant.woaEndDate).toLocaleDateString('th-TH')}\n-------------------`;
-        });
+  result += `\n📄 หมายจับที่ ${startIndex + idx + 1}\n`;
+
+  result += `┌● เลขที่: ${warrant.woaNo || '-'} / ${warrant.woaYear || '-'}\n`;
+  result += `├● ศาล: ${warrant.courtCodeText || '-'}\n`;
+  result += `├● สถานะ: ${warrant.arrestStatus || '-'}\n`;
+  result += `├● ข้อหา: ${warrant.charge || '-'}\n`;
+  result += `├● ผู้ร้อง: ${warrant.plaintiff || '-'}\n`;
+  result += `├● ผู้พิพากษา: ${warrant.judgeName || '-'}\n`;
+  result += `├● ออกหมาย: ${warrant.woaDate ? new Date(warrant.woaDate).toLocaleDateString('th-TH') : '-'}\n`;
+  result += `├● เริ่มต้น: ${warrant.woaStartDate ? new Date(warrant.woaStartDate).toLocaleDateString('th-TH') : '-'}\n`;
+  result += `└● สิ้นสุด: ${warrant.woaEndDate ? new Date(warrant.woaEndDate).toLocaleDateString('th-TH') : '-'}\n`;
+});
         result += `\n📊แสดง ${pageItems.length} จาก ${data.content.length} รายการ`;
         if (totalPages > 1) result += `\nพิมพ์ doc#${accCardId} [1-${totalPages}] เพื่อดูหน้าอื่น`;
         return reply(event.replyToken, { type: 'text', text: result });
