@@ -1335,30 +1335,28 @@ msg += `--------------------\n`;
     }
 
     const fatherName = `${item.fatherPrefix || ''}${item.fatherFirstName || '-'} ${item.fatherLastName || ''}`.trim();
-    const motherName = `${item.motherPrefix || ''}${item.motherFirstName || '-'} ${item.motherLastName || ''}`.trim();
-    msg += `[${idx + 1}]
-👤 ชื่อ-สกุล: ${item.firstName || '-'} ${item.lastName || '-'}
-🆔 เลขบัตร: ${item.citizenCardNumber || '-'}
-🎂 วันเกิด: ${item.dateOfBirth || '-'}
-🚻 เพศ: ${sex}
-🇹🇭 สัญชาติ: ${item.nationality || '-'}
-🙏 ศาสนา: ${item.religious || '-'}
-📚 การศึกษา: ${item.educationLevel || '-'} (${item.educationSchool || '-'} ${item.educationProvince || '-'})
+const motherName = `${item.motherPrefix || ''}${item.motherFirstName || '-'} ${item.motherLastName || ''}`.trim();
 
-🏢 เรือนจำ: ${item.prisonName || '-'}
-🔢 เลขผู้ต้องขัง: ${item.prisonerId || '-'}
-📥 วันรับตัว: ${item.receiveDate || '-'}
-📤 วันปล่อยตัว: ${item.releaseDate || '-'}
-⚖️ ข้อหา: ${item.allegation || '-'}
-📜 คดีแดง/ดำ: ${item.decidedCaseId || '-'} / ${item.undecidedCaseId || '-'}
-⚖️ ศาล: ${item.courtName || '-'}
-📅 วันตัดสิน: ${item.sentenceDate || '-'}
-
-👨 บิดา: ${fatherName}
-👩 มารดา: ${motherName}
-
-🏠 ที่อยู่: ${formatPrisonerAddress(item)}
---------------------\n`;
+msg += `[${idx + 1}]\n`;
+msg += `┌● ชื่อ-สกุล: ${item.firstName || '-'} ${item.lastName || '-'}\n`;
+msg += `├● เลขบัตร: ${item.citizenCardNumber || '-'}\n`;
+msg += `├● วันเกิด: ${item.dateOfBirth || '-'}\n`;
+msg += `├● เพศ: ${sex}\n`;
+msg += `├● สัญชาติ: ${item.nationality || '-'}\n`;
+msg += `├● ศาสนา: ${item.religious || '-'}\n`;
+msg += `├● การศึกษา: ${item.educationLevel || '-'} (${item.educationSchool || '-'} ${item.educationProvince || '-'})\n`;
+msg += `├● เรือนจำ: ${item.prisonName || '-'}\n`;
+msg += `├● เลขผู้ต้องขัง: ${item.prisonerId || '-'}\n`;
+msg += `├● วันรับตัว: ${item.receiveDate || '-'}\n`;
+msg += `├● วันปล่อยตัว: ${item.releaseDate || '-'}\n`;
+msg += `├● ข้อหา: ${item.allegation || '-'}\n`;
+msg += `├● คดีแดง/ดำ: ${item.decidedCaseId || '-'} / ${item.undecidedCaseId || '-'}\n`;
+msg += `├● ศาล: ${item.courtName || '-'}\n`;
+msg += `├● วันตัดสิน: ${item.sentenceDate || '-'}\n`;
+msg += `├● บิดา: ${fatherName}\n`;
+msg += `├● มารดา: ${motherName}\n`;
+msg += `└● ที่อยู่: ${formatPrisonerAddress(item)}\n`;
+msg += `--------------------\n`;
   });
 
   msg += isRemand ? `แสดงทั้งหมด ${content.length} รายการ` : `แสดง ${content.length} รายการ`;
