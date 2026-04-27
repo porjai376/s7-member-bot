@@ -479,12 +479,14 @@ function summarizeSI(data) {
   let msg = `📊 จำนวนที่พบ: ${rows.length} รายการ\n`;
 
   rows.slice(0, 3).forEach((item, i) => {
-    msg += `\n🏢 บริษัท ${i + 1}\n`;
-    msg += `ชื่อบริษัท: ${item.companyName || item.company || item.name || '-'}\n`;
-    msg += `วันที่เริ่มงาน: ${item.expStartDateText || item.startDate || '-'}\n`;
-msg += `วันที่ลาออก: ${item.empResignDateText || item.endDate || '-'}\n`;
-msg += `สถานะ: ${item.employStatusDesc || item.status || '-'}\n`;
-  });
+  msg += `\n├🏢 บริษัท ${i + 1}\n`;
+  msg += `│  ชื่อบริษัท: ${item.companyName || item.company || item.name || '-'}\n`;
+  msg += `│  รหัสสาขา: ${item.branchCode || '-'}\n`;
+  msg += `│  เลขที่บัญชี: ${item.accountNo || '-'}\n`;
+  msg += `│  วันที่เริ่มงาน: ${item.expStartDateText || '-'}\n`;
+  msg += `│  วันที่ลาออก: ${item.empResignDateText || '-'}\n`;
+  msg += `│  สถานะ: ${item.employStatusDesc || '-'}\n`;
+});
 
   if (rows.length > 3) msg += `\n...แสดง 3 จาก ${rows.length} รายการ`;
   return msg.trim();
