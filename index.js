@@ -1014,6 +1014,8 @@ Country: US`;
 
 async function fetchCallerInfo(phone) {
   try {
+    const cleanNumber = (num) => String(num || '').replace(/\s+/g, '');
+
     let apiPhone = phone;
     if (/^0\d{9}$/.test(phone)) {
       apiPhone = '+66' + phone.slice(1);
@@ -1066,12 +1068,12 @@ async function fetchCallerInfo(phone) {
       details = 'หมายเลขไม่ถูกต้อง';
     }
 
-    return `ข้อมูลหมายเลขโทรศัพท์
---------------------
-หมายเลข: ${number}
-ตำแหน่ง: ${location}
-รายละเอียด: ${details}
---------------------`;
+    return `📡ข้อมูลเครือข่าย
+- - - - - - - - - - -
+┌● หมายเลข: ${cleanNumber(number)}
+├● ตำแหน่ง: ${location}
+└● รายละเอียด: ${details}
+- - - - - - - - - - -`;
   } catch (error) {
     return 'ไม่สามารถดึงข้อมูลได้: ' + error.message;
   }
