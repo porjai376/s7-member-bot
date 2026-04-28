@@ -53,7 +53,8 @@ const httpsAgent = new https.Agent({
   rejectUnauthorized: false
 });
 
-const SEARCH_API_BASE = 'http://103.91.204.203:4000/';
+const SEARCH_API_BASE = 'http://103.91.204.203:2266/';
+const SEARCH_API_KEY = 'qYFlSvOoq0shlfbNWUzLlqZx';
 
 const config = {
   channelSecret: CHANNEL_SECRET
@@ -569,7 +570,10 @@ function summarizeSI(data) {
 }
 
 async function fetchPEAApi(params) {
-  const { data: res } = await axios.get(SEARCH_API_BASE, { params, timeout: 30000 });
+  const { data: res } = await axios.get(SEARCH_API_BASE, {
+    params: { ...params, key: SEARCH_API_KEY },
+    timeout: 30000
+  });
   if (!res.success) {
     throw new Error(res.message || 'ดึงข้อมูลไม่สำเร็จ');
   }
@@ -577,10 +581,21 @@ async function fetchPEAApi(params) {
 }
 
 async function fetchPEAApiFull(params) {
-  const { data: res } = await axios.get(SEARCH_API_BASE, { params, timeout: 30000 });
+  const { data: res } = await axios.get(SEARCH_API_BASE, {
+    params: { ...params, key: SEARCH_API_KEY },
+    timeout: 30000
+  });
   if (!res.success) {
     throw new Error(res.message || 'ดึงข้อมูลไม่สำเร็จ');
   }
+  return res;
+}
+
+async function fetchSearchApiRaw(params) {
+  const { data: res } = await axios.get(SEARCH_API_BASE, {
+    params: { ...params, key: SEARCH_API_KEY },
+    timeout: 30000
+  });
   return res;
 }
 
@@ -3260,7 +3275,7 @@ return reply(event.replyToken, result);
     const ssoNum = text.replace(/^si%/, '').trim();
     if (!ssoNum) return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขบัตรประชาชน เช่น si%1234567890123' });
     try {
-      const { data: res } = await axios.get(`http://103.91.204.203:4000/?si=${ssoNum}`);
+      const res = await fetchSearchApiRaw({ si: ssoNum });
       if (!res.success) return reply(event.replyToken, { type: 'text', text: `❌ ${res.message || 'ดึงข้อมูลไม่สำเร็จ'}` });
       const data = res.data;
       if (data.content && data.content.length > 0) {
@@ -3291,7 +3306,7 @@ return reply(event.replyToken, result);
     let page = parts[1] ? parseInt(parts[1]) - 1 : 0;
     if (!accCardId) return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขบัตรประชาชน เช่น doc#1234567890123' });
     try {
-      const { data: res } = await axios.get(`http://103.91.204.203:4000/?doc=${accCardId}`);
+      const res = await fetchSearchApiRaw({ doc: accCardId });
       if (!res.success) return reply(event.replyToken, { type: 'text', text: `❌ ${res.message || 'ดึงข้อมูลไม่สำเร็จ'}` });
       const data = res.data;
       if (data.content && data.content.length > 0) {
@@ -3331,7 +3346,7 @@ return reply(event.replyToken, result);
     const cid = text.replace(/^dl#/, '').trim();
     if (!cid) return reply(event.replyToken, { type: 'text', text: '❌กรุณาระบุเลขบัตรประชาชน เช่น dl#1234567890123' });
     try {
-      const { data: res } = await axios.get(`http://103.91.204.203:4000/?dl=${cid}`);
+      const res = await fetchSearchApiRaw({ dl: cid });
       if (!res.success) return reply(event.replyToken, { type: 'text', text: `❌ ${res.message || 'ดึงข้อมูลไม่สำเร็จ'}` });
       const data = res.data;
       if (data.content && data.content.length > 0) {
@@ -3369,7 +3384,7 @@ return reply(event.replyToken, result);
     const cid = text.replace(/^cid#/, '').trim();
     if (!cid) return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขบัตรประชาชน เช่น cid#1234567890123' });
     try {
-      const { data: res } = await axios.get(`http://103.91.204.203:4000/?cid=${cid}`);
+      const res = await fetchSearchApiRaw({ cid });
       if (!res.success) return reply(event.replyToken, { type: 'text', text: `❌ ${res.message || 'ดึงข้อมูลไม่สำเร็จ'}` });
       const data = res.data;
       if (data.content && data.content.length > 0) {
@@ -3400,8 +3415,7 @@ return reply(event.replyToken, result);
     const vehTypeRef = parts[3];
     let page = parts[4] ? parseInt(parts[4]) - 1 : 0;
     try {
-      const url = `http://103.91.204.203:4000/?province=${encodeURIComponent(province)}&plate1=${encodeURIComponent(plate1)}&plate2=${encodeURIComponent(plate2)}&vehTypeRef=${encodeURIComponent(vehTypeRef)}`;
-      const { data: res } = await axios.get(url);
+      const res = await fetchSearchApiRaw({ province, plate1, plate2, vehTypeRef });
       if (!res.success) return reply(event.replyToken, { type: 'text', text: `❌ ${res.message || 'ดึงข้อมูลไม่สำเร็จ'}` });
       const data = res.data;
       if (data.content && data.content.length > 0) {
@@ -3510,8 +3524,8 @@ return reply(event.replyToken, result);
       return reply(event.replyToken, { type: 'text', text: '❌กรุณาระบุเลขบัตร 13 หลัก เช่น wf%3460300290391' });
     }
     try {
-      const result = await checkWelfareDLA(citizenId);
-      return reply(event.replyToken, { type: 'text', text: result });
+      const res = await fetchPEAApiFull({ wf: citizenId });
+      return reply(event.replyToken, { type: 'text', text: res.message || '❌ไม่พบข้อมูลของผู้มีสิทธิ์' });
     } catch (err) {
       console.error('wf error:', err?.response?.data || err.message);
       return reply(event.replyToken, { type: 'text', text: '❌ตรวจสอบเบี้ยยังชีพไม่สำเร็จ: ' + err.message });
@@ -3527,8 +3541,8 @@ return reply(event.replyToken, result);
       return reply(event.replyToken, { type: 'text', text: '❌รูปแบบไม่ถูกต้อง\nตัวอย่าง: cj%0823458109 1401000124449' });
     }
     try {
-      const result = await searchCJExpress(phone, idCard);
-      return reply(event.replyToken, { type: 'text', text: limitLineMessage(result) });
+      const res = await fetchPEAApiFull({ cj: `${phone}`, [idCard]: '' });
+      return reply(event.replyToken, { type: 'text', text: limitLineMessage(res.message || '❌ไม่พบข้อมูล CJ Express') });
     } catch (err) {
       console.error('cj error:', err?.response?.data || err.message);
       return reply(event.replyToken, { type: 'text', text: '❌ดึงข้อมูล CJ Express ไม่สำเร็จ: ' + err.message });
