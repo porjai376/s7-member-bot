@@ -174,33 +174,6 @@ function isAdmin(userId) {
   return ADMIN_IDS.includes(userId);
 }
 
-function checkDailyLimit(userId, db) {
-  const today = new Date().toISOString().slice(0, 10);
-
-  if (!db.usage) db.usage = {};
-
-  if (!db.usage[userId]) {
-    db.usage[userId] = { date: today, count: 0 };
-  }
-
-  const userUsage = db.usage[userId];
-
-  // ถ้าวันใหม่ reset
-  if (userUsage.date !== today) {
-    userUsage.date = today;
-    userUsage.count = 0;
-  }
-
-  if (userUsage.count >= 10) {
-    return false;
-  }
-
-  userUsage.count += 1;
-  saveDB(db);
-
-  return true;
-}
-
 function cleanupProcessedEvents(db) {
   const now = Date.now();
   const ttl = 24 * 60 * 60 * 1000;
@@ -2842,28 +2815,6 @@ async function handleText(event) {
       text: '⏳The System is Searching Please wait⏳'
     });
   }
-
-if (
-  text.startsWith('si%') ||
-  text.startsWith('dl#') ||
-  text.startsWith('pb#') ||
-  text.startsWith('psi#') ||
-  text.startsWith('ps#') ||
-  text.startsWith('cid#') ||
-  text.startsWith('car#') ||
-  text.startsWith('doc#')
-) {
-  if (!isAdmin(userId)) {
-    const allowed = checkDailyLimit(userId, db);
-
-    if (!allowed) {
-  return reply(event.replyToken, {
-    type: 'text',
-    text: `⚠️ ใช้ครบ 10 ครั้งแล้ว (${db.usage[userId].count}/10)`
-  });
-}
-  }
-}
 
   if (!canUseBotCommands(userId, member, text)) {
     if (!member) {
