@@ -229,9 +229,10 @@ async function getProfile(userId) {
 }
 
 async function notifyAdminsUserCommand(userId, text) {
-  const profile = await getProfile(userId);
+  try {
+    const profile = await getProfile(userId);
 
-  const msg =
+    const msg =
 `📩 มีสมาชิกใช้คำสั่ง
 
 ชื่อไลน์:
@@ -246,11 +247,18 @@ ${text}
 ตอบกลับสมาชิก:
 send#${userId}#ข้อความที่ต้องการส่ง`;
 
-  for (const adminId of ADMIN_IDS) {
-    await push(adminId, {
-      type: 'text',
-      text: msg
-    });
+    for (const adminId of ADMIN_IDS) {
+      try {
+        await push(adminId, {
+          type: 'text',
+          text: msg
+        });
+      } catch (err) {
+        console.error('notify admin push error:', adminId, err?.response?.data || err.message);
+      }
+    }
+  } catch (err) {
+    console.error('notifyAdminsUserCommand error:', err?.response?.data || err.message);
   }
 }
 
@@ -2808,7 +2816,9 @@ async function handleText(event) {
     text.startsWith('a#') ||
     text.startsWith('d#')
   ) {
-    await notifyAdminsUserCommand(userId, text);
+    notifyAdminsUserCommand(userId, text).catch(err => {
+  console.error('notify admin failed:', err?.response?.data || err.message);
+});
 
     return reply(event.replyToken, {
       type: 'text',
