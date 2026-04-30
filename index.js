@@ -150,6 +150,67 @@ function formatThaiDate(date) {
   });
 }
 
+function formatThaiDateOnly(date) {
+  if (!date) return 'ไม่ระบุ';
+  const parsed = new Date(date);
+  if (Number.isNaN(parsed.getTime())) return 'ไม่ระบุ';
+  return parsed.toLocaleDateString('th-TH', {
+    timeZone: 'Asia/Bangkok'
+  });
+}
+
+function safeVehicleValue(value, fallback = 'ไม่ระบุ') {
+  if (value === null || value === undefined) return fallback;
+  const text = String(value).trim();
+  return text ? text : fallback;
+}
+
+function normalizeVehicleAddress(address) {
+  return safeVehicleValue(address).replace(/\s+/g, ' ');
+}
+
+function getVehicleColor(vehicle) {
+  if (vehicle?.carChkMasColorListText) return safeVehicleValue(vehicle.carChkMasColorListText);
+  if (Array.isArray(vehicle?.carChkMasColorList) && vehicle.carChkMasColorList.length > 0) {
+    const colors = vehicle.carChkMasColorList
+      .map(item => safeVehicleValue(item?.colorDesc, ''))
+      .filter(Boolean);
+    if (colors.length > 0) return colors.join(', ');
+  }
+  return 'ไม่ระบุ';
+}
+
+function formatVehicleDetails(vehicle, index) {
+  const owner2Block = vehicle?.docNo2 || vehicle?.owner2 || vehicle?.addressOwner2
+    ? `\nเจ้าของที่ 2:\nเลขประจำตัว: ${safeVehicleValue(vehicle?.docNo2)}\nชื่อ: ${safeVehicleValue(vehicle?.owner2)}\nที่อยู่: ${normalizeVehicleAddress(vehicle?.addressOwner2)}`
+    : '';
+  const noteBlock = vehicle?.note
+    ? `\n📝 หมายเหตุ: ${safeVehicleValue(vehicle.note)}${vehicle.noteDate ? ` (${formatThaiDateOnly(vehicle.noteDate)})` : ''}`
+    : '';
+
+  return `\n📄รถคันที่${index}
+🚘 ทะเบียน: ${safeVehicleValue(vehicle?.plate1, '')}${safeVehicleValue(vehicle?.plate2, '')}
+🏢 สำนักงาน: ${safeVehicleValue(vehicle?.offLocDesc)}
+🚗 ยี่ห้อ: ${safeVehicleValue(vehicle?.brnDesc)}
+📝 รุ่น: ${safeVehicleValue(vehicle?.modelName)}
+🎨 สี: ${getVehicleColor(vehicle)}
+🔧 ประเภทรถ: ${safeVehicleValue(vehicle?.vehTypeDesc)}
+📄 ลักษณะรถ: ${safeVehicleValue(vehicle?.kindDesc)}
+🪪 สถานะรถ: ${safeVehicleValue(vehicle?.carStatus)}
+⛔ อายัด/ถือครอง: ${safeVehicleValue(vehicle?.holdFlag)}
+📋 เลขตัวถัง: ${safeVehicleValue(vehicle?.numBody)}
+🔩 เลขเครื่อง: ${safeVehicleValue(vehicle?.numEng)}
+🛢️ เชื้อเพลิง: ${safeVehicleValue(vehicle?.fuelDesc)}
+📅 วันที่จดทะเบียน: ${formatThaiDateOnly(vehicle?.regDate)}
+📅 วันที่หมดอายุ: ${formatThaiDateOnly(vehicle?.expDate)}
+👤 ข้อมูลเจ้าของ
+เจ้าของที่ 1:
+เลขประจำตัว: ${safeVehicleValue(vehicle?.docNo1)}
+ชื่อ: ${safeVehicleValue(vehicle?.owner1)}
+ที่อยู่: ${normalizeVehicleAddress(vehicle?.addressOwner1)}${owner2Block}${noteBlock}
+-------------------`;
+}
+
 function addDaysFromNow(days) {
   const d = new Date();
   d.setDate(d.getDate() + Number(days));
@@ -229,10 +290,9 @@ async function getProfile(userId) {
 }
 
 async function notifyAdminsUserCommand(userId, text) {
-  try {
-    const profile = await getProfile(userId);
+  const profile = await getProfile(userId);
 
-    const msg =
+  const msg =
 `📩 มีสมาชิกใช้คำสั่ง
 
 ชื่อไลน์:
@@ -247,18 +307,11 @@ ${text}
 ตอบกลับสมาชิก:
 send#${userId}#ข้อความที่ต้องการส่ง`;
 
-    for (const adminId of ADMIN_IDS) {
-      try {
-        await push(adminId, {
-          type: 'text',
-          text: msg
-        });
-      } catch (err) {
-        console.error('notify admin push error:', adminId, err?.response?.data || err.message);
-      }
-    }
-  } catch (err) {
-    console.error('notifyAdminsUserCommand error:', err?.response?.data || err.message);
+  for (const adminId of ADMIN_IDS) {
+    await push(adminId, {
+      type: 'text',
+      text: msg
+    });
   }
 }
 
@@ -2816,9 +2869,7 @@ async function handleText(event) {
     text.startsWith('a#') ||
     text.startsWith('d#')
   ) {
-    notifyAdminsUserCommand(userId, text).catch(err => {
-  console.error('notify admin failed:', err?.response?.data || err.message);
-});
+    await notifyAdminsUserCommand(userId, text);
 
     return reply(event.replyToken, {
       type: 'text',
@@ -3391,18 +3442,31 @@ return reply(event.replyToken, result);
 
   // เช็ครถจาก CID: cid#เลขบัตร
   if (text.startsWith('cid#')) {
-    const cid = text.replace(/^cid#/, '').trim();
+    const payload = text.replace(/^cid#/, '').trim();
+    const parts = payload.split(/\s+/);
+    const cid = parts[0];
+    let page = parts[1] ? parseInt(parts[1], 10) - 1 : 0;
     if (!cid) return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขบัตรประชาชน เช่น cid#1234567890123' });
     try {
       const res = await fetchSearchApiRaw({ cid });
       if (!res.success) return reply(event.replyToken, { type: 'text', text: `❌ ${res.message || 'ดึงข้อมูลไม่สำเร็จ'}` });
       const data = res.data;
       if (data.content && data.content.length > 0) {
-        let result = `🚗ข้อมูลทะเบียนรถ (จาก CID)\n- - - - - - - - - - - - -\n`;
-        data.content.slice(0, 5).forEach((vehicle, idx) => {
-          result += `\n📄รถคันที่${idx + 1}\n🚘ทะเบียน: ${vehicle.plate1 || ''}${vehicle.plate2 || ''}\n🚗ยี่ห้อ: ${vehicle.brnDesc || 'ไม่ระบุ'}\n🎨 สี: ${(vehicle.carChkMasColorList && vehicle.carChkMasColorList[0]?.colorDesc) || 'ไม่ระบุ'}\n🔧 ประเภท: ${vehicle.vehTypeDesc || 'ไม่ระบุ'}\n👤 เจ้าของ: ${vehicle.owner1 || 'ไม่ระบุ'}\n📅 หมดอายุ: ${vehicle.expDate ? new Date(vehicle.expDate).toLocaleDateString('th-TH') : 'ไม่ระบุ'}\n-------------------`;
+        const itemsPerPage = 2;
+        const totalPages = Math.ceil(data.content.length / itemsPerPage);
+        if (isNaN(page) || page < 0) page = 0;
+        if (page >= totalPages) {
+          return reply(event.replyToken, { type: 'text', text: `ไม่พบข้อมูลหน้าที่ ${page + 1} (มีทั้งหมด ${totalPages} หน้า)` });
+        }
+        const startIndex = page * itemsPerPage;
+        const pageItems = data.content.slice(startIndex, Math.min(startIndex + itemsPerPage, data.content.length));
+        let result = `🚗ข้อมูลทะเบียนรถ (จาก CID) หน้า ${page + 1}/${totalPages}\n- - - - - - - - - - - - -\n`;
+        pageItems.forEach((vehicle, idx) => {
+          result += formatVehicleDetails(vehicle, startIndex + idx + 1);
         });
-        result += `\n📊พบทั้งหมด ${data.content.length} คัน`;
+        result += `\n📊 พบทั้งหมด ${data.content.length} คัน`;
+        result += `\n📄 แสดง ${pageItems.length} คันในหน้านี้`;
+        if (totalPages > 1) result += `\nพิมพ์ cid#${cid} [หน้า] เพื่อดูหน้าอื่น`;
         return reply(event.replyToken, { type: 'text', text: result });
       } else {
         return reply(event.replyToken, { type: 'text', text: 'ไม่พบข้อมูลทะเบียนรถ' });
@@ -3437,7 +3501,7 @@ return reply(event.replyToken, result);
         const pageItems = data.content.slice(startIndex, Math.min(startIndex + itemsPerPage, data.content.length));
         let result = `🚗 ข้อมูลทะเบียนรถ (หน้า ${page + 1}/${totalPages})\n- - - - - - - - - - - - -\n`;
         pageItems.forEach((vehicle, idx) => {
-          result += `\n📄รถคันที่${startIndex + idx + 1}\n🚘ทะเบียน:${vehicle.plate1 || ''}${vehicle.plate2 || ''}\n🏢สำนักงาน:${vehicle.offLocDesc || 'ไม่ระบุ'}\n🚗ยี่ห้อ:${vehicle.brnDesc || 'ไม่ระบุ'}\n📝รุ่น:${vehicle.modelName || 'ไม่ระบุ'}\n🎨 สี: ${(vehicle.carChkMasColorList && vehicle.carChkMasColorList[0]?.colorDesc) || 'ไม่ระบุ'}\n🔧 ประเภทรถ: ${vehicle.vehTypeDesc || 'ไม่ระบุ'}\n📋 หมายเลขตัวถัง: ${vehicle.numBody || 'ไม่ระบุ'}\n📅 วันที่จดทะเบียน: ${vehicle.regDate ? new Date(vehicle.regDate).toLocaleDateString('th-TH') : 'ไม่ระบุ'}\n📅 วันที่หมดอายุ: ${vehicle.expDate ? new Date(vehicle.expDate).toLocaleDateString('th-TH') : 'ไม่ระบุ'}\n\n👤 ข้อมูลเจ้าของ\nเจ้าของที่ 1:\nเลขประจำตัว: ${vehicle.docNo1 || 'ไม่ระบุ'}\nชื่อ:${vehicle.owner1 || 'ไม่ระบุ'}\nที่อยู่:${vehicle.addressOwner1 || 'ไม่ระบุ'}\n${vehicle.docNo2 ? `\nเจ้าของที่2:\nเลขประจำตัว:${vehicle.docNo2}\nชื่อ:${vehicle.owner2 || 'ไม่ระบุ'}` : ''}\n- - - - - - - - - - - - -`;
+          result += formatVehicleDetails(vehicle, startIndex + idx + 1);
         });
         result += `\n📊 แสดง ${pageItems.length} จาก ${data.content.length} รายการ`;
         if (totalPages > 1) result += `\nพิมพ์ car#${province} ${plate1} ${plate2} ${vehTypeRef} [หน้า] เพื่อดูหน้าอื่น`;
