@@ -188,26 +188,26 @@ function formatVehicleDetails(vehicle, index) {
     ? `\n📝 หมายเหตุ: ${safeVehicleValue(vehicle.note)}${vehicle.noteDate ? ` (${formatThaiDateOnly(vehicle.noteDate)})` : ''}`
     : '';
 
-  return `\n📄รถคันที่${index}
-🚘 ทะเบียน: ${safeVehicleValue(vehicle?.plate1, '')}${safeVehicleValue(vehicle?.plate2, '')}
-🏢 สำนักงาน: ${safeVehicleValue(vehicle?.offLocDesc)}
-🚗 ยี่ห้อ: ${safeVehicleValue(vehicle?.brnDesc)}
-📝 รุ่น: ${safeVehicleValue(vehicle?.modelName)}
-🎨 สี: ${getVehicleColor(vehicle)}
-🔧 ประเภทรถ: ${safeVehicleValue(vehicle?.vehTypeDesc)}
-📄 ลักษณะรถ: ${safeVehicleValue(vehicle?.kindDesc)}
-🪪 สถานะรถ: ${safeVehicleValue(vehicle?.carStatus)}
-⛔ อายัด/ถือครอง: ${safeVehicleValue(vehicle?.holdFlag)}
-📋 เลขตัวถัง: ${safeVehicleValue(vehicle?.numBody)}
-🔩 เลขเครื่อง: ${safeVehicleValue(vehicle?.numEng)}
-🛢️ เชื้อเพลิง: ${safeVehicleValue(vehicle?.fuelDesc)}
-📅 วันที่จดทะเบียน: ${formatThaiDateOnly(vehicle?.regDate)}
-📅 วันที่หมดอายุ: ${formatThaiDateOnly(vehicle?.expDate)}
-👤 ข้อมูลเจ้าของ
-เจ้าของที่ 1:
-เลขประจำตัว: ${safeVehicleValue(vehicle?.docNo1)}
-ชื่อ: ${safeVehicleValue(vehicle?.owner1)}
-ที่อยู่: ${normalizeVehicleAddress(vehicle?.addressOwner1)}${owner2Block}${noteBlock}
+  return `\n┌●รถคันที่${index}
+├●ทะเบียน: ${safeVehicleValue(vehicle?.plate1, '')}${safeVehicleValue(vehicle?.plate2, '')}
+├●สำนักงาน: ${safeVehicleValue(vehicle?.offLocDesc)}
+├●ยี่ห้อ: ${safeVehicleValue(vehicle?.brnDesc)}
+├●รุ่น: ${safeVehicleValue(vehicle?.modelName)}
+├●สี: ${getVehicleColor(vehicle)}
+├●ประเภทรถ: ${safeVehicleValue(vehicle?.vehTypeDesc)}
+├●ลักษณะรถ: ${safeVehicleValue(vehicle?.kindDesc)}
+├●สถานะรถ: ${safeVehicleValue(vehicle?.carStatus)}
+├●อายัด/ถือครอง: ${safeVehicleValue(vehicle?.holdFlag)}
+├●เลขตัวถัง: ${safeVehicleValue(vehicle?.numBody)}
+├●เลขเครื่อง: ${safeVehicleValue(vehicle?.numEng)}
+├●เชื้อเพลิง: ${safeVehicleValue(vehicle?.fuelDesc)}
+├●วันที่จดทะเบียน: ${formatThaiDateOnly(vehicle?.regDate)}
+└●วันที่หมดอายุ: ${formatThaiDateOnly(vehicle?.expDate)}
+👤ข้อมูลเจ้าของ
+┌●เจ้าของที่ 1:
+├●เลขประจำตัว: ${safeVehicleValue(vehicle?.docNo1)}
+├●ชื่อ: ${safeVehicleValue(vehicle?.owner1)}
+└●ที่อยู่: ${normalizeVehicleAddress(vehicle?.addressOwner1)}${owner2Block}${noteBlock}
 -------------------`;
 }
 
