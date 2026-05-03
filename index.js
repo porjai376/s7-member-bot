@@ -2921,13 +2921,11 @@ async function handleText(event) {
   const db = loadDB();
   const member = db.members[userId];
 
-if (
-  text.startsWith('fx#') ||
-  text.startsWith('a#')
-  // ❌ เอา d# ออก
-) {
-  await notifyAdminsUserCommand(userId, text);
-}
+  if (
+    text.startsWith('fx#') ||
+    text.startsWith('a#')
+  ) {
+    await notifyAdminsUserCommand(userId, text);
 
     return reply(event.replyToken, {
       type: 'text',
