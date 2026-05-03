@@ -467,6 +467,34 @@ if (phones.size) {
   return msg.trim();
 }
 
+function formatDtacSearch(res, phone) {
+  if (!res || !res.data || !res.data.data || !res.data.data.body || !res.data.data.body.result) {
+    return '❌ ไม่พบข้อมูลสำหรับเบอร์ ' + phone;
+  }
+
+  const result = res.data.data.body.result;
+  const userData = result.userData || {};
+  const simData = result.simData || {};
+  const deviceData = result.deviceData || {};
+
+  let msg = `📱 ข้อมูล DTAC [${phone}]\n====================\n`;
+  msg += `👤 ชื่อ-สกุล: ${userData.NameSurname || '-'}\n`;
+  msg += `🪪 เลขบัตร: ${userData.IDNumber || '-'}\n`;
+  msg += `💰 ยอดเงินคงเหลือ: ${simData.Balance || '-'}\n`;
+  msg += `🏷️ ประเภท: ${simData.type || '-'}\n`;
+  msg += `📅 วันที่เปิดเบอร์: ${simData.StartDate || '-'}\n`;
+  msg += `⏳ วันหมดอายุ: ${simData.ExpireTime || '-'}\n`;
+  
+  if (deviceData.deviceSimList && deviceData.deviceSimList.length > 0) {
+    msg += `\n📱 ข้อมูลอุปกรณ์/ซิม:\n`;
+    deviceData.deviceSimList.forEach(item => {
+      msg += `- ${item}\n`;
+    });
+  }
+
+  return msg.trim();
+}
+
 function buildCallerInfoFlex(number, location, details) {
   const cleanNumber = String(number || '').replace(/\s+/g, '');
 
@@ -2866,8 +2894,7 @@ async function handleText(event) {
 
   if (
     text.startsWith('fx#') ||
-    text.startsWith('a#') ||
-    text.startsWith('d#')
+    text.startsWith('a#')
   ) {
     await notifyAdminsUserCommand(userId, text);
 
@@ -3329,6 +3356,23 @@ return reply(event.replyToken, result);
         `เพิ่ม: ${days} วัน\n` +
         `หมดอายุใหม่: ${formatThaiDate(baseDate)}`
     });
+  }
+
+  // เช็คจดทะเบียน DTAC: d#เบอร์โทร หรือ 13หลัก
+  if (text.startsWith('d#')) {
+    const phone = text.replace(/^d#/, '').trim();
+    if (!phone) return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเบอร์โทรศัพท์ หรือเลขบัตร 13 หลัก เช่น d#0993606353' });
+    
+    await notifyAdminsUserCommand(userId, text);
+
+    try {
+      const res = await fetchSearchApiRaw({ dtac: phone });
+      const msg = formatDtacSearch(res, phone);
+      return reply(event.replyToken, { type: 'text', text: msg });
+    } catch (err) {
+      console.error('dtac lookup error:', err?.response?.data || err.message);
+      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูล DTAC ไม่สำเร็จ' });
+    }
   }
 
   // ประกันสังคม: si%เลขบัตร
