@@ -1029,6 +1029,56 @@ function cancelMemberByPhone(phone) {
   };
 }
 
+const axios = require('axios');
+
+async function getIPInfo(ip) {
+  const API_KEY = '7E1425604F72A2DB416917FA4847999E';
+
+  const url = `https://api.ip2location.io/?key=${API_KEY}&ip=${ip}`;
+
+  const res = await axios.get(url);
+  return res.data;
+}
+
+function formatIPInfo(data) {
+  let msg = `🌐 ข้อมูล IP: ${data.ip}\n`;
+  msg += `━━━━━━━━━━━━━━\n`;
+
+  msg += `📍 ที่ตั้ง\n`;
+  msg += `┌● ประเทศ: ${data.country_name}\n`;
+  msg += `├● จังหวัด: ${data.region_name}\n`;
+  msg += `├● อำเภอ: ${data.district}\n`;
+  msg += `├● เมือง: ${data.city_name}\n`;
+  msg += `└● รหัสไปรษณีย์: ${data.zip_code}\n\n`;
+
+  msg += `🌎 พิกัด\n`;
+  msg += `┌● Latitude: ${data.latitude}\n`;
+  msg += `└● Longitude: ${data.longitude}\n\n`;
+
+  msg += `📡 เครือข่าย\n`;
+  msg += `┌● ISP: ${data.isp}\n`;
+  msg += `├● ASN: ${data.asn}\n`;
+  msg += `├● AS: ${data.as}\n`;
+  msg += `├● Domain: ${data.domain}\n`;
+  msg += `└● ความเร็ว: ${data.net_speed}\n\n`;
+
+  msg += `📱 Mobile\n`;
+  msg += `┌● MCC/MNC: ${data.mcc}/${data.mnc}\n`;
+  msg += `└● เครือข่าย: ${data.mobile_brand}\n\n`;
+
+  msg += `🛡️ ความปลอดภัย\n`;
+  msg += `┌● Proxy: ${data.is_proxy ? 'ใช่' : 'ไม่ใช่'}\n`;
+  msg += `└● Fraud Score: ${data.fraud_score}\n\n`;
+
+  msg += `⏰ เวลา\n`;
+  msg += `┌● Timezone: ${data.time_zone}\n`;
+  msg += `├● เวลา: ${data.time_zone_info?.current_time}\n`;
+  msg += `├● Sunrise: ${data.time_zone_info?.sunrise}\n`;
+  msg += `└● Sunset: ${data.time_zone_info?.sunset}`;
+
+  return msg;
+}
+
 async function trackFlashExpress(trackingId) {
   try {
     const response = await axios({
@@ -2997,6 +3047,33 @@ if (cancelMatch) {
     type: 'text',
     text: `✅ ยกเลิกสมาชิกสำเร็จ\nเบอร์: ${phone}\nUID: ${result.userId}`
   });
+}
+
+if (text.startsWith('ip%')) {
+  const ip = text.replace('ip%', '').trim();
+
+  if (!ip) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ กรุณาใส่ IP เช่น ip%8.8.8.8'
+    });
+  }
+
+  try {
+    const data = await getIPInfo(ip);
+    const msg = formatIPInfo(data);
+
+    return reply(event.replyToken, {
+      type: 'text',
+      text: msg
+    });
+
+  } catch (e) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ ไม่สามารถดึงข้อมูล IP ได้'
+    });
+  }
 }
 
   if (
