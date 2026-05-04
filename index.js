@@ -484,41 +484,54 @@ function formatDtacSearch(res, query) {
   const searchType = String(result.searchType || '').trim().toLowerCase();
   const isIdSearch = searchType === 'id' || hasSubscriberList;
 
-  let msg = `📱 ข้อมูล DTAC [${query}]\n====================\n`;
-  msg += `👤 ชื่อ-สกุล: ${userData.NameSurname || '-'}\n`;
-  msg += `🪪 เลขบัตร: ${userData.IDNumber || '-'}\n`;
+  const sep = '_  _  _  _  _  _  _  _  _  _  _';
+
+  let msg = `📘 INFO [${query}] [DTAC]\n${sep}\n`;
+  msg += `ชื่อ-สกุล: ${userData.NameSurname || '-'}\n`;
+  msg += `เลขบัตร: ${userData.IDNumber || '-'}\n`;
 
   if (isIdSearch) {
 
     if (subscribers.prepaid.length > 0) {
-      msg += `\n📗 เบอร์เติมเงิน (Prepaid):\n`;
+      msg += `\n📘 เบอร์เติมเงิน (Prepaid):\n`;
       subscribers.prepaid.forEach((item, i) => {
-        msg += `${i + 1}. ${item.number || '-'} (${item.aou || '-'})\n`;
+        msg += `${i + 1}.${item.number || '-'} (${item.aou || '-'})\n`;
       });
     }
 
     if (subscribers.postpaid.length > 0) {
       msg += `\n📘 เบอร์รายเดือน (Postpaid):\n`;
       subscribers.postpaid.forEach((item, i) => {
-        msg += `${i + 1}. ${item.number || '-'} (${item.aou || '-'})\n`;
+        msg += `${i + 1}.${item.number || '-'} (${item.aou || '-'})\n`;
       });
     }
 
     if (subscribers.prepaid.length === 0 && subscribers.postpaid.length === 0) {
       msg += `\n❌ ไม่พบเบอร์ที่จดทะเบียน\n`;
     }
+
+    msg += sep;
   } else {
-    msg += `💰 ยอดเงินคงเหลือ: ${simData.Balance || '-'}\n`;
-    msg += `🏷️ ประเภท: ${simData.type || '-'}\n`;
-    msg += `📅 วันที่เปิดเบอร์: ${simData.StartDate || '-'}\n`;
-    msg += `⏳ วันหมดอายุ: ${simData.ExpireTime || '-'}\n`;
+    msg += `${sep}\n`;
+    msg += `┌●ประเภท: ${simData.type || '-'}\n`;
+    msg += `├● ยอดเงินคงเหลือ: ${simData.Balance || '-'}\n`;
+    msg += `├● วันหมดอายุ: ${simData.ExpireTime || '-'}\n`;
+    msg += `└● วันที่เปิดเบอร์: ${simData.StartDate || '-'}\n`;
 
     if (deviceData.deviceSimList && deviceData.deviceSimList.length > 0) {
-      msg += `\n📱 ข้อมูลอุปกรณ์/ซิม:\n`;
-      deviceData.deviceSimList.forEach(item => {
-        msg += `- ${item}\n`;
+      msg += `\n📲 ข้อมูลอุปกรณ์/ซิม\n`;
+      deviceData.deviceSimList.forEach((item, i, arr) => {
+        if (i === 0) {
+          msg += `┌● ${item}\n`;
+        } else if (i === arr.length - 1) {
+          msg += `└● ${item}\n`;
+        } else {
+          msg += `├● ${item}\n`;
+        }
       });
     }
+
+    msg += sep;
   }
 
   return msg.trim();
