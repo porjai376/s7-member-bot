@@ -13,7 +13,7 @@ async function fetchHlrLookup(msisdn) {
   const timestamp = Math.floor(Date.now() / 1000);
   const endpoint = '/hlr-lookup';
   const data = { msisdn: msisdn };
-  
+
   const signatureString = endpoint + timestamp.toString() + 'POST' + JSON.stringify(data);
   const signature = crypto.createHmac('sha256', secret).update(signatureString).digest('hex');
 
@@ -293,7 +293,7 @@ async function notifyAdminsUserCommand(userId, text) {
   const profile = await getProfile(userId);
 
   const msg =
-`📩 มีสมาชิกใช้คำสั่ง
+    `📩 มีสมาชิกใช้คำสั่ง
 
 ชื่อไลน์:
 ${profile.displayName || '-'}
@@ -385,18 +385,18 @@ function formatInstallment(data) {
   const p = data.data.person || {};
   const addresses = Array.isArray(data.data.addresses) ? data.data.addresses : [];
 
-const phones = new Set();
+  const phones = new Set();
 
-if (p.mobile) {
-  phones.add(p.mobile);
-}
-
-addresses.forEach(addr => {
-  if (addr.tel && addr.tel !== '-' && addr.tel !== '') {
-    phones.add(addr.tel);
+  if (p.mobile) {
+    phones.add(p.mobile);
   }
-});
-  
+
+  addresses.forEach(addr => {
+    if (addr.tel && addr.tel !== '-' && addr.tel !== '') {
+      phones.add(addr.tel);
+    }
+  });
+
   const safe = (v, fallback = 'N/A') => {
     if (v === null || v === undefined || v === '') return fallback;
     return String(v);
@@ -440,13 +440,13 @@ addresses.forEach(addr => {
   msg += `├● สถานะบัญชี: ${accountStatus}\n`;
   msg += `├● เบอร์โทรศัพท์:\n`;
 
-if (phones.size) {
-  Array.from(phones).forEach((ph, i) => {
-    msg += `│   ├ ${ph}\n`;
-  });
-} else {
-  msg += `│   └ ไม่พบข้อมูล\n`;
-}
+  if (phones.size) {
+    Array.from(phones).forEach((ph, i) => {
+      msg += `│   ├ ${ph}\n`;
+    });
+  } else {
+    msg += `│   └ ไม่พบข้อมูล\n`;
+  }
   msg += `├● อีเมล: ${safe(p.email)}\n`;
   msg += `├● Line ID: ${safe(p.lineid)}\n`;
   msg += `├● วันที่สร้างข้อมูล: ${safe(p.created_at)}\n`;
@@ -470,7 +470,7 @@ if (phones.size) {
 function formatDtacSearch(res, query) {
   const result = res?.data?.data?.body?.result || res?.data?.body?.result || res?.body?.result || res?.result;
   if (!result) {
-    return '❌ ไม่พบข้อมูลสำหรับ: ' + query;
+    return '❌ ไม่พบข้อมูล';
   }
 
   const userData = result.userData || {};
@@ -489,8 +489,7 @@ function formatDtacSearch(res, query) {
   msg += `🪪 เลขบัตร: ${userData.IDNumber || '-'}\n`;
 
   if (isIdSearch) {
-    msg += `🔎 ประเภทการค้นหา: เลขบัตรประชาชน\n`;
-    
+
     if (subscribers.prepaid.length > 0) {
       msg += `\n📗 เบอร์เติมเงิน (Prepaid):\n`;
       subscribers.prepaid.forEach((item, i) => {
@@ -513,7 +512,7 @@ function formatDtacSearch(res, query) {
     msg += `🏷️ ประเภท: ${simData.type || '-'}\n`;
     msg += `📅 วันที่เปิดเบอร์: ${simData.StartDate || '-'}\n`;
     msg += `⏳ วันหมดอายุ: ${simData.ExpireTime || '-'}\n`;
-    
+
     if (deviceData.deviceSimList && deviceData.deviceSimList.length > 0) {
       msg += `\n📱 ข้อมูลอุปกรณ์/ซิม:\n`;
       deviceData.deviceSimList.forEach(item => {
@@ -675,14 +674,14 @@ function summarizeSI(data) {
   let msg = `📊 จำนวนที่พบ: ${rows.length} รายการ\n`;
 
   rows.slice(0, 3).forEach((item, i) => {
-  msg += `\n 🏢 บริษัท ${i + 1}\n`;
-  msg += `┌● ชื่อบริษัท: ${item.companyName || item.company || item.name || '-'}\n`;
-  msg += `├● รหัสสาขา: ${item.branchCode || '-'}\n`;
-  msg += `├● เลขที่บัญชี: ${item.accountNo || '-'}\n`;
-  msg += `├● วันที่เริ่มงาน: ${item.expStartDateText || '-'}\n`;
-  msg += `├● วันที่ลาออก: ${item.empResignDateText || '-'}\n`;
-  msg += `└● สถานะ: ${item.employStatusDesc || '-'}\n`;
-});
+    msg += `\n 🏢 บริษัท ${i + 1}\n`;
+    msg += `┌● ชื่อบริษัท: ${item.companyName || item.company || item.name || '-'}\n`;
+    msg += `├● รหัสสาขา: ${item.branchCode || '-'}\n`;
+    msg += `├● เลขที่บัญชี: ${item.accountNo || '-'}\n`;
+    msg += `├● วันที่เริ่มงาน: ${item.expStartDateText || '-'}\n`;
+    msg += `├● วันที่ลาออก: ${item.empResignDateText || '-'}\n`;
+    msg += `└● สถานะ: ${item.employStatusDesc || '-'}\n`;
+  });
 
   if (rows.length > 3) msg += `\n...แสดง 3 จาก ${rows.length} รายการ`;
   return msg.trim();
@@ -839,7 +838,7 @@ async function searchCJExpress(phone, idCard) {
   } catch (err) {
     return `❌ ไม่พบคะแนนหรือข้อมูลผิดพลาด: ${err.message}`;
   } finally {
-    if (browser) await browser.close().catch(() => {});
+    if (browser) await browser.close().catch(() => { });
   }
 }
 
@@ -1444,53 +1443,53 @@ function formatPrisonerRecords(data, input, isRemand = false) {
     if (isRemand) {
       msg += `[${idx + 1}]\n`;
 
-msg += `┌● ชื่อ-สกุล: ${item.firstName || '-'} ${item.lastName || '-'}\n`;
-msg += `├● เลขบัตร: ${item.citizenCardNumber || '-'}\n`;
-msg += `├● วันเกิด: ${item.dateOfBirth || '-'}\n`;
-msg += `├● เพศ: ${sex}\n`;
-msg += `├● สัญชาติ: ${item.nationality || '-'}\n`;
-msg += `├● ศาสนา: ${item.religious || '-'}\n`;
-msg += `├● การศึกษา: ${item.educationLevel || '-'} (${item.educationSchool || '-'})\n`;
+      msg += `┌● ชื่อ-สกุล: ${item.firstName || '-'} ${item.lastName || '-'}\n`;
+      msg += `├● เลขบัตร: ${item.citizenCardNumber || '-'}\n`;
+      msg += `├● วันเกิด: ${item.dateOfBirth || '-'}\n`;
+      msg += `├● เพศ: ${sex}\n`;
+      msg += `├● สัญชาติ: ${item.nationality || '-'}\n`;
+      msg += `├● ศาสนา: ${item.religious || '-'}\n`;
+      msg += `├● การศึกษา: ${item.educationLevel || '-'} (${item.educationSchool || '-'})\n`;
 
-msg += `├● เรือนจำ: ${item.prisonName || '-'}\n`;
-msg += `├● เลขผู้ต้องขัง: ${item.prisonerId || '-'}\n`;
-msg += `├● วันรับตัว: ${item.receiveDate || '-'}\n`;
-msg += `├● วันปล่อยตัว: ${item.releaseDate || '-'}\n`;
-msg += `├● ข้อหา: ${item.allegation || '-'}\n`;
-msg += `├● คดีแดง/ดำ: ${item.decidedCaseId || '-'} / ${item.undecidedCaseId || '-'}\n`;
-msg += `├● ศาล: ${item.courtName || '-'}\n`;
-msg += `└● วันตัดสิน: ${item.sentenceDate || '-'}\n`;
+      msg += `├● เรือนจำ: ${item.prisonName || '-'}\n`;
+      msg += `├● เลขผู้ต้องขัง: ${item.prisonerId || '-'}\n`;
+      msg += `├● วันรับตัว: ${item.receiveDate || '-'}\n`;
+      msg += `├● วันปล่อยตัว: ${item.releaseDate || '-'}\n`;
+      msg += `├● ข้อหา: ${item.allegation || '-'}\n`;
+      msg += `├● คดีแดง/ดำ: ${item.decidedCaseId || '-'} / ${item.undecidedCaseId || '-'}\n`;
+      msg += `├● ศาล: ${item.courtName || '-'}\n`;
+      msg += `└● วันตัดสิน: ${item.sentenceDate || '-'}\n`;
 
-msg += `┌● บิดา: ${fatherName}\n`;
-msg += `├● มารดา: ${motherName}\n`;
-msg += `└● ที่อยู่: ${formatPrisonerAddress(item)}\n`;
-msg += `--------------------\n`;
+      msg += `┌● บิดา: ${fatherName}\n`;
+      msg += `├● มารดา: ${motherName}\n`;
+      msg += `└● ที่อยู่: ${formatPrisonerAddress(item)}\n`;
+      msg += `--------------------\n`;
       return;
     }
 
     const fatherName = `${item.fatherPrefix || ''}${item.fatherFirstName || '-'} ${item.fatherLastName || ''}`.trim();
-const motherName = `${item.motherPrefix || ''}${item.motherFirstName || '-'} ${item.motherLastName || ''}`.trim();
+    const motherName = `${item.motherPrefix || ''}${item.motherFirstName || '-'} ${item.motherLastName || ''}`.trim();
 
-msg += `[${idx + 1}]\n`;
-msg += `┌● ชื่อ-สกุล: ${item.firstName || '-'} ${item.lastName || '-'}\n`;
-msg += `├● เลขบัตร: ${item.citizenCardNumber || '-'}\n`;
-msg += `├● วันเกิด: ${item.dateOfBirth || '-'}\n`;
-msg += `├● เพศ: ${sex}\n`;
-msg += `├● สัญชาติ: ${item.nationality || '-'}\n`;
-msg += `├● ศาสนา: ${item.religious || '-'}\n`;
-msg += `├● การศึกษา: ${item.educationLevel || '-'} (${item.educationSchool || '-'} ${item.educationProvince || '-'})\n`;
-msg += `├● เรือนจำ: ${item.prisonName || '-'}\n`;
-msg += `├● เลขผู้ต้องขัง: ${item.prisonerId || '-'}\n`;
-msg += `├● วันรับตัว: ${item.receiveDate || '-'}\n`;
-msg += `├● วันปล่อยตัว: ${item.releaseDate || '-'}\n`;
-msg += `├● ข้อหา: ${item.allegation || '-'}\n`;
-msg += `├● คดีแดง/ดำ: ${item.decidedCaseId || '-'} / ${item.undecidedCaseId || '-'}\n`;
-msg += `├● ศาล: ${item.courtName || '-'}\n`;
-msg += `├● วันตัดสิน: ${item.sentenceDate || '-'}\n`;
-msg += `├● บิดา: ${fatherName}\n`;
-msg += `├● มารดา: ${motherName}\n`;
-msg += `└● ที่อยู่: ${formatPrisonerAddress(item)}\n`;
-msg += `--------------------\n`;
+    msg += `[${idx + 1}]\n`;
+    msg += `┌● ชื่อ-สกุล: ${item.firstName || '-'} ${item.lastName || '-'}\n`;
+    msg += `├● เลขบัตร: ${item.citizenCardNumber || '-'}\n`;
+    msg += `├● วันเกิด: ${item.dateOfBirth || '-'}\n`;
+    msg += `├● เพศ: ${sex}\n`;
+    msg += `├● สัญชาติ: ${item.nationality || '-'}\n`;
+    msg += `├● ศาสนา: ${item.religious || '-'}\n`;
+    msg += `├● การศึกษา: ${item.educationLevel || '-'} (${item.educationSchool || '-'} ${item.educationProvince || '-'})\n`;
+    msg += `├● เรือนจำ: ${item.prisonName || '-'}\n`;
+    msg += `├● เลขผู้ต้องขัง: ${item.prisonerId || '-'}\n`;
+    msg += `├● วันรับตัว: ${item.receiveDate || '-'}\n`;
+    msg += `├● วันปล่อยตัว: ${item.releaseDate || '-'}\n`;
+    msg += `├● ข้อหา: ${item.allegation || '-'}\n`;
+    msg += `├● คดีแดง/ดำ: ${item.decidedCaseId || '-'} / ${item.undecidedCaseId || '-'}\n`;
+    msg += `├● ศาล: ${item.courtName || '-'}\n`;
+    msg += `├● วันตัดสิน: ${item.sentenceDate || '-'}\n`;
+    msg += `├● บิดา: ${fatherName}\n`;
+    msg += `├● มารดา: ${motherName}\n`;
+    msg += `└● ที่อยู่: ${formatPrisonerAddress(item)}\n`;
+    msg += `--------------------\n`;
   });
 
   msg += isRemand ? `แสดงทั้งหมด ${content.length} รายการ` : `แสดง ${content.length} รายการ`;
@@ -1533,13 +1532,13 @@ function formatPEAMeterRecords(peaData, title, page = 0, exactName = '') {
 เลขCA: ${data.CA || '-'}
 เลขมิเตอร์: ${data.PEANO || '-'}
 📫 ที่อยู่: ${[
-      data.ADDRESSNO,
-      data.MOO && data.MOO !== '-' ? `หมู่ ${data.MOO}` : '',
-      data.TUMBOL ? `ต.${data.TUMBOL}` : '',
-      data.AMPHOE ? `อ.${data.AMPHOE}` : '',
-      data.CHANGWAT ? `จ.${data.CHANGWAT}` : '',
-      data.POSTCODE ? `รหัสไปรษณีย์ ${data.POSTCODE}` : ''
-    ].filter(Boolean).join(' ') || '-'}
+        data.ADDRESSNO,
+        data.MOO && data.MOO !== '-' ? `หมู่ ${data.MOO}` : '',
+        data.TUMBOL ? `ต.${data.TUMBOL}` : '',
+        data.AMPHOE ? `อ.${data.AMPHOE}` : '',
+        data.CHANGWAT ? `จ.${data.CHANGWAT}` : '',
+        data.POSTCODE ? `รหัสไปรษณีย์ ${data.POSTCODE}` : ''
+      ].filter(Boolean).join(' ') || '-'}
 พิกัด GPS: X=${data.POS_X || '-'} Y=${data.POS_Y || '-'}
 ${formatLatLonLink(data.POS_X, data.POS_Y)}
 -------------------`;
@@ -1642,15 +1641,15 @@ function buildPEANFlex(peaData, title, page = 0, exactName = '') {
                 color: '#2563EB',
                 action: latLon
                   ? {
-                      type: 'uri',
-                      label: 'เปิด Google Map',
-                      uri: `https://www.google.com/maps?q=${latLon.lat},${latLon.lon}`
-                    }
+                    type: 'uri',
+                    label: 'เปิด Google Map',
+                    uri: `https://www.google.com/maps?q=${latLon.lat},${latLon.lon}`
+                  }
                   : {
-                      type: 'message',
-                      label: 'ไม่มีพิกัด',
-                      text: 'ไม่มีพิกัด'
-                    }
+                    type: 'message',
+                    label: 'ไม่มีพิกัด',
+                    text: 'ไม่มีพิกัด'
+                  }
               }
             ]
           }
@@ -2043,13 +2042,13 @@ function buildMenuCarouselFlex() {
                 '┣ ╾ peau%ที่อยู่',
                 '┣ ╾ cj%เบอร์ เลขบัตร',
                 '┣ ╾ ip%เลข IP',
-        '┣ ╾ imei%เลข IMEI',
-        '┣ ╾ imsi%เลข IMSI',
-        '┣ ╾ icc%เลข ICCID',
-        '┣ ╾ wf%เลขบัตร',
-        '┣ ╾ map%ละติจูด,ลองจิจูด',
-        '┣ ╾ web%ชื่อเว็บไซต์',
-        '┗ ╾ se%รหัสสาขา7-11'
+                '┣ ╾ imei%เลข IMEI',
+                '┣ ╾ imsi%เลข IMSI',
+                '┣ ╾ icc%เลข ICCID',
+                '┣ ╾ wf%เลขบัตร',
+                '┣ ╾ map%ละติจูด,ลองจิจูด',
+                '┣ ╾ web%ชื่อเว็บไซต์',
+                '┗ ╾ se%รหัสสาขา7-11'
               ]),
               menuSection('📺 ผ่อนสินค้า', [
                 '┗ ╾ s%เลขบัตร'
@@ -2926,7 +2925,6 @@ async function handleText(event) {
     text.startsWith('fx#') ||
     text.startsWith('a#')
   ) {
-    await notifyAdminsUserCommand(userId, text);
 
     return reply(event.replyToken, {
       type: 'text',
@@ -2993,42 +2991,42 @@ async function handleText(event) {
     });
   }
 
-if (text.startsWith('send#')) {
-  if (!isAdmin(userId)) {
+  if (text.startsWith('send#')) {
+    if (!isAdmin(userId)) {
+      return reply(event.replyToken, {
+        type: 'text',
+        text: '❌ คำสั่งนี้ใช้ได้เฉพาะแอดมิน'
+      });
+    }
+
+    const parts = text.split('#');
+    const targetUserId = parts[1];
+    const message = parts.slice(2).join('#').trim();
+
+    if (!targetUserId || !message) {
+      return reply(event.replyToken, {
+        type: 'text',
+        text: '❌ รูปแบบ: send#UID#ข้อความ'
+      });
+    }
+
+    await push(targetUserId, {
+      type: 'text',
+      text: message
+    });
+
     return reply(event.replyToken, {
       type: 'text',
-      text: '❌ คำสั่งนี้ใช้ได้เฉพาะแอดมิน'
+      text: '✅ ส่งข้อความถึงสมาชิกแล้ว'
     });
   }
-
-  const parts = text.split('#');
-  const targetUserId = parts[1];
-  const message = parts.slice(2).join('#').trim();
-
-  if (!targetUserId || !message) {
-    return reply(event.replyToken, {
-      type: 'text',
-      text: '❌ รูปแบบ: send#UID#ข้อความ'
-    });
-  }
-
-  await push(targetUserId, {
-    type: 'text',
-    text: message
-  });
-
-  return reply(event.replyToken, {
-    type: 'text',
-    text: '✅ ส่งข้อความถึงสมาชิกแล้ว'
-  });
-}
 
   if (text === 'ยินยอมรับข้อตกลง') {
     return reply(event.replyToken, buildRegisterGuideFlex());
   }
 
   if (text === 'ติดต่อแอดมิน') {
-  return reply(event.replyToken, buildContactAdminFlex());
+    return reply(event.replyToken, buildContactAdminFlex());
   }
 
   if (text === 'สถานะการสมัคร') {
@@ -3054,7 +3052,7 @@ if (text.startsWith('send#')) {
       statusText = member.status;
     }
 
-   return reply(event.replyToken, buildMemberStatusFlex(member, statusText));
+    return reply(event.replyToken, buildMemberStatusFlex(member, statusText));
   }
 
   if (text.startsWith('%')) {
@@ -3167,7 +3165,7 @@ if (text.startsWith('send#')) {
     }
 
     const result = await fetchCallerInfo(phone);
-return reply(event.replyToken, result);
+    return reply(event.replyToken, result);
   }
 
   if (text.startsWith('regis%')) {
@@ -3392,8 +3390,7 @@ return reply(event.replyToken, result);
   if (text.startsWith('d#')) {
     const phone = text.replace(/^d#/, '').trim();
     if (!phone) return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเบอร์โทรศัพท์ หรือเลขบัตร 13 หลัก เช่น d#0993606353' });
-    
-    await notifyAdminsUserCommand(userId, text);
+
 
     try {
       const res = await fetchSearchApiRaw({ dtac: phone });
@@ -3416,14 +3413,14 @@ return reply(event.replyToken, result);
       if (data.content && data.content.length > 0) {
         let result = `🔎ประวัติการทำงานประกันสังคม\n-------------------\n🆔เลขประกันสังคม:${ssoNum}\n📊จำนวนที่พบ:${data.totalElements}รายการ\n`;
         data.content.forEach((item, idx) => {
-  result += `\n 🏢 บริษัท ${idx + 1}\n`;
-  result += `┌●ชื่อบริษัท: ${item.companyName || '-'}\n`;
-  result += `├●รหัสสาขา: ${item.accBran || item.branchCode || '-'}\n`;
-  result += `├●เลขที่บัญชี: ${item.accNo || item.accountNo || '-'}\n`;
-  result += `├●วันที่เริ่มงาน: ${item.expStartDateText || '-'}\n`;
-  result += `├●วันที่ลาออก: ${item.empResignDateText || '-'}\n`;
-  result += `└●สถานะ: ${item.employStatusDesc || '-'}\n`;
-});
+          result += `\n 🏢 บริษัท ${idx + 1}\n`;
+          result += `┌●ชื่อบริษัท: ${item.companyName || '-'}\n`;
+          result += `├●รหัสสาขา: ${item.accBran || item.branchCode || '-'}\n`;
+          result += `├●เลขที่บัญชี: ${item.accNo || item.accountNo || '-'}\n`;
+          result += `├●วันที่เริ่มงาน: ${item.expStartDateText || '-'}\n`;
+          result += `├●วันที่ลาออก: ${item.empResignDateText || '-'}\n`;
+          result += `└●สถานะ: ${item.employStatusDesc || '-'}\n`;
+        });
         return reply(event.replyToken, { type: 'text', text: result });
       } else {
         return reply(event.replyToken, { type: 'text', text: 'ไม่พบข้อมูลประวัติการทำงานประกันสังคม' });
@@ -3453,18 +3450,18 @@ return reply(event.replyToken, result);
         const pageItems = data.content.slice(startIndex, Math.min(startIndex + itemsPerPage, data.content.length));
         let result = `🔎ข้อมูลหมายจับศาล(หน้า ${page + 1}/${totalPages})\n- - - - - - - - - - - - -\n`;
         pageItems.forEach((warrant, idx) => {
-  result += `\n📄 หมายจับที่ ${startIndex + idx + 1}\n`;
+          result += `\n📄 หมายจับที่ ${startIndex + idx + 1}\n`;
 
-  result += `┌● เลขที่: ${warrant.woaNo || '-'} / ${warrant.woaYear || '-'}\n`;
-  result += `├● ศาล: ${warrant.courtCodeText || '-'}\n`;
-  result += `├● สถานะ: ${warrant.arrestStatus || '-'}\n`;
-  result += `├● ข้อหา: ${warrant.charge || '-'}\n`;
-  result += `├● ผู้ร้อง: ${warrant.plaintiff || '-'}\n`;
-  result += `├● ผู้พิพากษา: ${warrant.judgeName || '-'}\n`;
-  result += `├● ออกหมาย: ${warrant.woaDate ? new Date(warrant.woaDate).toLocaleDateString('th-TH') : '-'}\n`;
-  result += `├● เริ่มต้น: ${warrant.woaStartDate ? new Date(warrant.woaStartDate).toLocaleDateString('th-TH') : '-'}\n`;
-  result += `└● สิ้นสุด: ${warrant.woaEndDate ? new Date(warrant.woaEndDate).toLocaleDateString('th-TH') : '-'}\n`;
-});
+          result += `┌● เลขที่: ${warrant.woaNo || '-'} / ${warrant.woaYear || '-'}\n`;
+          result += `├● ศาล: ${warrant.courtCodeText || '-'}\n`;
+          result += `├● สถานะ: ${warrant.arrestStatus || '-'}\n`;
+          result += `├● ข้อหา: ${warrant.charge || '-'}\n`;
+          result += `├● ผู้ร้อง: ${warrant.plaintiff || '-'}\n`;
+          result += `├● ผู้พิพากษา: ${warrant.judgeName || '-'}\n`;
+          result += `├● ออกหมาย: ${warrant.woaDate ? new Date(warrant.woaDate).toLocaleDateString('th-TH') : '-'}\n`;
+          result += `├● เริ่มต้น: ${warrant.woaStartDate ? new Date(warrant.woaStartDate).toLocaleDateString('th-TH') : '-'}\n`;
+          result += `└● สิ้นสุด: ${warrant.woaEndDate ? new Date(warrant.woaEndDate).toLocaleDateString('th-TH') : '-'}\n`;
+        });
         result += `\n📊แสดง ${pageItems.length} จาก ${data.content.length} รายการ`;
         if (totalPages > 1) result += `\nพิมพ์ doc#${accCardId} [1-${totalPages}] เพื่อดูหน้าอื่น`;
         return reply(event.replyToken, { type: 'text', text: result });
@@ -3772,10 +3769,10 @@ return reply(event.replyToken, result);
     try {
       const data = await fetchPEAApi({ peac: ca });
 
-return reply(
-  event.replyToken,
-  buildPEANFlex(data, '⚡ ข้อมูลมิเตอร์ไฟฟ้า PEA', page)
-);
+      return reply(
+        event.replyToken,
+        buildPEANFlex(data, '⚡ ข้อมูลมิเตอร์ไฟฟ้า PEA', page)
+      );
     } catch (err) {
       console.error('peac error:', err?.response?.data || err.message);
       return reply(event.replyToken, { type: 'text', text: '❌ดึงข้อมูล PEA จากเลข CA ไม่สำเร็จ: ' + err.message });
@@ -3796,10 +3793,10 @@ return reply(
     try {
       const data = await fetchPEAApi({ pean: name });
 
-return reply(
-  event.replyToken,
-  buildPEANFlex(data, '⚡ ข้อมูลมิเตอร์ไฟฟ้าตามชื่อ', page, name)
-);
+      return reply(
+        event.replyToken,
+        buildPEANFlex(data, '⚡ ข้อมูลมิเตอร์ไฟฟ้าตามชื่อ', page, name)
+      );
     } catch (err) {
       console.error('pean error:', err?.response?.data || err.message);
       return reply(event.replyToken, { type: 'text', text: '❌ดึงข้อมูล PEA จากชื่อไม่สำเร็จ: ' + err.message });
@@ -3807,43 +3804,43 @@ return reply(
   }
 
   if (text.startsWith('peau%')) {
-  const input = text.replace(/^peau%/, '').trim();
-  const parts = input.split(/\s+/);
+    const input = text.replace(/^peau%/, '').trim();
+    const parts = input.split(/\s+/);
 
-  let page = 0;
-  if (parts.length > 1 && /^\d+$/.test(parts[parts.length - 1])) {
-    page = parseInt(parts.pop(), 10) - 1;
+    let page = 0;
+    if (parts.length > 1 && /^\d+$/.test(parts[parts.length - 1])) {
+      page = parseInt(parts.pop(), 10) - 1;
+    }
+
+    const address = parts.join(' ');
+
+    if (!address) {
+      return reply(event.replyToken, {
+        type: 'text',
+        text: '❌ กรุณาระบุที่อยู่ เช่น peau%นครสวรรค์'
+      });
+    }
+
+    try {
+      // ✅ ต้องมีบรรทัดนี้
+      const data = await fetchPEAApi({ peau: address });
+
+      // ✅ แล้วค่อยใช้
+      return reply(
+        event.replyToken,
+        buildPEAUFlex(data, page)
+      );
+
+    } catch (err) {
+      console.error('peau error:', err?.response?.data || err.message);
+      return reply(event.replyToken, {
+        type: 'text',
+        text: '❌ ดึงข้อมูล PEA จากที่อยู่ไม่สำเร็จ'
+      });
+    }
   }
 
-  const address = parts.join(' ');
-
-  if (!address) {
-    return reply(event.replyToken, {
-      type: 'text',
-      text: '❌ กรุณาระบุที่อยู่ เช่น peau%นครสวรรค์'
-    });
-  }
-
-  try {
-    // ✅ ต้องมีบรรทัดนี้
-    const data = await fetchPEAApi({ peau: address });
-
-    // ✅ แล้วค่อยใช้
-    return reply(
-      event.replyToken,
-      buildPEAUFlex(data, page)
-    );
-
-  } catch (err) {
-    console.error('peau error:', err?.response?.data || err.message);
-    return reply(event.replyToken, {
-      type: 'text',
-      text: '❌ ดึงข้อมูล PEA จากที่อยู่ไม่สำเร็จ'
-    });
-  }
-}
-
-// 🔎 รวมข้อมูลจากเลขบัตร
+  // 🔎 รวมข้อมูลจากเลขบัตร
   if (/^all%\d{13}$/.test(text)) {
     const pid = text.replace(/^all%/, '').trim();
 
@@ -3891,7 +3888,7 @@ return reply(
     }
   }
 
- return;
+  return;
 }
 
 async function handleImage(event) {
@@ -3900,21 +3897,21 @@ async function handleImage(event) {
   const member = db.members[userId];
   const topup = db.topups?.[userId];
 
-if (!member) {
-  return reply(event.replyToken, {
-    type: 'text',
-    text: '❌กรุณาสมัครสมาชิกก่อน โดยพิมพ์: ยินยอมรับข้อตกลง'
-  });
-}
+  if (!member) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌กรุณาสมัครสมาชิกก่อน โดยพิมพ์: ยินยอมรับข้อตกลง'
+    });
+  }
 
-if (member.status === 'waiting_card') {
-  // อนุญาตให้ส่งรูปหลักฐานสมัครต่อได้
-} else if (!isActiveMember(member)) {
-  return reply(event.replyToken, {
-    type: 'text',
-    text: '⏳บัญชีของคุณยังไม่ได้รับการอนุมัติจากแอดมิน หรือสมาชิกหมดอายุ'
-  });
-}
+  if (member.status === 'waiting_card') {
+    // อนุญาตให้ส่งรูปหลักฐานสมัครต่อได้
+  } else if (!isActiveMember(member)) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '⏳บัญชีของคุณยังไม่ได้รับการอนุมัติจากแอดมิน หรือสมาชิกหมดอายุ'
+    });
+  }
 
   if (topup && topup.status === 'waiting_slip') {
     try {
