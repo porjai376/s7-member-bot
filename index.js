@@ -1029,17 +1029,6 @@ function cancelMemberByPhone(phone) {
   };
 }
 
-const axios = require('axios');
-
-async function getIPInfo(ip) {
-  const API_KEY = '7E1425604F72A2DB416917FA4847999E';
-
-  const url = `https://api.ip2location.io/?key=${API_KEY}&ip=${ip}`;
-
-  const res = await axios.get(url);
-  return res.data;
-}
-
 async function trackFlashExpress(trackingId) {
   try {
     const response = await axios({
