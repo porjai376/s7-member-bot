@@ -2982,13 +2982,17 @@ if (cancelMatch) {
     });
   }
 
-  // แจ้ง user
-  await push(result.userId, {
-    type: 'text',
-    text: '❌ สมาชิกของคุณถูกยกเลิกการใช้งานแล้ว'
-  });
+  // ✅ กัน error ตรงนี้
+  try {
+    await push(result.userId, {
+      type: 'text',
+      text: '❌ สมาชิกของคุณถูกยกเลิกการใช้งานแล้ว'
+    });
+  } catch (e) {
+    console.log('push error:', e.message);
+  }
 
-  // แจ้ง admin
+  // ✅ reply จะทำงานแน่นอน
   return reply(event.replyToken, {
     type: 'text',
     text: `✅ ยกเลิกสมาชิกสำเร็จ\nเบอร์: ${phone}\nUID: ${result.userId}`
