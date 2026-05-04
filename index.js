@@ -1109,7 +1109,7 @@ async function searchIMEI(imei) {
     });
     const data = response.data;
     if (!data || !data.result || !data.result.imei) {
-      return `⚡ THUNDER Report ⚡
+      return `📳MEGABOT
 📱 ข้อมูลอุปกรณ์ (Device Info)
 
 ⛔ไม่พบข้อมูลรายการ หรือ ตัวเลขไม่ถูกต้อง
@@ -1124,7 +1124,7 @@ async function searchIMEI(imei) {
       dateStr = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')} ${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')} (UTC+02:00)`;
     }
 
-    return `⚡ THUNDER Report ⚡
+    return `📳MEGABOT
 📱 ข้อมูลอุปกรณ์ (Device Info)
 📅 วันที่บันทึกข้อมูล: ${dateStr}
 🔢 IMEI 1: ${data.result.imei || '-'}
@@ -1211,11 +1211,11 @@ async function createMapLink(coordinates) {
     const [lat, long] = coordinates.split(',').map(coord => coord.trim());
     if (!lat || !long) return 'กรุณาระบุพิกัดในรูปแบบ: latitude,longitude';
     return `🗺️ Google Map Link
-====================
+-  -  -  -  -  -  -  -
 📍 พิกัด: ${lat}, ${long}
 🌐 Maps: https://www.google.com/maps?q=${lat},${long}
 🌐 Street View: https://www.google.com/maps/@${lat},${long},3a,75y,0h,90t/data=!3m6!1e1!3m4!1s
-====================`;
+-  -  -  -  -  -  -  -`;
   } catch (error) {
     return 'เกิดข้อผิดพลาดในการสร้างลิงค์แผนที่';
   }
