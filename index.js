@@ -1001,6 +1001,34 @@ function formatKeyValueRows(data, title) {
   return limitLineMessage(result);
 }
 
+function cancelMemberByPhone(phone) {
+  const db = loadDB();
+  const cleanPhone = String(phone || '').replace(/\D/g, '');
+
+  const entry = Object.entries(db.members || {}).find(([uid, member]) => {
+    const memberPhone = String(member.phone || member.tel || '').replace(/\D/g, '');
+    return memberPhone === cleanPhone;
+  });
+
+  if (!entry) {
+    return { ok: false, message: `❌ ไม่พบสมาชิกเบอร์ ${phone}` };
+  }
+
+  const [targetUserId, member] = entry;
+
+  // 👉 ลบออกจากระบบ
+  delete db.members[targetUserId];
+
+  saveDB(db);
+
+  return {
+    ok: true,
+    userId: targetUserId,
+    name: member.name || '-',
+    phone
+  };
+}
+
 async function trackFlashExpress(trackingId) {
   try {
     const response = await axios({
@@ -2933,6 +2961,39 @@ async function handleText(event) {
   const text = (event.message.text || '').trim();
   const db = loadDB();
   const member = db.members[userId];
+
+const cancelMatch = text.match(/^ยกเลิกสมาชิก#(.+)$/);
+
+if (cancelMatch) {
+  if (!isAdmin(userId)) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ คำสั่งนี้ใช้ได้เฉพาะแอดมิน'
+    });
+  }
+
+  const phone = cancelMatch[1].trim();
+  const result = cancelMemberByPhone(phone);
+
+  if (!result.ok) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: result.message
+    });
+  }
+
+  // แจ้ง user
+  await push(result.userId, {
+    type: 'text',
+    text: '❌ สมาชิกของคุณถูกยกเลิกการใช้งานแล้ว'
+  });
+
+  // แจ้ง admin
+  return reply(event.replyToken, {
+    type: 'text',
+    text: `✅ ยกเลิกสมาชิกสำเร็จ\nเบอร์: ${phone}\nUID: ${result.userId}`
+  });
+}
 
   if (
     text.startsWith('fx#') ||
