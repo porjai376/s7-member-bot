@@ -3987,7 +3987,7 @@ async function handleImage(event) {
   } else if (!isActiveMember(member)) {
     return reply(event.replyToken, {
       type: 'text',
-      text: '⏳บัญชีของคุณยังไม่ได้รับการอนุมัติจากแอดมิน หรือสมาชิกหมดอายุ'
+      text: '📆ยังไม่ได้รับการอนุมัติ/สมาชิกหมดอายุ'
     });
   }
 
