@@ -3483,7 +3483,7 @@ if (cancelMatch) {
     try {
       const url = `https://dtac-api.jedi-r3cloud.org/dtac?phone=${encodeURIComponent(phone)}&token=jedi-api-2026`;
       const res = await axios.get(url, { timeout: 45000 });
-      const msg = formatDtacSearch(res, phone);
+      const msg = formatDtacSearch(res.data, phone);
       return reply(event.replyToken, { type: 'text', text: msg });
     } catch (err) {
       console.error('dtac lookup error:', err?.response?.data || err.message);
