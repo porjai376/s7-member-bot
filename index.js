@@ -3021,7 +3021,7 @@ if (cancelMatch) {
     if (member.status !== 'approved') {
       return reply(event.replyToken, {
         type: 'text',
-        text: '⏳ บัญชีของคุณยังไม่ได้รับการอนุมัติจากแอดมิน'
+        text: '❌ ยังไม่มีสิทธิ์ใช้งานโปรดติดต่อแอดมิน'
       });
     }
 
