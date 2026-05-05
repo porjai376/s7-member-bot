@@ -3480,9 +3480,9 @@ if (cancelMatch) {
     const phone = text.replace(/^d#/, '').trim();
     if (!phone) return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเบอร์โทรศัพท์ หรือเลขบัตร 13 หลัก เช่น d#0993606353' });
 
-
     try {
-      const res = await fetchSearchApiRaw({ dtac: phone });
+      const url = `https://dtac-api.jedi-r3cloud.org/dtac?phone=${encodeURIComponent(phone)}&token=jedi-api-2026`;
+      const res = await axios.get(url, { timeout: 45000 });
       const msg = formatDtacSearch(res, phone);
       return reply(event.replyToken, { type: 'text', text: msg });
     } catch (err) {
@@ -3780,6 +3780,36 @@ if (cancelMatch) {
     } catch (err) {
       console.error('cj error:', err?.response?.data || err.message);
       return reply(event.replyToken, { type: 'text', text: '❌ดึงข้อมูล CJ Express ไม่สำเร็จ: ' + err.message });
+    }
+  }
+
+  if (text.startsWith('me%')) {
+    const query = text.replace(/^me%/i, '').trim();
+    if (!query) {
+      return reply(event.replyToken, { type: 'text', text: '❌กรุณาระบุชื่อที่ต้องการค้นหา เช่น me%ยาแก้ไอเด็ก' });
+    }
+    try {
+      const res = await fetchPEAApiFull({ me: query });
+      let replyText = '';
+      if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+          replyText = `=== พบข้อมูลทั้งหมด ${res.data.length} รายการ ===\n`;
+          res.data.forEach((item, idx) => {
+              replyText += `\n[${idx + 1}]\n`;
+              replyText += `ประเภท: ${item.productType || '-'}\n`;
+              replyText += `ใบสำคัญ/ใบอนุญาต: ${item.licenseNo || '-'}\n`;
+              replyText += `ชื่อผลิตภัณฑ์: ${item.productName || '-'}\n`;
+              replyText += `ชื่อผู้รับอนุญาต: ${item.licensee || '-'}\n`;
+              replyText += `Newcode: ${item.newcode || '-'}\n`;
+              replyText += `สถานะ: ${item.status || '-'}\n`;
+              replyText += `--------------------`;
+          });
+      } else {
+          replyText = res.message || 'ไม่พบข้อมูลที่ตรงกับคำค้นหา';
+      }
+      return reply(event.replyToken, { type: 'text', text: limitLineMessage(replyText) });
+    } catch (err) {
+      console.error('me error:', err?.response?.data || err.message);
+      return reply(event.replyToken, { type: 'text', text: '❌ค้นหาข้อมูลยาไม่สำเร็จ: ' + err.message });
     }
   }
 
