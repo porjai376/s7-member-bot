@@ -3041,6 +3041,17 @@ if (cancelMatch) {
     });
   }
 
+  if (
+    text.startsWith('t#') ||
+    text.startsWith('tid#') ||
+    text.startsWith('tn#')
+  ) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '⚙️คำสั่งนี้ทำการปรับปรุง⚙️'
+    });
+  }
+
   if (text === 'menu%') {
     return reply(event.replyToken, [
       {
