@@ -3469,7 +3469,7 @@ if (cancelMatch) {
     return reply(event.replyToken, {
       type: 'text',
       text:
-        `ต่ออายุ ${found.fullname || targetUserId} เรียบร้อยแล้ว\n` +
+        `อนุมัติ ${found.fullname || targetUserId} เรียบร้อยแล้ว\n` +
         `เพิ่ม: ${days} วัน\n` +
         `หมดอายุใหม่: ${formatThaiDate(baseDate)}`
     });
