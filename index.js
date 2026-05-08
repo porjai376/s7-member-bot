@@ -1823,12 +1823,12 @@ function formatPEABillHistory(billResponseData, ca, peano) {
   const billData = billResponseData.data;
   if (!billData.length) return '❌ ไม่พบข้อมูลประวัติการชำระเงินของหมายเลขนี้';
 
-  let msg = `⚡ ประวัติการใช้ไฟฟ้า (PEA)\n🏠 CA: ${ca} | PEA NO: ${peano}\n====================\n`;
+  let msg = `⚡ ประวัติการใช้ไฟฟ้า (PEA)\n🏠 CA: ${ca} | PEA NO: ${peano}\n-------------------\n`;
   billData.forEach(item => {
-    msg += `📅 งวดเดือน: ${item.billperiod}\n`;
-    msg += `🔌 หน่วยที่ใช้: ${item.unit} หน่วย\n`;
-    msg += `💰 ยอดเงิน: ${Number(item.totalAmountPay).toLocaleString()} บาท\n`;
-    msg += `✅ วันที่จ่าย: ${item.paydate || 'ยังไม่ได้ชำระ'}\n`;
+    msg += `┌●งวดเดือน: ${item.billperiod}\n`;
+    msg += `├●หน่วยที่ใช้: ${item.unit} หน่วย\n`;
+    msg += `├●ยอดเงิน: ${Number(item.totalAmountPay).toLocaleString()} บาท\n`;
+    msg += `└●วันที่ชำระ: ${item.paydate || 'ยังไม่ได้ชำระ'}\n`;
     msg += `--------------------\n`;
   });
 
