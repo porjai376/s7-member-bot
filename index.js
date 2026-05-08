@@ -2986,7 +2986,7 @@ if (cancelMatch) {
   try {
     await push(result.userId, {
       type: 'text',
-      text: '❌ สมาชิกของคุณถูกยกเลิกการใช้งานแล้ว'
+      text: '❌ บัญชีของคุณถูกยกเลิก หากมีข้อสงสัยกรุณาติดต่อผู้ดูแล'
     });
   } catch (e) {
     console.log('push error:', e.message);
