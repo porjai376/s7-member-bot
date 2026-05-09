@@ -4035,7 +4035,7 @@ async function handleText(event) {
       return reply(event.replyToken, { type: 'text', text: result });
     } catch (err) {
       console.error('ps error:', err?.response?.data || err.message);
-      return reply(event.replyToken, { type: 'text', text: '❌ดึงข้อมูลผู้ต้องขัง (ยังไม่พิพากษา) ไม่สำเร็จ: ' + err.message });
+      return reply(event.replyToken, { type: 'text', text: '❌ไม่พบข้อมูลที่ค้นหา: ' + err.message });
     }
   }
 
