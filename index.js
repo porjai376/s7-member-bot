@@ -914,6 +914,14 @@ async function fetchSearchApiRaw(params) {
   return res;
 }
 
+async function fetchDPlusCustomerApi(phone) {
+  const { data } = await axios.get(SEARCH_API_BASE, {
+    params: { f: phone, key: SEARCH_API_KEY },
+    timeout: 45000
+  });
+  return data;
+}
+
 function stripHtml(value) {
   return String(value || '')
     .replace(/<script[\s\S]*?<\/script>/gi, '')
@@ -3700,7 +3708,7 @@ async function handleText(event) {
     }
 
     try {
-      const data = await fetchPEAApiFull({ f: phone });
+      const data = await fetchDPlusCustomerApi(phone);
       return reply(event.replyToken, { type: 'text', text: formatDPlusCustomers(data, phone) });
     } catch (err) {
       console.error('dplus customer error:', err?.response?.data || err.message);
