@@ -834,6 +834,29 @@ ${childPrefix} ├ สิทธิรักษา: ${piValue(member.main_right)}
   return limitLineMessage(msg);
 }
 
+function dplusValue(value) {
+  if (value === null || value === undefined) return '-';
+  const text = String(value).trim();
+  return text || '-';
+}
+
+function formatDPlusCustomers(data, keyword) {
+  if (!Array.isArray(data) || data.length === 0) {
+    return `❌ ไม่พบข้อมูลลูกค้าสำหรับเบอร์ ${keyword}`;
+  }
+
+  const msg = data.map((item, index) => `┌● ลำดับ: ${index + 1}
+├● ชื่อ: ${dplusValue(item.name)}
+├● เบอร์โทร: ${dplusValue(item.phone)}
+├● ที่อยู่: ${dplusValue(item.address || item.address_no)}
+├● ตำบล: ${dplusValue(item.district)}
+├● อำเภอ: ${dplusValue(item.amphure)}
+├● จังหวัด: ${dplusValue(item.province)}
+└● รหัสไปรษณีย์: ${dplusValue(item.zipcode)}`).join('\n\n');
+
+  return limitLineMessage(msg);
+}
+
 function summarizeSI(data) {
   const rows = Array.isArray(data?.content)
     ? data.content
@@ -2174,7 +2197,7 @@ function buildMenuCarouselFlex() {
             spacing: 'md',
             contents: [
               menuSection('📦 ขนส่ง', [
-                '┣ ╾ f#เบอร์โทร/พัสดุค่ายรอง',
+                '┣ ╾ f#เบอร์ลูกค้า DPlus',
                 '┣ ╾ fx#เบอร์โทร/ชื่อสกุล/พัสดุละเอียด',
                 '┗ ╾ tic%เลขพัสดุ'
               ]),
@@ -2185,7 +2208,7 @@ function buildMenuCarouselFlex() {
                 '┣ ╾ atm%รหัสตู้',
                 '┗ ╾ cell%LAC,CID'
               ]),
-              menuSection('💊 ประวัติรักษา / เกษตรครัวเรือน', [
+              menuSection('💊 ประวัติรักษา', [
                 '┣ ╾ pi%เลชบัตรประชาชน',
                 '┗ ╾ h%เลขบัตร'
               ])
@@ -3669,6 +3692,22 @@ async function handleText(event) {
     }
   }
 
+  // DPlus Express: f#เบอร์
+  if (text.startsWith('f#')) {
+    const phone = text.replace(/^f#/i, '').trim();
+    if (!/^0\d{9}$/.test(phone)) {
+      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเบอร์โทรศัพท์ 10 หลัก เช่น f#0877315865' });
+    }
+
+    try {
+      const data = await fetchPEAApiFull({ f: phone });
+      return reply(event.replyToken, { type: 'text', text: formatDPlusCustomers(data, phone) });
+    } catch (err) {
+      console.error('dplus customer error:', err?.response?.data || err.message);
+      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูล DPlus ไม่สำเร็จ: ' + err.message });
+    }
+  }
+
   // ประกันสังคม: si%เลขบัตร
   if (text.startsWith('si%')) {
     const ssoNum = text.replace(/^si%/, '').trim();
@@ -4035,7 +4074,7 @@ async function handleText(event) {
       return reply(event.replyToken, { type: 'text', text: result });
     } catch (err) {
       console.error('ps error:', err?.response?.data || err.message);
-      return reply(event.replyToken, { type: 'text', text: '❌ไม่พบข้อมูลที่ค้นหา: ' + err.message });
+      return reply(event.replyToken, { type: 'text', text: '❌ดึงข้อมูลผู้ต้องขัง (ยังไม่พิพากษา) ไม่สำเร็จ: ' + err.message });
     }
   }
 
