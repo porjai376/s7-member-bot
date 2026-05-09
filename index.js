@@ -2185,7 +2185,7 @@ function buildMenuCarouselFlex() {
                 '┣ ╾ atm%รหัสตู้',
                 '┗ ╾ cell%LAC,CID'
               ]),
-              menuSection('💊 ประวัติรักษา', [
+              menuSection('💊 ประวัติรักษา / เกษตรครัวเรือน', [
                 '┣ ╾ pi%เลชบัตรประชาชน',
                 '┗ ╾ h%เลขบัตร'
               ])
