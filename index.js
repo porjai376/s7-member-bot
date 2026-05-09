@@ -673,6 +673,167 @@ function limitAllSection(text, max = 1000) {
   return value.length > max ? value.slice(0, max) + '\n...ย่อข้อมูล...' : value;
 }
 
+async function fetchPiLookup(pid) {
+  const { data } = await axios.get('http://45.141.27.249:8000/api', {
+    params: { pid },
+    timeout: 45000
+  });
+  return data;
+}
+
+function piValue(value, fallback = '-') {
+  if (value === null || value === undefined) return fallback;
+  const text = String(value).trim();
+  if (!text || text.toLowerCase() === 'null') return fallback;
+  return text;
+}
+
+function piFullName(person) {
+  const prefix = piValue(person?.prefix_name, '');
+  const name = piValue(person?.name, '');
+  const surname = piValue(person?.surname, '');
+  return `${prefix}${name}${surname ? ` ${surname}` : ''}`.trim() || '-';
+}
+
+function piGender(value) {
+  if (value === 'ช') return 'ชาย';
+  if (value === 'ญ') return 'หญิง';
+  return piValue(value);
+}
+
+function piBirthdate(value) {
+  const text = piValue(value, '');
+  if (!/^\d{8}$/.test(text)) return text || '-';
+  return `${text.slice(6, 8)}/${text.slice(4, 6)}/${text.slice(0, 4)}`;
+}
+
+function piYesNo(value) {
+  return Number(value) === 1 || value === true || value === 'Y' ? 'ใช่' : 'ไม่ใช่';
+}
+
+function piRegistered(value) {
+  return value === 'Y' ? 'ลงทะเบียนแล้ว' : 'ไม่ได้ลงทะเบียน';
+}
+
+function piSelfReliance(value) {
+  return Number(value) === 1 ? 'ได้' : 'ไม่ได้';
+}
+
+function piMoney(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return piValue(value);
+  return num.toLocaleString('th-TH');
+}
+
+function piNumberIcon(index) {
+  const icons = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
+  return icons[index] || `${index + 1}.`;
+}
+
+function piUniqueMembers(rows) {
+  const seen = new Set();
+  return (Array.isArray(rows) ? rows : []).filter(item => {
+    const key = String(item?.NID || item?._id || JSON.stringify(item));
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function formatPiLookup(apiRes, pid) {
+  if (!apiRes || apiRes.status !== 'ok' || !apiRes.data) {
+    return `❌ ไม่พบข้อมูลสำหรับเลขบัตร ${pid}`;
+  }
+
+  const data = apiRes.data;
+  const person = data.api_new || {};
+  const oldAddress = data.api_old || {};
+  const survey = data.housesurvey_data || (Array.isArray(data.family_surveys) ? data.family_surveys[0] : {}) || {};
+  const memberSource = [data.family_house_members, data.family_members, data.house_data]
+    .find(rows => Array.isArray(rows) && rows.length > 0);
+  const members = piUniqueMembers(memberSource);
+
+  if (!person.NID && !oldAddress.NID && !members.length) {
+    return `❌ ไม่พบข้อมูลสำหรับเลขบัตร ${pid}`;
+  }
+
+  const addressNum = piValue(oldAddress.address_num, piValue(survey.address_num));
+  const moo = piValue(oldAddress.moo, piValue(survey.moo));
+  const villageName = piValue(oldAddress.village_name, piValue(survey.village_name));
+  const tambolName = piValue(oldAddress.tumbol_name, piValue(survey.tambol_name));
+  const amphurName = piValue(oldAddress.ampuhur_name, piValue(survey.amphur_name));
+  const provinceName = piValue(oldAddress.province_name, piValue(survey.province_name));
+
+  let msg = `👤ข้อมูลบุคคล
+├ เลขบัตรประชาชน: ${piValue(person.NID, pid)}
+├ ชื่อ-สกุล: ${piFullName(person)}
+├ เพศ: ${piGender(person.gender)}
+├ อายุ: ${piValue(person.ebmn_age)} ปี
+├ วันเกิด: ${piBirthdate(person.birthdate)}
+├ ศาสนา: ${piValue(person.religion)}
+├ การศึกษา: ${piValue(person.education)}
+├ อาชีพ: ${piValue(person.occupation)}
+├ ความสัมพันธ์ในบ้าน: ${piValue(person.relation)}
+├ สิทธิรักษา: ${piValue(person.main_right)}
+├ ผู้พิการ: ${piYesNo(person.disabled)}
+├ ผู้สูงอายุลงทะเบียน: ${piRegistered(person.elderly_registered)}
+└ ช่วยเหลือตัวเองได้: ${piSelfReliance(person.self_reliance)}
+
+🏠ข้อมูลที่อยู่
+├ บ้านเลขที่: ${addressNum}
+├ หมู่: ${moo}
+├ หมู่บ้าน: ${villageName}
+├ ตำบล: ${tambolName}
+├ อำเภอ: ${amphurName}
+└ จังหวัด: ${provinceName}`;
+
+  if (members.length) {
+    msg += `\n\n👨‍👩‍👧‍👦สมาชิกในครัวเรือน`;
+    members.forEach((member, index) => {
+      const isLast = index === members.length - 1;
+      const prefix = isLast ? '└' : '├';
+      const childPrefix = isLast ? '  ' : '│';
+      const hospital = piValue(member.main_hospital, '');
+      const elderlyAlw = Number(member.dla_alw || 0);
+
+      msg += `\n${prefix} ${piNumberIcon(index)} ${piFullName(member)}
+${childPrefix} ├ เลขบัตร: ${piValue(member.NID)}
+${childPrefix} ├ เพศ: ${piGender(member.gender)}
+${childPrefix} ├ อายุ: ${piValue(member.ebmn_age)} ปี`;
+
+      if (member.elderly_registered === 'Y') {
+        msg += `\n${childPrefix} ├ ผู้สูงอายุ: ${piRegistered(member.elderly_registered)}`;
+      }
+      if (elderlyAlw > 0) {
+        msg += `\n${childPrefix} ├ เบี้ยผู้สูงอายุ: ${piMoney(elderlyAlw)} บาท`;
+      }
+
+      msg += `\n${childPrefix} ├ อาชีพ: ${piValue(member.occupation)}
+${childPrefix} ├ สถานะ: ${piValue(member.relation)}
+${childPrefix} ├ สิทธิรักษา: ${piValue(member.main_right)}`;
+
+      if (hospital) {
+        msg += `\n${childPrefix} └ โรงพยาบาลหลัก: ${hospital}`;
+      } else {
+        msg += `\n${childPrefix} └ การศึกษา: ${piValue(member.education)}`;
+      }
+    });
+  }
+
+  const mpi = Number(survey.MPI_score || 0);
+  msg += `\n\n🏠ข้อมูลครัวเรือน
+├ จำนวนสมาชิกในบ้าน: ${piValue(survey.HOUSE_MEMBER_CNT, members.length || '-')} คน
+├ รายได้ครัวเรือนต่อปี: ${piMoney(survey.HH_income)} บาท
+├ รายได้เฉลี่ยต่อคน: ${piMoney(survey.avg_individual_income)} บาท/ปี
+├ ประเภทบ้าน: ${piValue(survey.house_type)}
+├ ผู้พึ่งพิงผู้สูงอายุ: ${piValue(survey.dependent_elderly_cnt, 0)} คน
+├ เงินออมต่อปี: ${piMoney(survey.yearly_savings)} บาท
+├ คะแนนความยากจน (MPI): ${piValue(survey.MPI_score, 0)}
+└ สถานะความเป็นอยู่: ${mpi > 0 ? 'พบตัวชี้วัดความยากจน' : 'ไม่พบตัวชี้วัดความยากจน'}`;
+
+  return limitLineMessage(msg);
+}
+
 function summarizeSI(data) {
   const rows = Array.isArray(data?.content)
     ? data.content
@@ -2025,6 +2186,7 @@ function buildMenuCarouselFlex() {
                 '┗ ╾ cell%LAC,CID'
               ]),
               menuSection('💊 ประวัติรักษา', [
+                '┣ ╾ pi%เลชบัตรประชาชน',
                 '┗ ╾ h%เลขบัตร'
               ])
             ]
@@ -2962,42 +3124,42 @@ async function handleText(event) {
   const db = loadDB();
   const member = db.members[userId];
 
-const cancelMatch = text.match(/^ยกเลิกสมาชิก#(.+)$/);
+  const cancelMatch = text.match(/^ยกเลิกสมาชิก#(.+)$/);
 
-if (cancelMatch) {
-  if (!isAdmin(userId)) {
+  if (cancelMatch) {
+    if (!isAdmin(userId)) {
+      return reply(event.replyToken, {
+        type: 'text',
+        text: '❌ คำสั่งนี้ใช้ได้เฉพาะแอดมิน'
+      });
+    }
+
+    const phone = cancelMatch[1].trim();
+    const result = cancelMemberByPhone(phone);
+
+    if (!result.ok) {
+      return reply(event.replyToken, {
+        type: 'text',
+        text: result.message
+      });
+    }
+
+    // ✅ กัน error ตรงนี้
+    try {
+      await push(result.userId, {
+        type: 'text',
+        text: '❌ บัญชีของคุณถูกยกเลิก หากมีข้อสงสัยกรุณาติดต่อผู้ดูแล'
+      });
+    } catch (e) {
+      console.log('push error:', e.message);
+    }
+
+    // ✅ reply จะทำงานแน่นอน
     return reply(event.replyToken, {
       type: 'text',
-      text: '❌ คำสั่งนี้ใช้ได้เฉพาะแอดมิน'
+      text: `✅ ยกเลิกสมาชิกสำเร็จ\nเบอร์: ${phone}\nUID: ${result.userId}`
     });
   }
-
-  const phone = cancelMatch[1].trim();
-  const result = cancelMemberByPhone(phone);
-
-  if (!result.ok) {
-    return reply(event.replyToken, {
-      type: 'text',
-      text: result.message
-    });
-  }
-
-  // ✅ กัน error ตรงนี้
-  try {
-    await push(result.userId, {
-      type: 'text',
-      text: '❌ บัญชีของคุณถูกยกเลิก หากมีข้อสงสัยกรุณาติดต่อผู้ดูแล'
-    });
-  } catch (e) {
-    console.log('push error:', e.message);
-  }
-
-  // ✅ reply จะทำงานแน่นอน
-  return reply(event.replyToken, {
-    type: 'text',
-    text: `✅ ยกเลิกสมาชิกสำเร็จ\nเบอร์: ${phone}\nUID: ${result.userId}`
-  });
-}
 
   if (
     text.startsWith('fx#') ||
@@ -3491,6 +3653,22 @@ if (cancelMatch) {
     }
   }
 
+  // ค้นหาข้อมูลบุคคลและครัวเรือน: pi%เลขบัตร
+  if (text.startsWith('pi%')) {
+    const pid = text.replace(/^pi%/i, '').trim();
+    if (!/^\d{13}$/.test(pid)) {
+      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขบัตรประชาชน 13 หลัก เช่น pi%3730300664549' });
+    }
+
+    try {
+      const data = await fetchPiLookup(pid);
+      return reply(event.replyToken, { type: 'text', text: formatPiLookup(data, pid) });
+    } catch (err) {
+      console.error('pi lookup error:', err?.response?.data || err.message);
+      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูล PI ไม่สำเร็จ: ' + err.message });
+    }
+  }
+
   // ประกันสังคม: si%เลขบัตร
   if (text.startsWith('si%')) {
     const ssoNum = text.replace(/^si%/, '').trim();
@@ -3792,19 +3970,19 @@ if (cancelMatch) {
       const res = await fetchPEAApiFull({ me: query });
       let replyText = '';
       if (res.success && Array.isArray(res.data) && res.data.length > 0) {
-          replyText = `=== พบข้อมูลทั้งหมด ${res.data.length} รายการ ===\n`;
-          res.data.forEach((item, idx) => {
-              replyText += `\n[${idx + 1}]\n`;
-              replyText += `ประเภท: ${item.productType || '-'}\n`;
-              replyText += `ใบสำคัญ/ใบอนุญาต: ${item.licenseNo || '-'}\n`;
-              replyText += `ชื่อผลิตภัณฑ์: ${item.productName || '-'}\n`;
-              replyText += `ชื่อผู้รับอนุญาต: ${item.licensee || '-'}\n`;
-              replyText += `Newcode: ${item.newcode || '-'}\n`;
-              replyText += `สถานะ: ${item.status || '-'}\n`;
-              replyText += `--------------------`;
-          });
+        replyText = `=== พบข้อมูลทั้งหมด ${res.data.length} รายการ ===\n`;
+        res.data.forEach((item, idx) => {
+          replyText += `\n[${idx + 1}]\n`;
+          replyText += `ประเภท: ${item.productType || '-'}\n`;
+          replyText += `ใบสำคัญ/ใบอนุญาต: ${item.licenseNo || '-'}\n`;
+          replyText += `ชื่อผลิตภัณฑ์: ${item.productName || '-'}\n`;
+          replyText += `ชื่อผู้รับอนุญาต: ${item.licensee || '-'}\n`;
+          replyText += `Newcode: ${item.newcode || '-'}\n`;
+          replyText += `สถานะ: ${item.status || '-'}\n`;
+          replyText += `--------------------`;
+        });
       } else {
-          replyText = res.message || 'ไม่พบข้อมูลที่ตรงกับคำค้นหา';
+        replyText = res.message || 'ไม่พบข้อมูลที่ตรงกับคำค้นหา';
       }
       return reply(event.replyToken, { type: 'text', text: limitLineMessage(replyText) });
     } catch (err) {
