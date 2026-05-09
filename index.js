@@ -3649,7 +3649,7 @@ async function handleText(event) {
       return reply(event.replyToken, { type: 'text', text: msg });
     } catch (err) {
       console.error('dtac lookup error:', err?.response?.data || err.message);
-      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูล DTAC ไม่สำเร็จ' });
+      return reply(event.replyToken, { type: 'text', text: '🔎 สืบค้นใหม่อีกครั้ง' });
     }
   }
 
