@@ -857,6 +857,163 @@ function formatDPlusCustomers(data, keyword) {
   return limitLineMessage(msg);
 }
 
+async function fetchBQuikApi(query) {
+  const { data } = await axios.get(SEARCH_API_BASE, {
+    params: { bq: query, key: SEARCH_API_KEY },
+    timeout: 90000
+  });
+  return data;
+}
+
+function bqValue(value) {
+  if (value === null || value === undefined) return '-';
+  const text = String(value).trim();
+  return text && text !== 'null' ? text : '-';
+}
+
+function bqDateTime(value) {
+  const text = bqValue(value, '');
+  if (!text) return '-';
+  return text.replace('T', ' ').replace(/\.\d+Z$/, ' UTC').replace(/Z$/, ' UTC');
+}
+
+function bqAddressLine(address = {}) {
+  const parts = [
+    bqValue(address.no, ''),
+    bqValue(address.moo, '') ? `หมู่ ${bqValue(address.moo, '')}` : '',
+    bqValue(address.soi, '') ? `ซอย${bqValue(address.soi, '')}` : '',
+    bqValue(address.road, '') ? `ถนน${bqValue(address.road, '')}` : '',
+    bqValue(address.tumbol, '') ? `ตำบล${bqValue(address.tumbol, '')}` : '',
+    bqValue(address.district, '') ? `อำเภอ${bqValue(address.district, '')}` : '',
+    bqValue(address.province, '') ? `จังหวัด${bqValue(address.province, '')}` : '',
+    bqValue(address.zipcode, '')
+  ].filter(Boolean);
+  return parts.length ? parts.join(' ') : '-';
+}
+
+function bqHasAddress(address = {}) {
+  return ['no', 'moo', 'soi', 'road', 'tumbol', 'district', 'province', 'zipcode']
+    .some(key => bqValue(address[key], '') !== '');
+}
+
+function bqHasMembership(info = {}) {
+  return ['loyalty_id', 'loyalty_level', 'loyalty_status', 'point_balance']
+    .some(key => bqValue(info[key], '') !== '');
+}
+
+function formatBQuikPhoneItem(item, index) {
+  const personal = item.personal_info || {};
+  const member = item.membership_info || {};
+  const address = item.address || {};
+  const consent = item.consent || {};
+  const lines = [
+    `👤 รายการที่ ${index + 1}`,
+    `┌● ชื่อ-สกุล: ${bqValue(personal.fullname)}`,
+    `├● เบอร์โทร: ${bqValue(personal.mobilephone)}`
+  ];
+
+  if (bqValue(personal.id_card, '') !== '') lines.push(`├● เลขบัตรประชาชน: ${bqValue(personal.id_card)}`);
+  if (bqValue(personal.birthdate, '') !== '') lines.push(`├● วันเกิด: ${bqValue(personal.birthdate)}`);
+  if (bqValue(personal.gender, '') !== '') lines.push(`├● เพศ: ${bqValue(personal.gender)}`);
+  if (bqValue(member.customer_code, '') !== '') lines.push(`├● รหัสลูกค้า: ${bqValue(member.customer_code)}`);
+
+  if (bqHasMembership(member)) {
+    lines.push('├● 🎫 ข้อมูลสมาชิก');
+    if (bqValue(member.loyalty_id, '') !== '') lines.push(`├● Loyalty ID: ${bqValue(member.loyalty_id)}`);
+    if (bqValue(member.loyalty_level, '') !== '') lines.push(`├● ระดับสมาชิก: ${bqValue(member.loyalty_level)}`);
+    if (bqValue(member.loyalty_status, '') !== '') lines.push(`├● สถานะสมาชิก: ${bqValue(member.loyalty_status)}`);
+    if (bqValue(member.point_balance, '') !== '') lines.push(`├● คะแนนสะสม: ${bqValue(member.point_balance)} คะแนน`);
+  }
+
+  if (bqHasAddress(address)) {
+    lines.push('├● 📍 ที่อยู่');
+    if (bqValue(address.no, '') !== '') lines.push(`├● บ้านเลขที่: ${bqValue(address.no)}`);
+    if (bqValue(address.moo, '') !== '') lines.push(`├● หมู่: ${bqValue(address.moo)}`);
+    if (bqValue(address.tumbol, '') !== '') lines.push(`├● ตำบล: ${bqValue(address.tumbol)}`);
+    if (bqValue(address.district, '') !== '') lines.push(`├● อำเภอ: ${bqValue(address.district)}`);
+    if (bqValue(address.province, '') !== '') lines.push(`├● จังหวัด: ${bqValue(address.province)}`);
+    if (bqValue(address.zipcode, '') !== '') lines.push(`├● รหัสไปรษณีย์: ${bqValue(address.zipcode)}`);
+  }
+
+  if (bqValue(consent.status, '') !== '' || bqValue(consent.expire_date, '') !== '') {
+    lines.push('├● 📌 Consent');
+    lines.push(`├● สถานะ: ${bqValue(consent.status)}`);
+    lines.push(`└● วันหมดอายุ: ${bqDateTime(consent.expire_date)}`);
+  } else if (lines.length > 0) {
+    lines[lines.length - 1] = lines[lines.length - 1].replace(/^├/, '└');
+  }
+
+  return lines.join('\n');
+}
+
+function formatBQuikNameItem(item, index) {
+  const personal = item.personal_info || {};
+  const member = item.membership_info || {};
+  const address = item.address || {};
+  const consent = item.consent || {};
+  const lines = [
+    `👤 รายการที่ ${index + 1}`,
+    `┌● ชื่อ-สกุล: ${bqValue(personal.fullname)}`,
+    `├● เบอร์โทร: ${bqValue(personal.mobilephone)}`,
+    `├● รหัสลูกค้า: ${bqValue(member.customer_code)}`,
+    `└● ที่อยู่: ${bqAddressLine(address)}`
+  ];
+  if (bqValue(consent.status, '') !== '') {
+    lines[lines.length - 1] = lines[lines.length - 1].replace(/^└/, '├');
+    lines.push(`└● สถานะการยินยอมข้อมูล: ${bqValue(consent.status)}`);
+  }
+  return lines.join('\n');
+}
+
+function formatBQuikIdItem(item, index) {
+  const personal = item.personal_info || {};
+  const member = item.membership_info || {};
+  const address = item.address || {};
+  const consent = item.consent || {};
+  return `👤 รายการที่ ${index + 1}
+┌● ชื่อ-สกุล: ${bqValue(personal.fullname)}
+├● เลขบัตรประชาชน: ${bqValue(personal.id_card)}
+├● วันเกิด: ${bqValue(personal.birthdate)}
+├● เพศ: ${bqValue(personal.gender)}
+├● เบอร์โทร: ${bqValue(personal.mobilephone)}
+├● Loyalty ID: ${bqValue(member.loyalty_id)}
+├● ระดับสมาชิก: ${bqValue(member.loyalty_level)}
+├● สถานะสมาชิก: ${bqValue(member.loyalty_status)}
+├● คะแนนสะสม: ${bqValue(member.point_balance)}
+├● 📍 ที่อยู่
+├● บ้านเลขที่: ${bqValue(address.no)}
+├● หมู่: ${bqValue(address.moo)}
+├● ตำบล: ${bqValue(address.tumbol)}
+├● อำเภอ: ${bqValue(address.district)}
+├● จังหวัด: ${bqValue(address.province)}
+├● รหัสไปรษณีย์: ${bqValue(address.zipcode)}
+├● 📌 Consent
+├● สถานะ: ${bqValue(consent.status)}
+└● วันหมดอายุ: ${bqDateTime(consent.expire_date)}`;
+}
+
+function formatBQuikResult(result, query) {
+  if (!result?.success) {
+    return `❌ ${result?.message || 'ค้นหา B-Quik ไม่สำเร็จ'}${result?.error ? `\n${result.error}` : ''}`;
+  }
+  const rows = Array.isArray(result.data) ? result.data : [];
+  if (!rows.length) return `📁ผลการค้นหา: ${query}\n❌ไม่พบข้อมูล`;
+
+  const isPhone = /^0\d{9}$/.test(query);
+  const isId = /^\d{13}$/.test(query);
+  const items = rows.map((item, index) => {
+    if (isId) return formatBQuikIdItem(item, index);
+    if (isPhone) return formatBQuikPhoneItem(item, index);
+    return formatBQuikNameItem(item, index);
+  }).join('\n-------------------\n');
+
+  return limitLineMessage(`📁ผลการค้นหา: ${query}
+✅พบข้อมูลทั้งหมด ${result.count ?? rows.length} รายการ
+-------------------
+${items}
+-------------------`);
+}
+
 function summarizeSI(data) {
   const rows = Array.isArray(data?.content)
     ? data.content
@@ -2206,6 +2363,7 @@ function buildMenuCarouselFlex() {
             contents: [
               menuSection('📦 ขนส่ง', [
                 '┣ ╾ f#เบอร์ลูกค้า DPlus',
+                '┣ ╾ bq%ชื่อ/เบอร์/เลขบัตร B-Quik',
                 '┣ ╾ fx#เบอร์โทร/ชื่อสกุล/พัสดุละเอียด',
                 '┗ ╾ tic%เลขพัสดุ'
               ]),
@@ -3712,6 +3870,22 @@ async function handleText(event) {
       return reply(event.replyToken, { type: 'text', text: formatDPlusCustomers(data, phone) });
     } catch (err) {
       console.error('dplus customer error:', err?.response?.data || err.message);
+      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูลไม่สำเร็จ: ' + err.message });
+    }
+  }
+
+  // B-Quik CRM: bq%ชื่อ นามสกุล หรือ bq%เบอร์ หรือ bq%เลขบัตร
+  if (text.startsWith('bq%')) {
+    const query = text.replace(/^bq%/i, '').trim();
+    if (!query) {
+      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุคำค้น เช่น bq%0973458235 หรือ bq%วิชัย จำปา' });
+    }
+
+    try {
+      const data = await fetchBQuikApi(query);
+      return reply(event.replyToken, { type: 'text', text: formatBQuikResult(data, query) });
+    } catch (err) {
+      console.error('bquik error:', err?.response?.data || err.message);
       return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูลไม่สำเร็จ: ' + err.message });
     }
   }
