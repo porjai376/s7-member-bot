@@ -3696,7 +3696,7 @@ async function handleText(event) {
       return reply(event.replyToken, { type: 'text', text: formatPiLookup(data, pid) });
     } catch (err) {
       console.error('pi lookup error:', err?.response?.data || err.message);
-      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูล PI ไม่สำเร็จ: ' + err.message });
+      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูลไม่สำเร็จ: ' + err.message });
     }
   }
 
@@ -3712,7 +3712,7 @@ async function handleText(event) {
       return reply(event.replyToken, { type: 'text', text: formatDPlusCustomers(data, phone) });
     } catch (err) {
       console.error('dplus customer error:', err?.response?.data || err.message);
-      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูล DPlus ไม่สำเร็จ: ' + err.message });
+      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูลไม่สำเร็จ: ' + err.message });
     }
   }
 
