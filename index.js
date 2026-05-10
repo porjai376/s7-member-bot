@@ -182,7 +182,7 @@ function getVehicleColor(vehicle) {
 
 function formatVehicleDetails(vehicle, index) {
   const owner2Block = vehicle?.docNo2 || vehicle?.owner2 || vehicle?.addressOwner2
-    ? `\nผู้ครอบครอง:\nเลขประจำตัว: ${safeVehicleValue(vehicle?.docNo2)}\nชื่อ: ${safeVehicleValue(vehicle?.owner2)}\nที่อยู่: ${normalizeVehicleAddress(vehicle?.addressOwner2)}`
+    ? `\n🙍ผู้ครอบครอง:\nเลขประจำตัว: ${safeVehicleValue(vehicle?.docNo2)}\nชื่อ: ${safeVehicleValue(vehicle?.owner2)}\nที่อยู่: ${normalizeVehicleAddress(vehicle?.addressOwner2)}`
     : '';
   const noteBlock = vehicle?.note
     ? `\n📝 หมายเหตุ: ${safeVehicleValue(vehicle.note)}${vehicle.noteDate ? ` (${formatThaiDateOnly(vehicle.noteDate)})` : ''}`
