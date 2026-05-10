@@ -4189,14 +4189,48 @@ async function handleText(event) {
     const pid = text.replace(/^all%/, '').trim();
 
     try {
-      const [hRes, cRes, siRes, sRes] = await Promise.allSettled([
-        searchJediHp(pid),
-        fetchCrime(pid),
-        fetchPEAApi({ si: pid }),
-        fetchInstallment(pid)
-      ]);
+      const [hRes, cRes, siRes, sRes, dRes] = await Promise.allSettled([
+  searchJediHp(pid),
+  fetchCrime(pid),
+  fetchPEAApi({ si: pid }),
+  fetchInstallment(pid),
+  fetchDTACByPID(pid)
+]);
 
       let msg = `🔎ผลการค้นหา[PID]\nเลขบัตร:${pid}\n-------------------\n`;
+
+// =======================
+// 📘 DTAC INFO
+// =======================
+
+try {
+  const dData =
+  dRes.status === 'fulfilled'
+    ? dRes.value
+    : null;
+
+  if (dData) {
+    msg += `📘 INFO [${pid}] [DTAC]\n`;
+    msg += `_  _  _  _  _  _  _  _  _  _  _\n`;
+
+    msg += `ชื่อ-สกุล: ${dData.name || '-'}\n`;
+    msg += `เลขบัตร: *********${String(pid).slice(-4)}\n\n`;
+
+    if (Array.isArray(dData.prepaid) && dData.prepaid.length) {
+
+      msg += `📘 เบอร์เติมเงิน (Prepaid):\n`;
+
+      dData.prepaid.forEach((item, i) => {
+        msg += `${i + 1}.${item.number || '-'} (${item.age || '-'})\n`;
+      });
+
+      msg += `_  _  _  _  _  _  _  _  _  _  _\n`;
+    }
+  }
+
+} catch (e) {
+  console.log('all% dtac error:', e.message);
+}
 
       msg += `\n🔎ข้อมูลบุคคล/สิทธิรักษา\n`;
       msg += hRes.status === 'fulfilled'
