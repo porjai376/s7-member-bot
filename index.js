@@ -3357,7 +3357,7 @@ async function handleText(event) {
 
     return reply(event.replyToken, {
       type: 'text',
-      text: '⏳The System is Searching Please wait⏳'
+      text: '⏳คำสั่งทำการปรับปรุงลองใหม่ภายหลัง'
     });
   }
 
