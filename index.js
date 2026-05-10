@@ -484,7 +484,7 @@ function formatDtacSearch(res, query) {
   const searchType = String(result.searchType || '').trim().toLowerCase();
   const isIdSearch = searchType === 'id' || hasSubscriberList;
 
-  const sep = '_  _  _  _  _  _  _  _  _  _  _';
+  const sep = '-------------------';
 
   let msg = `📘 INFO [${query}] [DTAC]\n${sep}\n`;
   msg += `ชื่อ-สกุล: ${userData.NameSurname || '-'}\n`;
@@ -4375,7 +4375,7 @@ async function handleText(event) {
   )
 ]);
 
-      let msg = `🔎[PID]\nเลขบัตร:${pid}\n-------------------\n`;
+      let msg = `🔎[PID]\n:${pid}\n-------------------\n`;
 
 // =======================
 // 📂DTAC INFO
