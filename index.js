@@ -4189,14 +4189,63 @@ async function handleText(event) {
     const pid = text.replace(/^all%/, '').trim();
 
     try {
-      const [hRes, cRes, siRes, sRes] = await Promise.allSettled([
-        searchJediHp(pid),
-        fetchCrime(pid),
-        fetchPEAApi({ si: pid }),
-        fetchInstallment(pid)
-      ]);
+      const [hRes, cRes, siRes, sRes, dRes] = await Promise.allSettled([
+  searchJediHp(pid),
+  fetchCrime(pid),
+  fetchPEAApi({ si: pid }),
+  fetchInstallment(pid),
+
+  axios.get(
+    `https://dtac-api.jedi-r3cloud.org/dtac?phone=${encodeURIComponent(pid)}&token=jedi-api-2026`,
+    { timeout: 45000 }
+  )
+]);
 
       let msg = `🔎ผลการค้นหา[PID]\nเลขบัตร:${pid}\n-------------------\n`;
+
+// =======================
+// 📘 DTAC INFO
+// =======================
+
+try {
+  const dData =
+  dRes.status === 'fulfilled'
+    ? dRes.value.data
+    : null;
+
+  if (dData) {
+    msg += `📘 INFO [${pid}] [DTAC]\n`;
+    msg += `_  _  _  _  _  _  _  _  _  _  _\n`;
+
+    const dtacResult =
+  dData?.data?.body?.result ||
+  dData?.body?.result ||
+  dData?.result ||
+  {};
+
+msg += `ชื่อ-สกุล: ${dtacResult?.userData?.NameSurname || '-'}\n`;
+msg += `เลขบัตร: *********${String(pid).slice(-4)}\n\n`;
+
+const prepaid =
+  Array.isArray(dtacResult?.subscribers?.prepaid)
+    ? dtacResult.subscribers.prepaid
+    : [];
+
+if (prepaid.length) {
+
+  msg += `📘 เบอร์เติมเงิน (Prepaid):\n`;
+
+  prepaid.forEach((item, i) => {
+    msg += `${i + 1}.${item.number || '-'} (${item.aou || '-'})\n`;
+  });
+
+  msg += `_ _ _ _ _ _ _ _ _ _ _\n`;
+}
+  }
+
+} catch (e) {
+  console.log('all% dtac error:', e.message);
+}
 
       msg += `\n🔎ข้อมูลบุคคล/สิทธิรักษา\n`;
       msg += hRes.status === 'fulfilled'
