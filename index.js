@@ -2361,9 +2361,9 @@ function buildMenuCarouselFlex() {
             layout: 'vertical',
             spacing: 'md',
             contents: [
-              menuSection('📦 ขนส่ง/ศูนย์รถ', [
-                '┣ ╾ f#เบอร์ลูกค้า DPlus',
-                '┣ ╾ bq%ชื่อ/เบอร์/เลขบัตร',
+              menuSection('📦 ขนส่ง/ศูนย์บริการรถ', [
+                '┣ ╾ f#เบอร์โทร',
+                '┣ ╾ bq%ชื่อ/เบอร์โทร/เลขบัตร',
                 '┣ ╾ fx#เบอร์โทร/ชื่อสกุล/พัสดุละเอียด',
                 '┗ ╾ tic%เลขพัสดุ'
               ]),
