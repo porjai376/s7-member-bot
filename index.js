@@ -182,7 +182,7 @@ function getVehicleColor(vehicle) {
 
 function formatVehicleDetails(vehicle, index) {
   const owner2Block = vehicle?.docNo2 || vehicle?.owner2 || vehicle?.addressOwner2
-    ? `\nเจ้าของที่ 2:\nเลขประจำตัว: ${safeVehicleValue(vehicle?.docNo2)}\nชื่อ: ${safeVehicleValue(vehicle?.owner2)}\nที่อยู่: ${normalizeVehicleAddress(vehicle?.addressOwner2)}`
+    ? `\nผู้ครอบครอง:\nเลขประจำตัว: ${safeVehicleValue(vehicle?.docNo2)}\nชื่อ: ${safeVehicleValue(vehicle?.owner2)}\nที่อยู่: ${normalizeVehicleAddress(vehicle?.addressOwner2)}`
     : '';
   const noteBlock = vehicle?.note
     ? `\n📝 หมายเหตุ: ${safeVehicleValue(vehicle.note)}${vehicle.noteDate ? ` (${formatThaiDateOnly(vehicle.noteDate)})` : ''}`
@@ -204,7 +204,7 @@ function formatVehicleDetails(vehicle, index) {
 ├●วันที่จดทะเบียน: ${formatThaiDateOnly(vehicle?.regDate)}
 └●วันที่หมดอายุ: ${formatThaiDateOnly(vehicle?.expDate)}
 👤ข้อมูลเจ้าของ
-┌●เจ้าของที่ 1:
+┌●ผู้ถือกรรมสิทธิ์:
 ├●เลขประจำตัว: ${safeVehicleValue(vehicle?.docNo1)}
 ├●ชื่อ: ${safeVehicleValue(vehicle?.owner1)}
 └●ที่อยู่: ${normalizeVehicleAddress(vehicle?.addressOwner1)}${owner2Block}${noteBlock}
