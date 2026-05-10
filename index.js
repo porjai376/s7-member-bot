@@ -4388,33 +4388,9 @@ try {
     : null;
 
   if (dData) {
-    msg += `📘 INFO [${pid}] [DTAC]\n`;
-    msg += `_  _  _  _  _  _  _  _  _  _  _\n`;
-
-    const dtacResult =
-  dData?.data?.body?.result ||
-  dData?.body?.result ||
-  dData?.result ||
-  {};
-
-msg += `ชื่อ-สกุล: ${dtacResult?.userData?.NameSurname || '-'}\n`;
-msg += `เลขบัตร: *********${String(pid).slice(-4)}\n\n`;
-
-const prepaid =
-  Array.isArray(dtacResult?.subscribers?.prepaid)
-    ? dtacResult.subscribers.prepaid
-    : [];
-
-if (prepaid.length) {
-
-  msg += `📘 เบอร์เติมเงิน (Prepaid):\n`;
-
-  prepaid.forEach((item, i) => {
-    msg += `${i + 1}.${item.number || '-'} (${item.aou || '-'})\n`;
-  });
-
-  msg += `_ _ _ _ _ _ _ _ _ _ _\n`;
-}
+    const dtacText = formatDtacSearch(dData, pid)
+      .replace(new RegExp(`เลขบัตร:\\s*${pid.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`), `เลขบัตร: *********${String(pid).slice(-4)}`);
+    msg += dtacText;
   }
 
 } catch (e) {
