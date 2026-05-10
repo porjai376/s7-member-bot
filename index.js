@@ -4375,10 +4375,10 @@ async function handleText(event) {
   )
 ]);
 
-      let msg = `🔎ผลการค้นหา[PID]\nเลขบัตร:${pid}\n-------------------\n`;
+      let msg = `🔎[PID]\nเลขบัตร:${pid}\n-------------------\n`;
 
 // =======================
-// 📘 DTAC INFO
+// 📂DTAC INFO
 // =======================
 
 try {
@@ -4397,22 +4397,22 @@ try {
   console.log('all% dtac error:', e.message);
 }
 
-      msg += `\n🔎ข้อมูลบุคคล/สิทธิรักษา\n`;
+      msg += `\n📂ข้อมูลบุคคล/สิทธิรักษา\n`;
       msg += hRes.status === 'fulfilled'
         ? limitAllSection(hRes.value, 900)
         : '❌ไม่พบข้อมูลสิทธิ';
 
-      msg += `\n\n-------------------\n🔎หมายจับ[CRIME]\n`;
+      msg += `\n\n-------------------\n📂หมายจับ[CRIME]\n`;
       msg += cRes.status === 'fulfilled'
         ? limitAllSection(formatCrime(cRes.value, pid), 900)
         : '❌ไม่พบข้อมูลหมายจับ[CRIME]';
 
-      msg += `\n\n-------------------\n🔎ประกันสังคม\n`;
+      msg += `\n\n-------------------\n📂ประกันสังคม\n`;
       msg += siRes.status === 'fulfilled'
         ? summarizeSI(siRes.value)
         : '❌ไม่พบข้อมูลประกันสังคม';
 
-      msg += `\n\n-------------------\n🔎ผ่อนสินค้า\n`;
+      msg += `\n\n-------------------\n📂ผ่อนสินค้า\n`;
       msg += sRes.status === 'fulfilled'
         ? limitAllSection(formatInstallment(sRes.value), 1200)
         : '❌ไม่พบข้อมูลผ่อนสินค้า';
