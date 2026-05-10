@@ -4391,15 +4391,11 @@ try {
     msg += `📘 INFO [${pid}] [DTAC]\n`;
     msg += `_  _  _  _  _  _  _  _  _  _  _\n`;
 
-   let dtacResult =
+    const dtacResult =
   dData?.data?.body?.result ||
   dData?.body?.result ||
   dData?.result ||
   {};
-
-if (Array.isArray(dtacResult)) {
-  dtacResult = dtacResult[0] || {};
-}
 
 msg += `ชื่อ-สกุล: ${dtacResult?.userData?.NameSurname || '-'}\n`;
 msg += `เลขบัตร: *********${String(pid).slice(-4)}\n\n`;
@@ -4409,35 +4405,20 @@ const prepaid =
     ? dtacResult.subscribers.prepaid
     : [];
 
-const postpaid =
-  Array.isArray(dtacResult?.subscribers?.postpaid)
-    ? dtacResult.subscribers.postpaid
-    : [];
-
 if (prepaid.length) {
 
-  msg += `📱 เบอร์เติมเงิน (Prepaid):\n`;
+  msg += `📘 เบอร์เติมเงิน (Prepaid):\n`;
 
   prepaid.forEach((item, i) => {
-    msg += `${i + 1}. ${item.number || '-'} (${item.aou || '-'})\n`;
+    msg += `${i + 1}.${item.number || '-'} (${item.aou || '-'})\n`;
   });
 
-  msg += `────────────────\n`;
+  msg += `_ _ _ _ _ _ _ _ _ _ _\n`;
 }
+  }
 
-if (postpaid.length) {
-
-  msg += `📱 เบอร์รายเดือน (Postpaid):\n`;
-
-  postpaid.forEach((item, i) => {
-    msg += `${i + 1}. ${item.number || '-'} (${item.aou || '-'})\n`;
-  });
-
-  msg += `────────────────\n`;
-}
-
-if (!prepaid.length && !postpaid.length) {
-  msg += `❌ ไม่พบเบอร์ที่ลงทะเบียน\n`;
+} catch (e) {
+  console.log('all% dtac error:', e.message);
 }
 
       msg += `\n🔎ข้อมูลบุคคล/สิทธิรักษา\n`;
