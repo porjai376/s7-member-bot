@@ -1014,6 +1014,57 @@ ${items}
 -------------------`);
 }
 
+function extractDtacNumbers(res) {
+  const result = res?.data?.data?.body?.result || res?.data?.body?.result || res?.body?.result || res?.result;
+  const subscribers = result?.subscribers || {};
+  const numbers = [
+    ...(Array.isArray(subscribers.prepaid) ? subscribers.prepaid : []),
+    ...(Array.isArray(subscribers.postpaid) ? subscribers.postpaid : [])
+  ]
+    .map(item => String(item?.number || '').replace(/\D/g, ''))
+    .filter(number => /^0\d{9}$/.test(number));
+  return [...new Set(numbers)];
+}
+
+function pickBQuikServiceItem(result) {
+  const rows = Array.isArray(result?.data) ? result.data : [];
+  return rows.find(item => bqHasMembership(item?.membership_info || {}) || bqHasAddress(item?.address || {})) || rows[0] || null;
+}
+
+function formatBQuikServiceCenter(result) {
+  if (!result?.success) return '❌ไม่พบข้อมูลศูนย์บริการรถ';
+  const item = pickBQuikServiceItem(result);
+  if (!item) return '❌ไม่พบข้อมูลศูนย์บริการรถ';
+
+  const personal = item.personal_info || {};
+  const member = item.membership_info || {};
+  const address = item.address || {};
+  return `┌● เบอร์โทร: ${bqValue(personal.mobilephone)}
+├● Loyalty ID: ${bqValue(member.loyalty_id)}
+├● ระดับสมาชิก: ${bqValue(member.loyalty_level)}
+├● สถานะสมาชิก: ${bqValue(member.loyalty_status)}
+├● คะแนนสะสม: ${bqValue(member.point_balance)}
+├● บ้านเลขที่: ${bqValue(address.no)}
+├● หมู่: ${bqValue(address.moo)}
+├● ตำบล: ${bqValue(address.tumbol)}
+├● อำเภอ: ${bqValue(address.district)}
+├● จังหวัด: ${bqValue(address.province)}
+└● รหัสไปรษณีย์: ${bqValue(address.zipcode)}`;
+}
+
+async function fetchBQuikForAll(pid, dtacData) {
+  const queries = [pid, ...extractDtacNumbers(dtacData)];
+  for (const query of [...new Set(queries)]) {
+    try {
+      const result = await fetchBQuikApi(query);
+      if (Array.isArray(result?.data) && result.data.length > 0) return result;
+    } catch (error) {
+      console.log('all% bq error:', query, error.message);
+    }
+  }
+  return null;
+}
+
 function summarizeSI(data) {
   const rows = Array.isArray(data?.content)
     ? data.content
@@ -4374,6 +4425,8 @@ async function handleText(event) {
     { timeout: 45000 }
   )
 ]);
+      const dData = dRes.status === 'fulfilled' ? dRes.value.data : null;
+      const bqRes = await fetchBQuikForAll(pid, dData);
 
       let msg = `🔎[PID]\n:${pid}\n-------------------\n`;
 
@@ -4382,11 +4435,6 @@ async function handleText(event) {
 // =======================
 
 try {
-  const dData =
-  dRes.status === 'fulfilled'
-    ? dRes.value.data
-    : null;
-
   if (dData) {
     const dtacText = formatDtacSearch(dData, pid)
       .replace(new RegExp(`เลขบัตร:\\s*${pid.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`), `เลขบัตร: *********${String(pid).slice(-4)}`);
@@ -4412,7 +4460,12 @@ try {
         ? summarizeSI(siRes.value)
         : '❌ไม่พบข้อมูลประกันสังคม';
 
-      msg += `\n\n-------------------\n📂ผ่อนสินค้า\n`;
+      msg += `\n\n-------------------\n📂ศูนย์บริการรถ\n`;
+      msg += bqRes
+        ? formatBQuikServiceCenter(bqRes)
+        : '❌ไม่พบข้อมูลศูนย์บริการรถ';
+
+      msg += `\n\n-------------------\n📂ผ่อนเครื่องใช้ไฟฟ้า\n`;
       msg += sRes.status === 'fulfilled'
         ? limitAllSection(formatInstallment(sRes.value), 1200)
         : '❌ไม่พบข้อมูลผ่อนสินค้า';
