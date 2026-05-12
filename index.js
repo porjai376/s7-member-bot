@@ -457,11 +457,11 @@ function formatInstallment(data) {
     msg += `\n🏚️ [ที่อยู่ ${totalAddr} รายการ]\n\n`;
 
     homes.forEach((h, i) => {
-      msg += `┌● HOME [${i + 1}]:\n${shortAddr(h)}\n\n`;
+      msg += `┌● HOME [${i + 1}]:\n${shortAddr(h)}\n`;
     });
 
     works.forEach((w, i) => {
-      msg += `└● WORK [${i + 1}]:\n${shortAddr(w)}\n\n`;
+      msg += `└● WORK [${i + 1}]:\n${shortAddr(w)}\n`;
     });
   }
 
@@ -2672,7 +2672,7 @@ function buildMenuCarouselFlex() {
                 '┣ ╾ web%ชื่อเว็บไซต์',
                 '┗ ╾ se%รหัสสาขา7-11'
               ]),
-              menuSection('📺 ผ่อนสินค้า', [
+              menuSection('📺 ผ่อนเครื่องใช้ไฟฟ้า', [
                 '┗ ╾ s%เลขบัตร'
               ])
             ]
