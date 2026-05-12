@@ -3408,45 +3408,104 @@ function buildWelcomeWarningFlex() {
     type: 'flex',
     altText: 'ข้อควรปฏิบัติและคำเตือนสำคัญ',
     contents: {
-      "type": "bubble",
-      "size": "mega",
-      "body": {
-        "type": "box",
-        "layout": "vertical",
-        "backgroundColor": "#0B0F14",
-        "paddingAll": "18px",
-        "spacing": "md",
-        "contents": [
+      type: 'bubble',
+      size: 'mega',
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        backgroundColor: '#0B0F14',
+        paddingAll: '18px',
+        spacing: 'md',
+        contents: [
           {
-            "type": "text",
-            "text": "⚠️ ข้อควรปฏิบัติและคำเตือนสำคัญ ⚠️",
-            "weight": "bold",
-            "size": "lg",
-            "color": "#FFCC00",
-            "wrap": true,
-            "align": "center"
+            type: 'text',
+            text: '⚠️ ข้อควรปฏิบัติและคำเตือนสำคัญ ⚠️',
+            weight: 'bold',
+            size: 'lg',
+            color: '#FFCC00',
+            wrap: true,
+            align: 'center'
           },
           {
-            "type": "separator",
-            "color": "#334155"
+            type: 'separator',
+            color: '#334155'
+          },
+          {
+            type: 'text',
+            text: '1️⃣ สิทธิ์การเข้าถึง',
+            weight: 'bold',
+            color: '#FFFFFF',
+            size: 'sm'
+          },
+          {
+            type: 'text',
+            text: 'อนุญาตเฉพาะเจ้าหน้าที่ตำรวจที่ปฏิบัติหน้าที่เท่านั้น',
+            color: '#CBD5E1',
+            size: 'sm',
+            wrap: true
+          },
+          {
+            type: 'text',
+            text: '2️⃣ วัตถุประสงค์',
+            weight: 'bold',
+            color: '#FFFFFF',
+            size: 'sm',
+            margin: 'md'
+          },
+          {
+            type: 'text',
+            text: 'ข้อมูลนี้มีไว้เพื่อสนับสนุนงานด้านการสืบสวนสอบสวนโดยเฉพาะ',
+            color: '#CBD5E1',
+            size: 'sm',
+            wrap: true
+          },
+          {
+            type: 'text',
+            text: '3️⃣ ข้อเคร่งคัด',
+            weight: 'bold',
+            color: '#FFFFFF',
+            size: 'sm',
+            margin: 'md'
+          },
+          {
+            type: 'text',
+            text: 'ห้ามคัดลอก เผยแพร่ หรือส่งต่อข้อมูลสู่ภายนอกโดยเด็ดขาด หากฝ่าฝืน ทำการตัดสิทธิ์ในทันที',
+            color: '#FCA5A5',
+            size: 'sm',
+            wrap: true
+          },
+          {
+            type: 'text',
+            text: '4️⃣ การยืนยันตัวตน',
+            weight: 'bold',
+            color: '#FFFFFF',
+            size: 'sm',
+            margin: 'md'
+          },
+          {
+            type: 'text',
+            text: 'ผู้ใช้งานต้องดำเนินการยืนยันตัวตนตามขั้นตอนที่กำหนดให้ครบถ้วนทุกครั้ง',
+            color: '#CBD5E1',
+            size: 'sm',
+            wrap: true
           }
         ]
       },
-      "footer": {
-        "type": "box",
-        "layout": "vertical",
-        "backgroundColor": "#0B0F14",
-        "paddingAll": "16px",
-        "contents": [
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        backgroundColor: '#0B0F14',
+        paddingAll: '16px',
+        contents: [
           {
-            "type": "button",
-            "style": "primary",
-            "color": "#22C55E",
-            "height": "sm",
-            "action": {
-              "type": "uri",
-              "label": "ติดต่อ ADMIN",
-              "uri": "https://line.me/ti/p/mVmD-ncfvU"
+            type: 'button',
+            style: 'primary',
+            color: '#22C55E',
+            height: 'sm',
+            action: {
+              type: 'uri',
+              label: 'ติดต่อ ADMIN',
+              uri: 'https://line.me/ti/p/mVmD-ncfvU'
             }
           }
         ]
