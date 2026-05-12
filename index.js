@@ -5242,12 +5242,14 @@ if (data.startsWith('approve_member:')) {
     });
   }
 
-  if (data === 'admin_members_pending') {
-    return reply(event.replyToken, {
-      type: 'text',
-      text: buildMembersPendingText(db)
-    });
-  }
+ if (data === 'admin_members_pending') {
+
+  return reply(
+    event.replyToken,
+    buildPendingMembersFlex(db)
+  );
+
+}
 
   if (data === 'admin_members_expired') {
     return reply(event.replyToken, {
