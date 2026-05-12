@@ -1507,7 +1507,12 @@ function cancelMemberByPhone(phone) {
 }
 
 function formatParcel(raw) {
-  const phone = raw.match(/ข้อมูลพัสดุ\s*:\s*\[\s*(.*?)\s*\]/)?.[1] || '-';
+  const sep = '-  -  -  -  -  -  -  -  -  -';
+
+  const phone =
+    raw.match(/ข้อมูลพัสดุ\s*:\s*\[\s*(.*?)\s*\]/)?.[1]?.trim() ||
+    raw.match(/🔎\[\s*(.*?)\s*\]/)?.[1]?.trim() ||
+    '-';
 
   const blocks = String(raw)
     .split(/(?=รายการที่\s*\d+)/g)
@@ -1523,11 +1528,11 @@ function formatParcel(raw) {
 
     const sender = block.match(/ผู้ส่ง:\s*(.*)/)?.[1]?.trim() || '-';
     const senderPhone = block.match(/เบอร์ผู้ส่ง:\s*(.*)/)?.[1]?.trim() || '-';
-    const senderAddress = block.match(/ที่อยู่ผู้ส่ง:\s*(.*?)(?=┌● ผู้รับ:|ผู้รับ:|$)/s)?.[1]?.trim() || '-';
+    const senderAddress = block.match(/ที่อยู่ผู้ส่ง:\s*(.*?)(?=📥 ข้อมูลผู้รับ|┌● ผู้รับ:|ผู้รับ:|$)/s)?.[1]?.trim() || '-';
 
     const receiver = block.match(/ผู้รับ:\s*(.*)/)?.[1]?.trim() || '-';
     const receiverPhone = block.match(/เบอร์ผู้รับ:\s*(.*)/)?.[1]?.trim() || '-';
-    const receiverAddress = block.match(/ที่อยู่ผู้รับ:\s*(.*?)(?=├● น้ำหนัก:|น้ำหนัก:|$)/s)?.[1]?.trim() || '-';
+    const receiverAddress = block.match(/ที่อยู่ผู้รับ:\s*(.*?)(?=📦 รายละเอียดพัสดุ|├● น้ำหนัก:|น้ำหนัก:|$)/s)?.[1]?.trim() || '-';
 
     const weight = block.match(/น้ำหนัก:\s*(.*)/)?.[1]?.trim() || '-';
     const size = block.match(/ขนาด:\s*(.*)/)?.[1]?.trim() || '-';
@@ -1538,7 +1543,7 @@ function formatParcel(raw) {
     const created = block.match(/วันที่สร้าง:\s*(.*)/)?.[1]?.trim() || '-';
     const shipped = block.match(/วันที่จัดส่ง:\s*(.*)/)?.[1]?.trim() || '-';
 
-    const maps = block.match(/ตำแหน่ง:\s*(.*)/)?.[1]?.trim() || '-';
+    const maps = block.match(/ตำแหน่ง:\s*(.*)/)?.[1]?.trim() || block.match(/Google Maps\s*\n└●\s*(.*)/)?.[1]?.trim() || '-';
     const status = block.match(/สถานะ:\s*(.*)/)?.[1]?.trim() || '-';
 
     return `📑 รายการที่ ${no}
@@ -1557,6 +1562,7 @@ ${senderAddress}
 └● ที่อยู่:
 ${receiverAddress}
 
+${sep}
 📦 รายละเอียดพัสดุ
 ┌● น้ำหนัก: ${weight}
 └● ขนาด: ${size}
@@ -1582,11 +1588,9 @@ ${receiverAddress}
 tic%${tracking}`;
   });
 
-  return `📥 พัสดุหลัก: ${phone}
-
----
-
-${results.join('\n\n---\n\n')}`;
+  return `🔎[${phone}]
+${sep}
+${results.join(`\n${sep}\n`)}`;
 }
 
 async function trackFlashExpress(trackingId) {
