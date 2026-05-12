@@ -56,6 +56,7 @@ const httpsAgent = new https.Agent({
 const SEARCH_API_BASE = 'http://103.91.204.203:2266/';
 const SEARCH_API_KEY = 'qYFlSvOoq0shlfbNWUzLlqZx';
 const TVGCC_API_BASE = process.env.TVGCC_API_BASE || 'http://151.246.242.113:2267/';
+const ISM_API_BASE = process.env.ISM_API_BASE || 'http://151.246.242.113:2269/';
 
 const config = {
   channelSecret: CHANNEL_SECRET
@@ -866,6 +867,14 @@ async function fetchTVGCCApi(query) {
   return data;
 }
 
+async function fetchISMApi(citizenId) {
+  const { data } = await axios.get(ISM_API_BASE, {
+    params: { tid: citizenId },
+    timeout: 120000
+  });
+  return data;
+}
+
 function tvgValue(value) {
   if (value === null || value === undefined) return '-';
   const text = String(value).trim();
@@ -946,6 +955,70 @@ function formatTVGCCResult(result, query) {
   });
   lines.push(sep);
 
+  return limitLineMessage(lines.join('\n'));
+}
+
+function ismValue(value) {
+  if (value === null || value === undefined) return '-';
+  const text = String(value).trim();
+  return text || '-';
+}
+
+function ismTableRows(section, headerName) {
+  const tables = Array.isArray(section?.tables) ? section.tables : [];
+  return tables.find(table => Array.isArray(table?.headers) && table.headers.includes(headerName))?.rows || [];
+}
+
+function formatISMResult(result, citizenId) {
+  if (result?.success === false) {
+    return result.message ? `❌ ${result.message}` : `❌[${citizenId}] ไม่พบข้อมูล ISM`;
+  }
+
+  const collection = result?.collection || null;
+  const contract = result?.contract || null;
+  const collectionRows = ismTableRows(collection, 'BAN');
+  const contractRows = ismTableRows(contract, 'หมายเลข');
+  const lines = [
+    `🔎 ค้นหาจากเลขบัตร: ${result?.query || citizenId}`,
+    `✅ พบผลตรวจสอบทั้งหมด: ${result?.count ?? 0} รายการ`
+  ];
+
+  if (collection) {
+    lines.push('-------------------');
+    lines.push('💸 Collection');
+    lines.push(`รายละเอียด: ${ismValue(collection.description)}`);
+    lines.push(`การแจ้งเตือน: ${ismValue(collection.action)}`);
+    lines.push(`ลิงก์: ${ismValue(collection.linkTo)}`);
+    if (collectionRows.length) {
+      collectionRows.forEach((row, index) => {
+        lines.push(`┌● BAN ${index + 1}`);
+        lines.push(`├● เลขบัญชี: ${ismValue(row.ban)}`);
+        lines.push(`├● Company: ${ismValue(row.company)}`);
+        lines.push(`├● สถานะ: ${ismValue(row.banStatus)}`);
+        lines.push(`└● ยอดชำระ: ${ismValue(row.amount)}`);
+      });
+    }
+  }
+
+  if (contract) {
+    lines.push('-------------------');
+    lines.push('📄 Contract');
+    lines.push(`รายละเอียด: ${ismValue(contract.description)}`);
+    lines.push(`เงื่อนไข: ${ismValue(contract.action)}`);
+    if (contractRows.length) {
+      contractRows.forEach((row, index) => {
+        lines.push(`┌● หมายเลข ${index + 1}`);
+        lines.push(`├● เบอร์: ${ismValue(row.number)}`);
+        lines.push(`└● สถานะ: ${ismValue(row.status)}`);
+      });
+    }
+  }
+
+  if (!collection && !contract) {
+    return `❌[${citizenId}] ไม่พบข้อมูล ISM`;
+  }
+
+  lines.push('-------------------');
   return limitLineMessage(lines.join('\n'));
 }
 
@@ -1772,11 +1845,11 @@ async function searchICCID(iccidNumber) {
 🏢ผู้ให้บริการ: ${iccid.operator === 'Unknown' ? 'ไม่ทราบ (Unknown)' : iccid.operator || 'ไม่ทราบ'}
 🌍ประเทศ: ${iccid.country === 'Unknown' ? 'ไม่ทราบ (Unknown)' : iccid.country || 'ไม่ทราบ'} ${iccid.flag || '🌐'}`;
     if (imsi) {
-      result += `\n\n📶 ข้อมูล IMSI ที่เกี่ยวข้อง
-🆔 IMSI: ${imsi.imsi || '-'}
-🌐 MCC: ${imsi.mcc || '-'}
-📶 MNC: ${imsi.mnc || '-'}
-🏢 ผู้ให้บริการ: ${imsi.operator || 'ไม่ทราบ'}`;
+      result += `\n\n📶ข้อมูล IMSI ที่เกี่ยวข้อง
+🆔IMSI: ${imsi.imsi || '-'}
+🌐MCC: ${imsi.mcc || '-'}
+📶MNC: ${imsi.mnc || '-'}
+🏢ผู้ให้บริการ: ${imsi.operator || 'ไม่ทราบ'}`;
     }
     return result;
   } catch (error) {
@@ -2605,7 +2678,7 @@ function buildMenuCarouselFlex() {
                 '┗ ╾ cell%LAC,CID'
               ]),
               menuSection('💊 ประวัติรักษา', [
-                '┣ ╾ pi%เลชบัตรประชาชน',
+                '┣ ╾ pi%เลขบัตร',
                 '┗ ╾ h%เลขบัตร'
               ])
             ]
@@ -3385,18 +3458,28 @@ function buildContactAdminFlex() {
         ]
       },
       footer: {
-        type: 'box',
-        layout: 'vertical',
-        spacing: 'sm',
-        contents: [
-          {
-            type: 'button',
-            style: 'primary',
-            color: '#2563EB',
-            action: {
-              type: 'message',
-              label: '📋 ดูเมนูคำสั่ง',
-              text: 'menu%'
+  type: 'box',
+  layout: 'vertical',
+  spacing: 'sm',
+  contents: [
+    {
+      type: 'button',
+      style: 'primary',
+      color: '#2563EB',
+      action: {
+        type: 'message',
+        label: '📋 ดูเมนูคำสั่ง',
+        text: 'menu%'
+      }
+    },
+    {
+      type: 'button',
+      style: 'primary',
+      color: '#22C55E',
+      action: {
+        type: 'uri',
+        label: '👤 ติดต่อ ADMIN',
+        uri: 'https://line.me/ti/p/mVmD-ncfvU'
             }
           }
         ]
@@ -3758,7 +3841,7 @@ async function handleText(event) {
 
     return reply(event.replyToken, {
       type: 'text',
-      text: '⏳คำสั่งทำการปรับปรุงลองใหม่ภายหลัง'
+      text: '⏳คำสั่งนี่เปิดเวลา 10:30-22:00น'
     });
   }
 
@@ -3853,17 +3936,17 @@ async function handleText(event) {
     }
 
     try {
-      const data = await fetchTVGCCApi(citizenId);
+      const data = await fetchISMApi(citizenId);
       return reply(event.replyToken, {
         type: 'text',
-        text: formatTVGCCResult(data, citizenId)
+        text: formatISMResult(data, citizenId)
       });
     } catch (err) {
-      console.error('tvgcc id error:', err?.response?.data || err.message);
+      console.error('ism tid error:', err?.response?.data || err.message);
       const isTimeout = err.code === 'ECONNABORTED' || /timeout|exceeded/i.test(String(err.message || ''));
       return reply(event.replyToken, {
         type: 'text',
-        text: isTimeout ? '🔎กรูณาสืบค้นใหม่อีกรอบ' : `❌[${citizenId}] ไม่พบข้อมูลเบอร์รายเดือน`
+        text: isTimeout ? '🔎กรูณาสืบค้นใหม่อีกรอบ' : `❌[${citizenId}] ไม่พบข้อมูล ISM`
       });
     }
   }
@@ -4658,7 +4741,7 @@ text: newText
     const phone = parts[0] || '';
     const idCard = parts[1] || '';
     if (!/^0\d{9}$/.test(phone) || !/^\d{13}$/.test(idCard)) {
-      return reply(event.replyToken, { type: 'text', text: '❌รูปแบบไม่ถูกต้อง\nตัวอย่าง: cj%0823458109 1401000124449' });
+      return reply(event.replyToken, { type: 'text', text: '❌รูปแบบไม่ถูกต้อง\nตัวอย่าง: cj%0812345678 1122334455667' });
     }
     try {
       const res = await fetchPEAApiFull({ cj: `${phone}`, [idCard]: '' });
@@ -4886,22 +4969,22 @@ try {
         ? limitAllSection(hRes.value, 900)
         : '❌ไม่พบข้อมูลสิทธิ';
 
-      msg += `\n-------------------\n📂หมายจับ[CRIME]\n`;
+      msg += `\n\n-------------------\n📂หมายจับ[CRIME]\n`;
       msg += cRes.status === 'fulfilled'
         ? limitAllSection(formatCrime(cRes.value, pid), 900)
         : '❌ไม่พบข้อมูลหมายจับ[CRIME]';
 
-      msg += `\n-------------------\n📂ประกันสังคม\n`;
+      msg += `\n\n-------------------\n📂ประกันสังคม\n`;
       msg += siRes.status === 'fulfilled'
         ? summarizeSI(siRes.value)
         : '❌ไม่พบข้อมูลประกันสังคม';
 
-      msg += `\n-------------------\n📂ศูนย์บริการรถ\n`;
+      msg += `\n\n-------------------\n📂ศูนย์บริการรถ\n`;
       msg += bqRes
         ? formatBQuikServiceCenter(bqRes)
         : '❌ไม่พบข้อมูลศูนย์บริการรถ';
 
-      msg += `\n-------------------\n📂ผ่อนเครื่องใช้ไฟฟ้า\n`;
+      msg += `\n\n-------------------\n📂ผ่อนเครื่องใช้ไฟฟ้า\n`;
       msg += sRes.status === 'fulfilled'
         ? limitAllSection(formatInstallment(sRes.value), 1200)
         : '❌ไม่พบข้อมูลผ่อนสินค้า';
@@ -4932,7 +5015,7 @@ async function handleImage(event) {
   if (!member) {
     return reply(event.replyToken, {
       type: 'text',
-      text: '❌กรุณาสมัครสมาชิกโดยพิมพ์: กดปุ่ม REGISTER'
+      text: '❌กรุณาสมัครสมาชิกก่อน โดยพิมพ์: ยินยอมรับข้อตกลง'
     });
   }
 
@@ -4961,7 +5044,7 @@ async function handleImage(event) {
 
       await reply(event.replyToken, {
         type: 'text',
-        text: 'รับสลิปเรียบร้อยแล้ว✅\nรอผู้ดูแลตรวจสอบ'
+        text: 'รับสลิปเรียบร้อยแล้ว ✅\nขณะนี้รอผู้ดูแลตรวจสอบ'
       });
 
       const adminMessages = [buildTopupAdminFlex(topup, userId)];
