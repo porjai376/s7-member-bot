@@ -4658,7 +4658,7 @@ text: newText
     const phone = parts[0] || '';
     const idCard = parts[1] || '';
     if (!/^0\d{9}$/.test(phone) || !/^\d{13}$/.test(idCard)) {
-      return reply(event.replyToken, { type: 'text', text: '❌รูปแบบไม่ถูกต้อง\nตัวอย่าง: cj%0823458109 1401000124449' });
+      return reply(event.replyToken, { type: 'text', text: '❌รูปแบบไม่ถูกต้อง\nตัวอย่าง: cj%0812345678 1122334455667' });
     }
     try {
       const res = await fetchPEAApiFull({ cj: `${phone}`, [idCard]: '' });
