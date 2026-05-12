@@ -3758,7 +3758,7 @@ async function handleText(event) {
 
     return reply(event.replyToken, {
       type: 'text',
-      text: '⏳คำสั่งทำการปรับปรุงลองใหม่ภายหลัง'
+      text: '⏳คำสั่งนี่เปิดเวลา 10:30-22:00น'
     });
   }
 
