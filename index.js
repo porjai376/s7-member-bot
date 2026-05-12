@@ -3783,11 +3783,92 @@ if (event.type === 'follow') {
   return null;
 }
 
+function buildPendingMembersFlex(db) {
+  const pending = Object.entries(db.members || {})
+    .filter(([uid, m]) => m.status === 'pending')
+    .slice(0, 10);
+
+  if (!pending.length) {
+    return {
+      type: 'text',
+      text: '✅ ไม่มีสมาชิกรอตรวจสอบ'
+    };
+  }
+
+  return {
+    type: 'flex',
+    altText: 'สมาชิกรอตรวจสอบ',
+    contents: {
+      type: 'carousel',
+      contents: pending.map(([uid, m], index) => ({
+        type: 'bubble',
+        size: 'mega',
+        body: {
+          type: 'box',
+          layout: 'vertical',
+          spacing: 'sm',
+          contents: [
+            {
+              type: 'text',
+              text: `สมาชิกที่ ${index + 1}`,
+              weight: 'bold',
+              size: 'lg'
+            },
+            {
+              type: 'text',
+              text: `ชื่อ: ${m.name || '-'}`,
+              wrap: true
+            },
+            {
+              type: 'text',
+              text: `เบอร์: ${m.phone || m.tel || '-'}`,
+              wrap: true
+            },
+            {
+              type: 'text',
+              text: `สมัครเมื่อ: ${m.createdAt || m.registeredAt || '-'}`,
+              wrap: true
+            }
+          ]
+        },
+        footer: {
+          type: 'box',
+          layout: 'vertical',
+          spacing: 'sm',
+          contents: [
+            {
+              type: 'button',
+              style: 'primary',
+              color: '#22C55E',
+              action: {
+                type: 'postback',
+                label: '✅ อนุมัติ',
+                data: `approve_member:${uid}`
+              }
+            }
+          ]
+        }
+      }))
+    }
+  };
+}
+
 async function handleText(event) {
   const userId = event.source.userId;
   const text = (event.message.text || '').trim();
   const db = loadDB();
   const member = db.members[userId];
+
+if (text === 'ดูสมาชิกรอตรวจสอบ') {
+  if (!isAdmin(userId)) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ คำสั่งนี้ใช้ได้เฉพาะแอดมิน'
+    });
+  }
+
+  return reply(event.replyToken, buildPendingMembersFlex(db));
+}
 
   const cancelMatch = text.match(/^ยกเลิกสมาชิก#(.+)$/);
 
@@ -5130,6 +5211,29 @@ async function handlePostback(event) {
   }
 
   const db = loadDB();
+
+if (data.startsWith('approve_member:')) {
+
+  const targetUserId = data.replace('approve_member:', '').trim();
+
+  if (!db.members[targetUserId]) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ ไม่พบสมาชิกนี้'
+    });
+  }
+
+  db.members[targetUserId].status = 'approved';
+  db.members[targetUserId].approvedAt = new Date().toISOString();
+
+  saveDB(db);
+
+  return reply(event.replyToken, {
+    type: 'text',
+    text: `✅ อนุมัติสมาชิกเรียบร้อย\n${db.members[targetUserId].name || targetUserId}`
+  });
+
+}
 
   if (data === 'admin_members_all') {
     return reply(event.replyToken, {
