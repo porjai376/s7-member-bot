@@ -3815,10 +3815,10 @@ function buildPendingMembersFlex(db) {
               size: 'lg'
             },
             {
-              type: 'text',
-              text: `ชื่อ: ${m.name || '-'}`,
-              wrap: true
-            },
+  type: 'text',
+  text: `ชื่อ: ${m.displayName || m.name || m.fullName || '-'}`,
+  wrap: true
+},
             {
               type: 'text',
               text: `เบอร์: ${m.phone || m.tel || '-'}`,
