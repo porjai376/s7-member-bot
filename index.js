@@ -1639,8 +1639,8 @@ async function trackFlashExpress(trackingId) {
       ? parcel.sign_info.image_url[0].replace(/\\\//g, '/')
       : null;
 
-    let resultText = `📦 Flash Express Tracking
-====================
+    let resultText = `📦Tracking Timeline
+-------------------
 เลขพัสดุ: ${parcel.pno_display || trackingId}
 สถานะ: ${parcel.state_text || '-'}
 ต้นทาง: ${parcel.src_province_name || '-'}
@@ -1692,9 +1692,9 @@ async function searchIMEI(imei) {
 📱 ข้อมูลอุปกรณ์ (Device Info)
 
 ⛔ไม่พบข้อมูลรายการ หรือ ตัวเลขไม่ถูกต้อง
-📎 หมายเหตุ
-🆔 IMEI ต้องมีตัวเลข 15 หลัก
-🔄 หาก IMEI จาก CDR ตัวสุดท้ายเป็น 0 แล้วค้นไม่พบ ให้เปลี่ยนเป็น 1-9`;
+📎หมายเหตุ
+🆔IMEI ต้องมีตัวเลข 15 หลัก
+🔄หาก IMEI จาก CDR ตัวสุดท้ายเป็น 0 แล้วค้นไม่พบ ให้เปลี่ยนเป็น 1-9`;
     }
 
     let dateStr = '-';
@@ -1704,25 +1704,25 @@ async function searchIMEI(imei) {
     }
 
     return `📳MEGABOT
-📱 ข้อมูลอุปกรณ์ (Device Info)
-📅 วันที่บันทึกข้อมูล: ${dateStr}
-🔢 IMEI 1: ${data.result.imei || '-'}
-🔢 IMEI 2: ${data.imei2 || 'ไม่ระบุ'}
-🔖 Serial Number (SN): ${data.sn || 'ไม่ระบุ'}
-📞 หมายเลขโทรศัพท์: ${data.phone_number || 'ไม่ระบุ'}
+📱ข้อมูลอุปกรณ์ (Device Info)
+📅วันที่บันทึกข้อมูล: ${dateStr}
+🔢IMEI 1: ${data.result.imei || '-'}
+🔢IMEI 2: ${data.imei2 || 'ไม่ระบุ'}
+🔖Serial Number (SN): ${data.sn || 'ไม่ระบุ'}
+📞หมายเลขโทรศัพท์: ${data.phone_number || 'ไม่ระบุ'}
 ---
 🖥 รายละเอียดอุปกรณ์
-🏷️ ยี่ห้อ (Brand): ${data.result.brand_name || '-'}
-📌 รุ่น (Model): ${data.result.model || '-'}
+🏷️ยี่ห้อ (Brand): ${data.result.brand_name || '-'}
+📌รุ่น (Model): ${data.result.model || '-'}
 ---`;
   } catch (e) {
     return `⚡ THUNDER Report ⚡
 📱 ข้อมูลอุปกรณ์ (Device Info)
 
 ⛔ไม่พบข้อมูลรายการ หรือ ตัวเลขไม่ถูกต้อง
-📎 หมายเหตุ
-🆔 IMEI ต้องมีตัวเลข 15 หลัก
-🔄 หาก IMEI จาก CDR ตัวสุดท้ายเป็น 0 แล้วค้นไม่พบ ให้เปลี่ยนเป็น 1-9`;
+📎หมายเหตุ
+🆔IMEI ต้องมีตัวเลข 15 หลัก
+🔄หาก IMEI จาก CDR ตัวสุดท้ายเป็น 0 แล้วค้นไม่พบ ให้เปลี่ยนเป็น 1-9`;
   }
 }
 
@@ -1735,15 +1735,15 @@ async function searchIMSI(imsiNumber) {
     const data = response.data;
     if (!data || !data.imsi) return '❌ ไม่พบข้อมูล IMSI หรือรูปแบบไม่ถูกต้อง';
     return `🔍 IMSI Details
-🆔 IMSI: ${data.imsi}
-🌐 ประเทศ: ${data.country || 'ไม่ทราบ'} ${data.flag || ''}
-📶 MCC: ${data.mcc || '-'}
-📶 MNC: ${data.mnc || '-'}
-📱 ข้อมูลผู้ใช้งานเครือข่าย
-🔢 MSIN: ${data.msin || '-'}
-🏢 ผู้ให้บริการ: ${data.operator || 'ไม่ทราบ'}
-📡 ประเภทเครือข่าย
-❓ Network Type: ${data.networkTypes || 'Unknown'}`;
+🆔IMSI: ${data.imsi}
+🌐ประเทศ: ${data.country || 'ไม่ทราบ'} ${data.flag || ''}
+📶MCC: ${data.mcc || '-'}
+📶MNC: ${data.mnc || '-'}
+📱ข้อมูลผู้ใช้งานเครือข่าย
+🔢MSIN: ${data.msin || '-'}
+🏢ผู้ให้บริการ: ${data.operator || 'ไม่ทราบ'}
+📡ประเภทเครือข่าย
+❓Network Type: ${data.networkTypes || 'Unknown'}`;
   } catch (error) {
     if (error.code === 'ECONNABORTED') return '❌ หมดเวลาการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง';
     return '❌ เกิดข้อผิดพลาดในการค้นหา IMSI: ' + error.message;
@@ -1761,16 +1761,16 @@ async function searchICCID(iccidNumber) {
 
     const iccid = data.iccidDetails;
     const imsi = data.imsiDetails;
-    let result = `💳 ข้อมูลซิมการ์ด (ICCID)
-✅ สถานะ ICCID: ${iccid.isValid ? 'ถูกต้อง (Valid)' : 'ไม่ถูกต้อง (Invalid)'}
-🆔 ICCID: ${iccid.iccid || '-'}
-🌐 MII: ${iccid.mii || '-'}
-📍 รหัสประเทศ (Country Code): ${iccid.countryCode || '-'}
-🏢 รหัสผู้ให้บริการ (Issuer Identifier): ${iccid.issuerIdentifier || '-'}
-🔢 Account ID: ${iccid.accountId || '-'}
-✔️ Checksum: ${iccid.checksum || '-'}
-🏢 ผู้ให้บริการ: ${iccid.operator === 'Unknown' ? 'ไม่ทราบ (Unknown)' : iccid.operator || 'ไม่ทราบ'}
-🌍 ประเทศ: ${iccid.country === 'Unknown' ? 'ไม่ทราบ (Unknown)' : iccid.country || 'ไม่ทราบ'} ${iccid.flag || '🌐'}`;
+    let result = `💳ข้อมูลซิมการ์ด (ICCID)
+✅สถานะ ICCID: ${iccid.isValid ? 'ถูกต้อง (Valid)' : 'ไม่ถูกต้อง (Invalid)'}
+🆔ICCID: ${iccid.iccid || '-'}
+🌐MII: ${iccid.mii || '-'}
+📍รหัสประเทศ (Country Code): ${iccid.countryCode || '-'}
+🏢รหัสผู้ให้บริการ (Issuer Identifier): ${iccid.issuerIdentifier || '-'}
+🔢Account ID: ${iccid.accountId || '-'}
+✔️Checksum: ${iccid.checksum || '-'}
+🏢ผู้ให้บริการ: ${iccid.operator === 'Unknown' ? 'ไม่ทราบ (Unknown)' : iccid.operator || 'ไม่ทราบ'}
+🌍ประเทศ: ${iccid.country === 'Unknown' ? 'ไม่ทราบ (Unknown)' : iccid.country || 'ไม่ทราบ'} ${iccid.flag || '🌐'}`;
     if (imsi) {
       result += `\n\n📶 ข้อมูล IMSI ที่เกี่ยวข้อง
 🆔 IMSI: ${imsi.imsi || '-'}
@@ -1934,7 +1934,7 @@ async function searchJediHp(hid) {
 ├● การศึกษา : ${item.education || '-'}
 ├● ศาสนา : ${item.religion || '-'}
 └● สถานะในครอบครัว : ${item.relation || '-'}
-————————
+
 ┌● สิทธิหลัก : ${item.main_right || '-'}
 └● โรงพยาบาล : ${item.main_hospital || '-'}`.trim();
   } catch (error) {
