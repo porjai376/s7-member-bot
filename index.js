@@ -1430,38 +1430,41 @@ function cancelMemberByPhone(phone) {
 }
 
 function formatParcel(raw) {
+  const phone = raw.match(/ข้อมูลพัสดุ\s*:\s*\[\s*(.*?)\s*\]/)?.[1] || '-';
 
-const phone = raw.match(/ข้อมูลพัสดุ\s*:\s*[\s*(.*?)\s*]/)?.[1] || '-';
+  const blocks = String(raw)
+    .split(/(?=รายการที่\s*\d+)/g)
+    .filter(x => /รายการที่\s*\d+/.test(x));
 
-const tracking = raw.match(/เลขพัสดุ:\s*(.*)/)?.[1] || '-';
-const shop = raw.match(/ร้านค้า:\s*(.*)/)?.[1] || '-';
+  if (!blocks.length) return '❌ ไม่พบรายการพัสดุ';
 
-const sender = raw.match(/ผู้ส่ง:\s*(.*)/)?.[1] || '-';
-const senderPhone = raw.match(/เบอร์ผู้ส่ง:\s*(.*)/)?.[1] || '-';
-const senderAddress = raw.match(/ที่อยู่ผู้ส่ง:\s*(.*?)(?=┌● ผู้รับ:|$)/s)?.[1]?.trim() || '-';
+  const results = blocks.map((block, index) => {
+    const no = block.match(/รายการที่\s*(\d+)/)?.[1] || String(index + 1);
 
-const receiver = raw.match(/ผู้รับ:\s*(.*)/)?.[1] || '-';
-const receiverPhone = raw.match(/เบอร์ผู้รับ:\s*(.*)/)?.[1] || '-';
-const receiverAddress = raw.match(/ที่อยู่ผู้รับ:\s*(.*?)(?=├● น้ำหนัก:|$)/s)?.[1]?.trim() || '-';
+    const tracking = block.match(/เลขพัสดุ:\s*(.*)/)?.[1]?.trim() || '-';
+    const shop = block.match(/ร้านค้า:\s*(.*)/)?.[1]?.trim() || '-';
 
-const weight = raw.match(/น้ำหนัก:\s*(.*)/)?.[1] || '-';
-const size = raw.match(/ขนาด:\s*(.*)/)?.[1] || '-';
+    const sender = block.match(/ผู้ส่ง:\s*(.*)/)?.[1]?.trim() || '-';
+    const senderPhone = block.match(/เบอร์ผู้ส่ง:\s*(.*)/)?.[1]?.trim() || '-';
+    const senderAddress = block.match(/ที่อยู่ผู้ส่ง:\s*(.*?)(?=┌● ผู้รับ:|ผู้รับ:|$)/s)?.[1]?.trim() || '-';
 
-const cod = raw.match(/COD:\s*(.*)/)?.[1] || '-';
-const shipping = raw.match(/ค่าจัดส่ง:\s*(.*)/)?.[1] || '-';
+    const receiver = block.match(/ผู้รับ:\s*(.*)/)?.[1]?.trim() || '-';
+    const receiverPhone = block.match(/เบอร์ผู้รับ:\s*(.*)/)?.[1]?.trim() || '-';
+    const receiverAddress = block.match(/ที่อยู่ผู้รับ:\s*(.*?)(?=├● น้ำหนัก:|น้ำหนัก:|$)/s)?.[1]?.trim() || '-';
 
-const created = raw.match(/วันที่สร้าง:\s*(.*)/)?.[1] || '-';
-const shipped = raw.match(/วันที่จัดส่ง:\s*(.*)/)?.[1] || '-';
+    const weight = block.match(/น้ำหนัก:\s*(.*)/)?.[1]?.trim() || '-';
+    const size = block.match(/ขนาด:\s*(.*)/)?.[1]?.trim() || '-';
 
-const maps = raw.match(/ตำแหน่ง:\s*(.*)/)?.[1] || '-';
+    const cod = block.match(/COD:\s*(.*)/)?.[1]?.trim() || '-';
+    const shipping = block.match(/ค่าจัดส่ง:\s*(.*)/)?.[1]?.trim() || '-';
 
-const status = raw.match(/สถานะ:\s*(.*)/)?.[1] || '-';
+    const created = block.match(/วันที่สร้าง:\s*(.*)/)?.[1]?.trim() || '-';
+    const shipped = block.match(/วันที่จัดส่ง:\s*(.*)/)?.[1]?.trim() || '-';
 
-return `📥 พัสดุหลัก: ${phone}
+    const maps = block.match(/ตำแหน่ง:\s*(.*)/)?.[1]?.trim() || '-';
+    const status = block.match(/สถานะ:\s*(.*)/)?.[1]?.trim() || '-';
 
----
-
-📑 รายการที่ 1
+    return `📑 รายการที่ ${no}
 ┌● 🚚 เลขพัสดุ: ${tracking}
 └● 🏪 ร้านค้า: ${shop}
 
@@ -1500,6 +1503,13 @@ ${receiverAddress}
 ┌● หากต้องการภาพรับพัสดุ
 └● ใช้คำสั่ง:
 tic%${tracking}`;
+  });
+
+  return `📥 พัสดุหลัก: ${phone}
+
+---
+
+${results.join('\n\n---\n\n')}`;
 }
 
 async function trackFlashExpress(trackingId) {
