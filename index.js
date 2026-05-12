@@ -885,17 +885,32 @@ function tvgStatus(value) {
   return text;
 }
 
+function tvgRows(result) {
+  if (Array.isArray(result)) return result;
+  if (!result || typeof result !== 'object') return [];
+
+  for (const key of ['data', 'results', 'items', 'customers', 'rows']) {
+    if (Array.isArray(result[key])) return result[key];
+  }
+
+  if (Array.isArray(result.customerInfo)) {
+    return result.customerInfo.filter(item => item && (item.customerCode || item.fullName || item.name || item.phone || item.address));
+  }
+
+  return [];
+}
+
 function tvgAddress(row) {
-  return tvgValue(row?.addressNo || row?.address || row?.address_no);
+  return tvgValue(row?.addressNo || row?.address || row?.address_no || row?.addressDefault);
 }
 
 function formatTVGCCResult(result, query) {
-  if (!result?.success) {
-    return `❌[${query}] ไม่พบข้อมูลเบอร์รายเดือน`;
+  const rows = tvgRows(result);
+  if (result?.success === false && !rows.length) {
+    return result.message ? `❌ ${result.message}` : `❌[${query}] ไม่พบข้อมูลเบอร์รายเดือน`;
   }
 
-  const rows = Array.isArray(result.data) ? result.data : [];
-  const mode = result.mode === 'phone' ? 'เบอร์' : result.mode === 'id' ? 'เลขบัตร' : 'ชื่อ';
+  const mode = result?.mode === 'phone' ? 'เบอร์' : result?.mode === 'id' ? 'เลขบัตร' : 'ชื่อ';
   const sep = '  -  -  -  -  -  -';
 
   if (!rows.length) {
@@ -911,7 +926,7 @@ function formatTVGCCResult(result, query) {
     const mainInfo = Array.isArray(result.customerInfo) && result.customerInfo.length
       ? result.customerInfo[0]
       : null;
-    const mainCode = mainInfo?.customerCode || rows[0]?.customerCode || '-';
+    const mainCode = mainInfo?.customerCode || rows[0]?.customerCode || rows[0]?.customer_code || rows[0]?.code || '-';
     const mainAddress = mainInfo?.address || tvgAddress(rows[0]);
     lines.push(sep);
     lines.push('┌● ข้อมูลลูกค้าหลัก');
@@ -922,12 +937,12 @@ function formatTVGCCResult(result, query) {
   rows.forEach((row, index) => {
     lines.push(sep);
     lines.push(`┌● รายการที่ ${index + 1}`);
-    lines.push(`├● รหัสลูกค้า: ${tvgValue(row.customerCode)}`);
-    lines.push(`├● ชื่อ-สกุล: ${tvgValue(row.fullName)}`);
+    lines.push(`├● รหัสลูกค้า: ${tvgValue(row.customerCode || row.customer_code || row.code)}`);
+    lines.push(`├● ชื่อ-สกุล: ${tvgValue(row.fullName || row.full_name || row.name)}`);
     lines.push(`├● ประเภทลูกค้า: ${tvgCustomerType(row.customerType)}`);
     lines.push(`├● สถานะ: ${tvgStatus(row.status)}`);
     lines.push(`├● ที่อยู่: ${tvgAddress(row)}`);
-    lines.push(`└● เบอร์โทรศัพท์: ${tvgValue(row.phone)}`);
+    lines.push(`└● เบอร์โทรศัพท์: ${tvgValue(row.phone || row.mobile || row.tel)}`);
   });
   lines.push(sep);
 
@@ -4304,10 +4319,7 @@ async function handleText(event) {
       return reply(event.replyToken, { type: 'text', text: formatPiLookup(data, pid) });
     } catch (err) {
       console.error('pi lookup error:', err?.response?.data || err.message);
-      return reply(event.replyToken, {
-  type: 'text',
-  text: '❌ไม่พบข้อมูล'
-});
+      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูลไม่สำเร็จ: ' + err.message });
     }
   }
 
@@ -4646,7 +4658,7 @@ text: newText
     const phone = parts[0] || '';
     const idCard = parts[1] || '';
     if (!/^0\d{9}$/.test(phone) || !/^\d{13}$/.test(idCard)) {
-      return reply(event.replyToken, { type: 'text', text: '❌รูปแบบไม่ถูกต้อง\nตัวอย่าง: cj%0812345678 1122334455667' });
+      return reply(event.replyToken, { type: 'text', text: '❌รูปแบบไม่ถูกต้อง\nตัวอย่าง: cj%0823458109 1401000124449' });
     }
     try {
       const res = await fetchPEAApiFull({ cj: `${phone}`, [idCard]: '' });
