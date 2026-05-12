@@ -55,6 +55,7 @@ const httpsAgent = new https.Agent({
 
 const SEARCH_API_BASE = 'http://103.91.204.203:2266/';
 const SEARCH_API_KEY = 'qYFlSvOoq0shlfbNWUzLlqZx';
+const TVGCC_API_BASE = process.env.TVGCC_API_BASE || 'http://151.246.242.113:2267/';
 
 const config = {
   channelSecret: CHANNEL_SECRET
@@ -857,6 +858,82 @@ function formatDPlusCustomers(data, keyword) {
   return limitLineMessage(msg);
 }
 
+async function fetchTVGCCApi(query) {
+  const { data } = await axios.get(TVGCC_API_BASE, {
+    params: { tv: query },
+    timeout: 120000
+  });
+  return data;
+}
+
+function tvgValue(value) {
+  if (value === null || value === undefined) return '-';
+  const text = String(value).trim();
+  return text || '-';
+}
+
+function tvgCustomerType(value) {
+  const text = tvgValue(value);
+  if (/Normal Customer/i.test(text)) return 'ลูกค้าทั่วไป';
+  return text;
+}
+
+function tvgStatus(value) {
+  const text = tvgValue(value);
+  if (/^Active$/i.test(text)) return 'ใช้งานอยู่';
+  if (/^Potential$/i.test(text)) return 'รอเปิดใช้งาน / มีโอกาสสมัคร';
+  return text;
+}
+
+function tvgAddress(row) {
+  return tvgValue(row?.addressNo || row?.address || row?.address_no);
+}
+
+function formatTVGCCResult(result, query) {
+  if (!result?.success) {
+    return `❌[${query}] ไม่พบข้อมูลเบอร์รายเดือน`;
+  }
+
+  const rows = Array.isArray(result.data) ? result.data : [];
+  const mode = result.mode === 'phone' ? 'เบอร์' : result.mode === 'id' ? 'เลขบัตร' : 'ชื่อ';
+  const sep = '  -  -  -  -  -  -';
+
+  if (!rows.length) {
+    return `❌[${query}] ไม่พบข้อมูลเบอร์รายเดือน`;
+  }
+
+  const lines = [
+    `🔎 ค้นหาจาก${mode}: ${result.query || query}`,
+    `✅ พบข้อมูลทั้งหมด: ${result.count ?? rows.length} รายการ`
+  ];
+
+  if (result.mode === 'phone') {
+    const mainInfo = Array.isArray(result.customerInfo) && result.customerInfo.length
+      ? result.customerInfo[0]
+      : null;
+    const mainCode = mainInfo?.customerCode || rows[0]?.customerCode || '-';
+    const mainAddress = mainInfo?.address || tvgAddress(rows[0]);
+    lines.push(sep);
+    lines.push('┌● ข้อมูลลูกค้าหลัก');
+    lines.push(`├● รหัสลูกค้า: ${tvgValue(mainCode)}`);
+    lines.push(`└● ที่อยู่: ${tvgValue(mainAddress)}`);
+  }
+
+  rows.forEach((row, index) => {
+    lines.push(sep);
+    lines.push(`┌● รายการที่ ${index + 1}`);
+    lines.push(`├● รหัสลูกค้า: ${tvgValue(row.customerCode)}`);
+    lines.push(`├● ชื่อ-สกุล: ${tvgValue(row.fullName)}`);
+    lines.push(`├● ประเภทลูกค้า: ${tvgCustomerType(row.customerType)}`);
+    lines.push(`├● สถานะ: ${tvgStatus(row.status)}`);
+    lines.push(`├● ที่อยู่: ${tvgAddress(row)}`);
+    lines.push(`└● เบอร์โทรศัพท์: ${tvgValue(row.phone)}`);
+  });
+  lines.push(sep);
+
+  return limitLineMessage(lines.join('\n'));
+}
+
 async function fetchBQuikApi(query) {
   const { data } = await axios.get(SEARCH_API_BASE, {
     params: { bq: query, key: SEARCH_API_KEY },
@@ -1427,89 +1504,6 @@ function cancelMemberByPhone(phone) {
     name: member.name || '-',
     phone
   };
-}
-
-function formatParcel(raw) {
-  const phone = raw.match(/ข้อมูลพัสดุ\s*:\s*\[\s*(.*?)\s*\]/)?.[1] || '-';
-
-  const blocks = String(raw)
-    .split(/(?=รายการที่\s*\d+)/g)
-    .filter(x => /รายการที่\s*\d+/.test(x));
-
-  if (!blocks.length) return '❌ ไม่พบรายการพัสดุ';
-
-  const results = blocks.map((block, index) => {
-    const no = block.match(/รายการที่\s*(\d+)/)?.[1] || String(index + 1);
-
-    const tracking = block.match(/เลขพัสดุ:\s*(.*)/)?.[1]?.trim() || '-';
-    const shop = block.match(/ร้านค้า:\s*(.*)/)?.[1]?.trim() || '-';
-
-    const sender = block.match(/ผู้ส่ง:\s*(.*)/)?.[1]?.trim() || '-';
-    const senderPhone = block.match(/เบอร์ผู้ส่ง:\s*(.*)/)?.[1]?.trim() || '-';
-    const senderAddress = block.match(/ที่อยู่ผู้ส่ง:\s*(.*?)(?=┌● ผู้รับ:|ผู้รับ:|$)/s)?.[1]?.trim() || '-';
-
-    const receiver = block.match(/ผู้รับ:\s*(.*)/)?.[1]?.trim() || '-';
-    const receiverPhone = block.match(/เบอร์ผู้รับ:\s*(.*)/)?.[1]?.trim() || '-';
-    const receiverAddress = block.match(/ที่อยู่ผู้รับ:\s*(.*?)(?=├● น้ำหนัก:|น้ำหนัก:|$)/s)?.[1]?.trim() || '-';
-
-    const weight = block.match(/น้ำหนัก:\s*(.*)/)?.[1]?.trim() || '-';
-    const size = block.match(/ขนาด:\s*(.*)/)?.[1]?.trim() || '-';
-
-    const cod = block.match(/COD:\s*(.*)/)?.[1]?.trim() || '-';
-    const shipping = block.match(/ค่าจัดส่ง:\s*(.*)/)?.[1]?.trim() || '-';
-
-    const created = block.match(/วันที่สร้าง:\s*(.*)/)?.[1]?.trim() || '-';
-    const shipped = block.match(/วันที่จัดส่ง:\s*(.*)/)?.[1]?.trim() || '-';
-
-    const maps = block.match(/ตำแหน่ง:\s*(.*)/)?.[1]?.trim() || '-';
-    const status = block.match(/สถานะ:\s*(.*)/)?.[1]?.trim() || '-';
-
-    return `📑 รายการที่ ${no}
-┌● 🚚 เลขพัสดุ: ${tracking}
-└● 🏪 ร้านค้า: ${shop}
-
-📤 ข้อมูลผู้ส่ง
-┌● ชื่อ: ${sender}
-├● เบอร์: ${senderPhone}
-└● ที่อยู่:
-${senderAddress}
-
-📥 ข้อมูลผู้รับ
-┌● ชื่อ: ${receiver}
-├● เบอร์: ${receiverPhone}
-└● ที่อยู่:
-${receiverAddress}
-
-📦 รายละเอียดพัสดุ
-┌● น้ำหนัก: ${weight}
-└● ขนาด: ${size}
-
-💰 ข้อมูลการชำระ
-┌● COD: ${cod}
-└● ค่าจัดส่ง: ${shipping}
-
-🕒 เวลาดำเนินการ
-┌● วันที่สร้าง: ${created}
-└● วันที่จัดส่ง: ${shipped}
-
-📍 ตำแหน่งจัดส่ง
-┌● Google Maps
-└● ${maps}
-
-📌 สถานะพัสดุ
-└● ${status}
-
-🔎 เพิ่มเติม
-┌● หากต้องการภาพรับพัสดุ
-└● ใช้คำสั่ง:
-tic%${tracking}`;
-  });
-
-  return `📥 พัสดุหลัก: ${phone}
-
----
-
-${results.join('\n\n---\n\n')}`;
 }
 
 async function trackFlashExpress(trackingId) {
@@ -3414,104 +3408,45 @@ function buildWelcomeWarningFlex() {
     type: 'flex',
     altText: 'ข้อควรปฏิบัติและคำเตือนสำคัญ',
     contents: {
-      type: 'bubble',
-      size: 'mega',
-      body: {
-        type: 'box',
-        layout: 'vertical',
-        backgroundColor: '#0B0F14',
-        paddingAll: '18px',
-        spacing: 'md',
-        contents: [
+      "type": "bubble",
+      "size": "mega",
+      "body": {
+        "type": "box",
+        "layout": "vertical",
+        "backgroundColor": "#0B0F14",
+        "paddingAll": "18px",
+        "spacing": "md",
+        "contents": [
           {
-            type: 'text',
-            text: '⚠️ ข้อควรปฏิบัติและคำเตือนสำคัญ ⚠️',
-            weight: 'bold',
-            size: 'lg',
-            color: '#FFCC00',
-            wrap: true,
-            align: 'center'
+            "type": "text",
+            "text": "⚠️ ข้อควรปฏิบัติและคำเตือนสำคัญ ⚠️",
+            "weight": "bold",
+            "size": "lg",
+            "color": "#FFCC00",
+            "wrap": true,
+            "align": "center"
           },
           {
-            type: 'separator',
-            color: '#334155'
-          },
-          {
-            type: 'text',
-            text: '1️⃣ สิทธิ์การเข้าถึง',
-            weight: 'bold',
-            color: '#FFFFFF',
-            size: 'sm'
-          },
-          {
-            type: 'text',
-            text: 'อนุญาตเฉพาะเจ้าหน้าที่ตำรวจที่ปฏิบัติหน้าที่เท่านั้น',
-            color: '#CBD5E1',
-            size: 'sm',
-            wrap: true
-          },
-          {
-            type: 'text',
-            text: '2️⃣ วัตถุประสงค์',
-            weight: 'bold',
-            color: '#FFFFFF',
-            size: 'sm',
-            margin: 'md'
-          },
-          {
-            type: 'text',
-            text: 'ข้อมูลนี้มีไว้เพื่อสนับสนุนงานด้านการสืบสวนสอบสวนโดยเฉพาะ',
-            color: '#CBD5E1',
-            size: 'sm',
-            wrap: true
-          },
-          {
-            type: 'text',
-            text: '3️⃣ ข้อเคร่งคัด',
-            weight: 'bold',
-            color: '#FFFFFF',
-            size: 'sm',
-            margin: 'md'
-          },
-          {
-            type: 'text',
-            text: 'ห้ามคัดลอก เผยแพร่ หรือส่งต่อข้อมูลสู่ภายนอกโดยเด็ดขาด หากฝ่าฝืน ทำการตัดสิทธิ์ในทันที',
-            color: '#FCA5A5',
-            size: 'sm',
-            wrap: true
-          },
-          {
-            type: 'text',
-            text: '4️⃣ การยืนยันตัวตน',
-            weight: 'bold',
-            color: '#FFFFFF',
-            size: 'sm',
-            margin: 'md'
-          },
-          {
-            type: 'text',
-            text: 'ผู้ใช้งานต้องดำเนินการยืนยันตัวตนตามขั้นตอนที่กำหนดให้ครบถ้วนทุกครั้ง',
-            color: '#CBD5E1',
-            size: 'sm',
-            wrap: true
+            "type": "separator",
+            "color": "#334155"
           }
         ]
       },
-      footer: {
-        type: 'box',
-        layout: 'vertical',
-        backgroundColor: '#0B0F14',
-        paddingAll: '16px',
-        contents: [
+      "footer": {
+        "type": "box",
+        "layout": "vertical",
+        "backgroundColor": "#0B0F14",
+        "paddingAll": "16px",
+        "contents": [
           {
-            type: 'button',
-            style: 'primary',
-            color: '#22C55E',
-            height: 'sm',
-            action: {
-              type: 'uri',
-              label: 'ติดต่อ ADMIN',
-              uri: 'https://line.me/ti/p/mVmD-ncfvU'
+            "type": "button",
+            "style": "primary",
+            "color": "#22C55E",
+            "height": "sm",
+            "action": {
+              "type": "uri",
+              "label": "ติดต่อ ADMIN",
+              "uri": "https://line.me/ti/p/mVmD-ncfvU"
             }
           }
         ]
@@ -3523,7 +3458,7 @@ function buildWelcomeWarningFlex() {
 async function handleEvent(event) {
   const db = loadDB();
 
- if (event.type === 'follow') {
+if (event.type === 'follow') {
     return reply(event.replyToken, buildWelcomeWarningFlex());
   }
 
@@ -3641,15 +3576,79 @@ async function handleText(event) {
     });
   }
 
-  if (
-    text.startsWith('t#') ||
-    text.startsWith('tid#') ||
-    text.startsWith('tn#')
-  ) {
-    return reply(event.replyToken, {
-      type: 'text',
-      text: '⚙️คำสั่งนี้ทำการปรับปรุง⚙️'
-    });
+  if (text.startsWith('t#')) {
+    const phone = text.replace(/^t#/i, '').trim();
+    if (!/^0\d{9}$/.test(phone)) {
+      return reply(event.replyToken, {
+        type: 'text',
+        text: '❌ กรุณาระบุเบอร์โทรศัพท์ 10 หลัก เช่น t#0823458109'
+      });
+    }
+
+    try {
+      const data = await fetchTVGCCApi(phone);
+      return reply(event.replyToken, {
+        type: 'text',
+        text: formatTVGCCResult(data, phone)
+      });
+    } catch (err) {
+      console.error('tvgcc phone error:', err?.response?.data || err.message);
+      const isTimeout = err.code === 'ECONNABORTED' || /timeout|exceeded/i.test(String(err.message || ''));
+      return reply(event.replyToken, {
+        type: 'text',
+        text: isTimeout ? '🔎กรูณาสืบค้นใหม่อีกรอบ' : `❌[${phone}] ไม่พบข้อมูลเบอร์รายเดือน`
+      });
+    }
+  }
+
+  if (text.startsWith('tn#')) {
+    const name = text.replace(/^tn#/i, '').trim();
+    if (!name || name.split(/\s+/).length < 2) {
+      return reply(event.replyToken, {
+        type: 'text',
+        text: '❌ กรุณาระบุชื่อและนามสกุล เช่น tn#สินธุ์ บุญโกบุตร'
+      });
+    }
+
+    try {
+      const data = await fetchTVGCCApi(name);
+      return reply(event.replyToken, {
+        type: 'text',
+        text: formatTVGCCResult(data, name)
+      });
+    } catch (err) {
+      console.error('tvgcc name error:', err?.response?.data || err.message);
+      const isTimeout = err.code === 'ECONNABORTED' || /timeout|exceeded/i.test(String(err.message || ''));
+      return reply(event.replyToken, {
+        type: 'text',
+        text: isTimeout ? '🔎กรูณาสืบค้นใหม่อีกรอบ' : `❌[${name}] ไม่พบข้อมูลเบอร์รายเดือน`
+      });
+    }
+  }
+
+  if (text.startsWith('tid#')) {
+    const citizenId = text.replace(/^tid#/i, '').trim();
+    if (!/^\d{13}$/.test(citizenId)) {
+      return reply(event.replyToken, {
+        type: 'text',
+        text: '❌ กรุณาระบุเลขบัตรประชาชน 13 หลัก เช่น tid#1234567890123'
+      });
+    }
+
+    try {
+      const data = await fetchTVGCCApi(citizenId);
+      return reply(event.replyToken, {
+        type: 'text',
+        text: formatTVGCCResult(data, citizenId)
+      });
+    } catch (err) {
+      console.error('tvgcc id error:', err?.response?.data || err.message);
+      const isTimeout = err.code === 'ECONNABORTED' || /timeout|exceeded/i.test(String(err.message || ''));
+      return reply(event.replyToken, {
+        type: 'text',
+        text: isTimeout ? '🔎กรูณาสืบค้นใหม่อีกรอบ' : `❌[${citizenId}] ไม่พบข้อมูลเบอร์รายเดือน`
+      });
+    }
   }
 
   if (text === 'menu%') {
@@ -4351,17 +4350,6 @@ async function handleText(event) {
       return reply(event.replyToken, { type: 'text', text: '❌ดึงข้อมูล ATM ไม่สำเร็จ: ' + err.message });
     }
   }
-
-if (text.startsWith('#')) {
-
-const newText = formatParcel(text);
-
-return reply(event.replyToken, {
-type: 'text',
-text: newText
-});
-
-}
 
   if (text.startsWith('cell%')) {
     const cellInput = text.replace(/^cell%/i, '').trim();
