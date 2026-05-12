@@ -3385,18 +3385,28 @@ function buildContactAdminFlex() {
         ]
       },
       footer: {
-        type: 'box',
-        layout: 'vertical',
-        spacing: 'sm',
-        contents: [
-          {
-            type: 'button',
-            style: 'primary',
-            color: '#2563EB',
-            action: {
-              type: 'message',
-              label: '📋 ดูเมนูคำสั่ง',
-              text: 'menu%'
+  type: 'box',
+  layout: 'vertical',
+  spacing: 'sm',
+  contents: [
+    {
+      type: 'button',
+      style: 'primary',
+      color: '#2563EB',
+      action: {
+        type: 'message',
+        label: '📋 ดูเมนูคำสั่ง',
+        text: 'menu%'
+      }
+    },
+    {
+      type: 'button',
+      style: 'primary',
+      color: '#22C55E',
+      action: {
+        type: 'uri',
+        label: '👤 ติดต่อ ADMIN',
+        uri: 'https://line.me/ti/p/mVmD-ncfvU'
             }
           }
         ]
