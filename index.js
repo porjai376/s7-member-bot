@@ -5236,10 +5236,18 @@ db.members[targetUserId].approvedDays = 30;
 
   saveDB(db);
 
-  return reply(event.replyToken, {
-    type: 'text',
-    text: `✅ อนุมัติสมาชิกเรียบร้อย\n${db.members[targetUserId].name || targetUserId}`
-  });
+const pendingCount = Object.values(db.members || {})
+  .filter(m => m.status === 'pending').length;
+
+return reply(event.replyToken, {
+  type: 'text',
+  text:
+`✅ อนุมัติสมาชิกเรียบร้อย
+
+👤 ${db.members[targetUserId].fullname || db.members[targetUserId].name || targetUserId}
+
+📌 คงเหลือสมาชิกรอตรวจสอบ: ${pendingCount} คน`
+});
 
 }
 
