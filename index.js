@@ -3798,7 +3798,7 @@ async function handleText(event) {
     if (!/^0\d{9}$/.test(phone)) {
       return reply(event.replyToken, {
         type: 'text',
-        text: '❌ กรุณาระบุเบอร์โทรศัพท์ 10 หลัก เช่น t#0823458109'
+        text: '❌ กรุณาระบุเบอร์โทรศัพท์ 10 หลัก เช่น t#0812345678'
       });
     }
 
@@ -3823,7 +3823,7 @@ async function handleText(event) {
     if (!name || name.split(/\s+/).length < 2) {
       return reply(event.replyToken, {
         type: 'text',
-        text: '❌ กรุณาระบุชื่อและนามสกุล เช่น tn#สินธุ์ บุญโกบุตร'
+        text: '❌ กรุณาระบุชื่อและนามสกุล เช่น tn#สุขใส สดใจ'
       });
     }
 
