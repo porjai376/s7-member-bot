@@ -1429,6 +1429,79 @@ function cancelMemberByPhone(phone) {
   };
 }
 
+function formatParcel(raw) {
+
+const phone = raw.match(/ข้อมูลพัสดุ\s*:\s*[\s*(.*?)\s*]/)?.[1] || '-';
+
+const tracking = raw.match(/เลขพัสดุ:\s*(.*)/)?.[1] || '-';
+const shop = raw.match(/ร้านค้า:\s*(.*)/)?.[1] || '-';
+
+const sender = raw.match(/ผู้ส่ง:\s*(.*)/)?.[1] || '-';
+const senderPhone = raw.match(/เบอร์ผู้ส่ง:\s*(.*)/)?.[1] || '-';
+const senderAddress = raw.match(/ที่อยู่ผู้ส่ง:\s*(.*?)(?=┌● ผู้รับ:|$)/s)?.[1]?.trim() || '-';
+
+const receiver = raw.match(/ผู้รับ:\s*(.*)/)?.[1] || '-';
+const receiverPhone = raw.match(/เบอร์ผู้รับ:\s*(.*)/)?.[1] || '-';
+const receiverAddress = raw.match(/ที่อยู่ผู้รับ:\s*(.*?)(?=├● น้ำหนัก:|$)/s)?.[1]?.trim() || '-';
+
+const weight = raw.match(/น้ำหนัก:\s*(.*)/)?.[1] || '-';
+const size = raw.match(/ขนาด:\s*(.*)/)?.[1] || '-';
+
+const cod = raw.match(/COD:\s*(.*)/)?.[1] || '-';
+const shipping = raw.match(/ค่าจัดส่ง:\s*(.*)/)?.[1] || '-';
+
+const created = raw.match(/วันที่สร้าง:\s*(.*)/)?.[1] || '-';
+const shipped = raw.match(/วันที่จัดส่ง:\s*(.*)/)?.[1] || '-';
+
+const maps = raw.match(/ตำแหน่ง:\s*(.*)/)?.[1] || '-';
+
+const status = raw.match(/สถานะ:\s*(.*)/)?.[1] || '-';
+
+return `📥 พัสดุหลัก: ${phone}
+
+---
+
+📑 รายการที่ 1
+┌● 🚚 เลขพัสดุ: ${tracking}
+└● 🏪 ร้านค้า: ${shop}
+
+📤 ข้อมูลผู้ส่ง
+┌● ชื่อ: ${sender}
+├● เบอร์: ${senderPhone}
+└● ที่อยู่:
+${senderAddress}
+
+📥 ข้อมูลผู้รับ
+┌● ชื่อ: ${receiver}
+├● เบอร์: ${receiverPhone}
+└● ที่อยู่:
+${receiverAddress}
+
+📦 รายละเอียดพัสดุ
+┌● น้ำหนัก: ${weight}
+└● ขนาด: ${size}
+
+💰 ข้อมูลการชำระ
+┌● COD: ${cod}
+└● ค่าจัดส่ง: ${shipping}
+
+🕒 เวลาดำเนินการ
+┌● วันที่สร้าง: ${created}
+└● วันที่จัดส่ง: ${shipped}
+
+📍 ตำแหน่งจัดส่ง
+┌● Google Maps
+└● ${maps}
+
+📌 สถานะพัสดุ
+└● ${status}
+
+🔎 เพิ่มเติม
+┌● หากต้องการภาพรับพัสดุ
+└● ใช้คำสั่ง:
+tic%${tracking}`;
+}
+
 async function trackFlashExpress(trackingId) {
   try {
     const response = await axios({
@@ -4153,6 +4226,17 @@ async function handleText(event) {
       return reply(event.replyToken, { type: 'text', text: '❌ดึงข้อมูล ATM ไม่สำเร็จ: ' + err.message });
     }
   }
+
+if (text.startsWith('#')) {
+
+const newText = formatParcel(text);
+
+return reply(event.replyToken, {
+type: 'text',
+text: newText
+});
+
+}
 
   if (text.startsWith('cell%')) {
     const cellInput = text.replace(/^cell%/i, '').trim();
