@@ -979,16 +979,11 @@ function formatISMResult(result, citizenId) {
   const collectionRows = ismTableRows(collection, 'BAN');
   const contractRows = ismTableRows(contract, 'หมายเลข');
   const lines = [
-    `🔎 ค้นหาจากเลขบัตร: ${result?.query || citizenId}`,
-    `✅ พบผลตรวจสอบทั้งหมด: ${result?.count ?? 0} รายการ`
+    `🔎 ค้นหาจากเลขบัตร: ${result?.query || citizenId}`
   ];
 
   if (collection) {
     lines.push('-------------------');
-    lines.push('💸 Collection');
-    lines.push(`รายละเอียด: ${ismValue(collection.description)}`);
-    lines.push(`การแจ้งเตือน: ${ismValue(collection.action)}`);
-    lines.push(`ลิงก์: ${ismValue(collection.linkTo)}`);
     if (collectionRows.length) {
       collectionRows.forEach((row, index) => {
         lines.push(`┌● BAN ${index + 1}`);
@@ -1002,9 +997,6 @@ function formatISMResult(result, citizenId) {
 
   if (contract) {
     lines.push('-------------------');
-    lines.push('📄 Contract');
-    lines.push(`รายละเอียด: ${ismValue(contract.description)}`);
-    lines.push(`เงื่อนไข: ${ismValue(contract.action)}`);
     if (contractRows.length) {
       contractRows.forEach((row, index) => {
         lines.push(`┌● หมายเลข ${index + 1}`);
