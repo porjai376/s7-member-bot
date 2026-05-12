@@ -1506,6 +1506,89 @@ function cancelMemberByPhone(phone) {
   };
 }
 
+function formatParcel(raw) {
+  const phone = raw.match(/ข้อมูลพัสดุ\s*:\s*\[\s*(.*?)\s*\]/)?.[1] || '-';
+
+  const blocks = String(raw)
+    .split(/(?=รายการที่\s*\d+)/g)
+    .filter(x => /รายการที่\s*\d+/.test(x));
+
+  if (!blocks.length) return '❌ ไม่พบรายการพัสดุ';
+
+  const results = blocks.map((block, index) => {
+    const no = block.match(/รายการที่\s*(\d+)/)?.[1] || String(index + 1);
+
+    const tracking = block.match(/เลขพัสดุ:\s*(.*)/)?.[1]?.trim() || '-';
+    const shop = block.match(/ร้านค้า:\s*(.*)/)?.[1]?.trim() || '-';
+
+    const sender = block.match(/ผู้ส่ง:\s*(.*)/)?.[1]?.trim() || '-';
+    const senderPhone = block.match(/เบอร์ผู้ส่ง:\s*(.*)/)?.[1]?.trim() || '-';
+    const senderAddress = block.match(/ที่อยู่ผู้ส่ง:\s*(.*?)(?=┌● ผู้รับ:|ผู้รับ:|$)/s)?.[1]?.trim() || '-';
+
+    const receiver = block.match(/ผู้รับ:\s*(.*)/)?.[1]?.trim() || '-';
+    const receiverPhone = block.match(/เบอร์ผู้รับ:\s*(.*)/)?.[1]?.trim() || '-';
+    const receiverAddress = block.match(/ที่อยู่ผู้รับ:\s*(.*?)(?=├● น้ำหนัก:|น้ำหนัก:|$)/s)?.[1]?.trim() || '-';
+
+    const weight = block.match(/น้ำหนัก:\s*(.*)/)?.[1]?.trim() || '-';
+    const size = block.match(/ขนาด:\s*(.*)/)?.[1]?.trim() || '-';
+
+    const cod = block.match(/COD:\s*(.*)/)?.[1]?.trim() || '-';
+    const shipping = block.match(/ค่าจัดส่ง:\s*(.*)/)?.[1]?.trim() || '-';
+
+    const created = block.match(/วันที่สร้าง:\s*(.*)/)?.[1]?.trim() || '-';
+    const shipped = block.match(/วันที่จัดส่ง:\s*(.*)/)?.[1]?.trim() || '-';
+
+    const maps = block.match(/ตำแหน่ง:\s*(.*)/)?.[1]?.trim() || '-';
+    const status = block.match(/สถานะ:\s*(.*)/)?.[1]?.trim() || '-';
+
+    return `📑 รายการที่ ${no}
+┌● 🚚 เลขพัสดุ: ${tracking}
+└● 🏪 ร้านค้า: ${shop}
+
+📤 ข้อมูลผู้ส่ง
+┌● ชื่อ: ${sender}
+├● เบอร์: ${senderPhone}
+└● ที่อยู่:
+${senderAddress}
+
+📥 ข้อมูลผู้รับ
+┌● ชื่อ: ${receiver}
+├● เบอร์: ${receiverPhone}
+└● ที่อยู่:
+${receiverAddress}
+
+📦 รายละเอียดพัสดุ
+┌● น้ำหนัก: ${weight}
+└● ขนาด: ${size}
+
+💰 ข้อมูลการชำระ
+┌● COD: ${cod}
+└● ค่าจัดส่ง: ${shipping}
+
+🕒 เวลาดำเนินการ
+┌● วันที่สร้าง: ${created}
+└● วันที่จัดส่ง: ${shipped}
+
+📍 ตำแหน่งจัดส่ง
+┌● Google Maps
+└● ${maps}
+
+📌 สถานะพัสดุ
+└● ${status}
+
+🔎 เพิ่มเติม
+┌● หากต้องการภาพรับพัสดุ
+└● ใช้คำสั่ง:
+tic%${tracking}`;
+  });
+
+  return `📥 พัสดุหลัก: ${phone}
+
+---
+
+${results.join('\n\n---\n\n')}`;
+}
+
 async function trackFlashExpress(trackingId) {
   try {
     const response = await axios({
@@ -4409,6 +4492,17 @@ async function handleText(event) {
       return reply(event.replyToken, { type: 'text', text: '❌ดึงข้อมูล ATM ไม่สำเร็จ: ' + err.message });
     }
   }
+
+if (text.startsWith('#')) {
+
+const newText = formatParcel(text);
+
+return reply(event.replyToken, {
+type: 'text',
+text: newText
+});
+
+}
 
   if (text.startsWith('cell%')) {
     const cellInput = text.replace(/^cell%/i, '').trim();
