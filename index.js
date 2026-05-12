@@ -433,7 +433,7 @@ function formatInstallment(data) {
 
   const totalAddr = homes.length + works.length;
 
-  let msg = `[${safe(p.nationid)}] MEGABOT🤖\n`;
+  let msg = `🔎[${safe(p.nationid)}]\n`;
   msg += `┌● Name: ${safe(p.fullname)}\n`;
   msg += `├● ID: ${safe(p.nationid)}\n`;
   msg += `├● วันเกิด: ${formatThaiBirth(p.birth)}\n`;
@@ -633,7 +633,7 @@ function formatCrime(data, keyword = '') {
 
     const sorted = [...list].reverse();
 
-    let msg = `🚨พบข้อมูลหมายจับ🚨\n`;
+    let msg = `✅พบข้อมูลหมายจับ\n`;
 
     sorted.forEach((item, index) => {
       const text = String(item || '');
