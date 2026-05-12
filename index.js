@@ -5224,7 +5224,15 @@ if (data.startsWith('approve_member:')) {
   }
 
   db.members[targetUserId].status = 'approved';
-  db.members[targetUserId].approvedAt = new Date().toISOString();
+
+const now = new Date();
+const expire = new Date();
+
+expire.setDate(expire.getDate() + 30);
+
+db.members[targetUserId].approvedAt = now.toISOString();
+db.members[targetUserId].expireAt = expire.toISOString();
+db.members[targetUserId].approvedDays = 30;
 
   saveDB(db);
 
