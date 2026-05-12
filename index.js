@@ -3601,6 +3601,62 @@ function buildWelcomeWarningFlex() {
   };
 }
 
+function formatPhoneData(raw) {
+  const mainId = raw.match(/📂\[\s*(.*?)\s*\]/)?.[1]?.trim() || '-';
+  const name = raw.match(/👤\s*ชื่อ:\s*(.*)/)?.[1]?.trim() || 'ไม่มีข้อมูล';
+  const id = raw.match(/🪪\s*ID:\s*(.*)/)?.[1]?.trim() || mainId;
+
+  const blocks = String(raw)
+    .split(/(?=ข้อมูล:\s*\[)/g)
+    .filter(x => /ข้อมูล:\s*\[/.test(x));
+
+  if (!blocks.length) return '❌ ไม่พบข้อมูลเบอร์โทรศัพท์';
+
+  const items = blocks.map((block, index) => {
+    const phone = block.match(/ข้อมูล:\s*\[\s*(.*?)\s*\]/)?.[1]?.trim() || '-';
+    const packageName = block.match(/ข้อมูล:\s*\[.*?\]\s*\[(.*?)\]/)?.[1]?.trim() || '';
+    const ownerLine = block.match(/\((.*?)\)\s*\[(.*?)\]/);
+    const ownerName = ownerLine?.[1]?.trim() || '';
+    const ownerId = ownerLine?.[2]?.trim() || packageName || '';
+
+    const type = block.match(/ประเภท:\s*(.*)/)?.[1]?.trim() || '-';
+    const startDate = block.match(/เริ่มใช้งาน:\s*(.*)/)?.[1]?.trim() || '-';
+    const endDate = block.match(/สิ้นสุด:\s*(.*)/)?.[1]?.trim() || '-';
+    const product = block.match(/ผลิตภัณฑ์:\s*(.*)/)?.[1]?.trim() || '';
+    const status = block.match(/สถานะ:\s*(.*)/)?.[1]?.trim() || '-';
+
+    let text = `📱ข้อมูลเบอร์โทรศัพท์ รายการที่ ${index + 1}
+┌● หมายเลข: ${phone}`;
+
+    if (ownerName) text += `\n├● ชื่อในรายการ: ${ownerName}`;
+    if (ownerId) text += `\n├● ID/แพ็กเกจ: ${ownerId}`;
+
+    text += `\n├● ประเภท: ${type}
+├● วันจดทะเบียน: ${startDate}
+├● วันสิ้นสุด: ${endDate}`;
+
+    if (product) text += `\n├● ผลิตภัณฑ์: ${product}`;
+
+    text += `\n└● สถานะ: ${status}`;
+
+    return text;
+  });
+
+  return `📗[ ${mainId} ]
+
+- - - - - - - - - -
+
+👤ข้อมูลเจ้าของเบอร์
+┌● NAME: ${name}
+└● ID: ${id}
+
+- - - - - - - - - -
+
+${items.join('\n\n- - - - - - - - - -\n\n')}
+
+- - - - - - - - - -`;
+}
+
 async function handleEvent(event) {
   const db = loadDB();
 
@@ -4500,6 +4556,17 @@ async function handleText(event) {
 if (text.startsWith('#')) {
 
 const newText = formatParcel(text);
+
+return reply(event.replyToken, {
+type: 'text',
+text: newText
+});
+
+}
+
+if (text.startsWith('@')) {
+
+const newText = formatPhoneData(text);
 
 return reply(event.replyToken, {
 type: 'text',
