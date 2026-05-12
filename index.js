@@ -3385,28 +3385,18 @@ function buildContactAdminFlex() {
         ]
       },
       footer: {
-  type: 'box',
-  layout: 'vertical',
-  spacing: 'sm',
-  contents: [
-    {
-      type: 'button',
-      style: 'primary',
-      color: '#2563EB',
-      action: {
-        type: 'message',
-        label: '📋 ดูเมนูคำสั่ง',
-        text: 'menu%'
-      }
-    },
-    {
-      type: 'button',
-      style: 'primary',
-      color: '#22C55E',
-      action: {
-        type: 'uri',
-        label: '👤 ติดต่อ ADMIN',
-        uri: 'https://line.me/ti/p/mVmD-ncfvU'
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'sm',
+        contents: [
+          {
+            type: 'button',
+            style: 'primary',
+            color: '#2563EB',
+            action: {
+              type: 'message',
+              label: '📋 ดูเมนูคำสั่ง',
+              text: 'menu%'
             }
           }
         ]
@@ -3768,7 +3758,7 @@ async function handleText(event) {
 
     return reply(event.replyToken, {
       type: 'text',
-      text: '⏳คำสั่งนี่เปิดเวลา 10:30-22:00น'
+      text: '⏳คำสั่งทำการปรับปรุงลองใหม่ภายหลัง'
     });
   }
 
@@ -4668,7 +4658,7 @@ text: newText
     const phone = parts[0] || '';
     const idCard = parts[1] || '';
     if (!/^0\d{9}$/.test(phone) || !/^\d{13}$/.test(idCard)) {
-      return reply(event.replyToken, { type: 'text', text: '❌รูปแบบไม่ถูกต้อง\nตัวอย่าง: cj%0812345678 1122334455667' });
+      return reply(event.replyToken, { type: 'text', text: '❌รูปแบบไม่ถูกต้อง\nตัวอย่าง: cj%0823458109 1401000124449' });
     }
     try {
       const res = await fetchPEAApiFull({ cj: `${phone}`, [idCard]: '' });
@@ -4896,22 +4886,22 @@ try {
         ? limitAllSection(hRes.value, 900)
         : '❌ไม่พบข้อมูลสิทธิ';
 
-      msg += `\n\n-------------------\n📂หมายจับ[CRIME]\n`;
+      msg += `\n-------------------\n📂หมายจับ[CRIME]\n`;
       msg += cRes.status === 'fulfilled'
         ? limitAllSection(formatCrime(cRes.value, pid), 900)
         : '❌ไม่พบข้อมูลหมายจับ[CRIME]';
 
-      msg += `\n\n-------------------\n📂ประกันสังคม\n`;
+      msg += `\n-------------------\n📂ประกันสังคม\n`;
       msg += siRes.status === 'fulfilled'
         ? summarizeSI(siRes.value)
         : '❌ไม่พบข้อมูลประกันสังคม';
 
-      msg += `\n\n-------------------\n📂ศูนย์บริการรถ\n`;
+      msg += `\n-------------------\n📂ศูนย์บริการรถ\n`;
       msg += bqRes
         ? formatBQuikServiceCenter(bqRes)
         : '❌ไม่พบข้อมูลศูนย์บริการรถ';
 
-      msg += `\n\n-------------------\n📂ผ่อนเครื่องใช้ไฟฟ้า\n`;
+      msg += `\n-------------------\n📂ผ่อนเครื่องใช้ไฟฟ้า\n`;
       msg += sRes.status === 'fulfilled'
         ? limitAllSection(formatInstallment(sRes.value), 1200)
         : '❌ไม่พบข้อมูลผ่อนสินค้า';
@@ -4942,7 +4932,7 @@ async function handleImage(event) {
   if (!member) {
     return reply(event.replyToken, {
       type: 'text',
-      text: '❌กรุณาสมัครสมาชิกก่อน โดยพิมพ์: ยินยอมรับข้อตกลง'
+      text: '❌กรุณาสมัครสมาชิกโดยพิมพ์: กดปุ่ม REGISTER'
     });
   }
 
@@ -4971,7 +4961,7 @@ async function handleImage(event) {
 
       await reply(event.replyToken, {
         type: 'text',
-        text: 'รับสลิปเรียบร้อยแล้ว ✅\nขณะนี้รอผู้ดูแลตรวจสอบ'
+        text: 'รับสลิปเรียบร้อยแล้ว✅\nรอผู้ดูแลตรวจสอบ'
       });
 
       const adminMessages = [buildTopupAdminFlex(topup, userId)];
