@@ -3816,7 +3816,7 @@ function buildPendingMembersFlex(db) {
             },
             {
   type: 'text',
-  text: `ชื่อ: ${m.displayName || m.name || m.fullName || '-'}`,
+  text: `ชื่อ: ${m.lineName || m.displayName || m.name || m.fullName || '-'}`
   wrap: true
 },
             {
