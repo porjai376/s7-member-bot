@@ -1768,28 +1768,27 @@ async function searchIMEI(imei) {
       dateStr = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')} ${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')} (UTC+02:00)`;
     }
 
-    return `🔎[${data.result.imei || imei}]
+    return `📳MEGABOT
+📱ข้อมูลอุปกรณ์ (Device Info)
+📅วันที่บันทึกข้อมูล: ${dateStr}
+🔢IMEI 1: ${data.result.imei || '-'}
+🔢IMEI 2: ${data.imei2 || 'ไม่ระบุ'}
+🔖Serial Number (SN): ${data.sn || 'ไม่ระบุ'}
+📞หมายเลขโทรศัพท์: ${data.phone_number || 'ไม่ระบุ'}
+---
+🖥 รายละเอียดอุปกรณ์
+🏷️ยี่ห้อ (Brand): ${data.result.brand_name || '-'}
+📌รุ่น (Model): ${data.result.model || '-'}
+---`;
+  } catch (e) {
+    return `⚡ THUNDER Report ⚡
+📱 ข้อมูลอุปกรณ์ (Device Info)
 
-┌●ข้อมูลอุปกรณ์ (Device Info)
-├●วันที่บันทึกข้อมูล: ${dateStr}
-├●IMEI 1: ${data.result.imei || '-'}
-├●IMEI 2: ${data.imei2 || 'ไม่ระบุ'}
-├●Serial Number (SN): ${data.sn || 'ไม่ระบุ'}
-├●หมายเลขโทรศัพท์: ${data.phone_number || 'ไม่ระบุ'}
-├●รายละเอียดอุปกรณ์
-├●ยี่ห้อ (Brand): ${data.result.brand_name || '-'}
-└●รุ่น (Model): ${data.result.model || '-'}`;
-
-} catch (e) {
-
-return `🔎[${imei}]
-
-┌●📱ข้อมูลอุปกรณ์ (Device Info)
-├●⛔ไม่พบข้อมูลรายการ หรือ ตัวเลขไม่ถูกต้อง
-├●📎หมายเหตุ
-├●IMEI ต้องมีตัวเลข 15 หลัก
-└●หาก IMEI จาก CDR ตัวสุดท้ายเป็น 0 แล้วค้นไม่พบ ให้เปลี่ยนเป็น 1-9`;
-
+⛔ไม่พบข้อมูลรายการ หรือ ตัวเลขไม่ถูกต้อง
+📎หมายเหตุ
+🆔IMEI ต้องมีตัวเลข 15 หลัก
+🔄หาก IMEI จาก CDR ตัวสุดท้ายเป็น 0 แล้วค้นไม่พบ ให้เปลี่ยนเป็น 1-9`;
+  }
 }
 
 async function searchIMSI(imsiNumber) {
