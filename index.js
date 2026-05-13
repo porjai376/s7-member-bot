@@ -4510,7 +4510,10 @@ if (text === 'ดูสมาชิกรอตรวจสอบ') {
       return reply(event.replyToken, { type: 'text', text: formatBQuikResult(data, query) });
     } catch (err) {
       console.error('bquik error:', err?.response?.data || err.message);
-      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูลไม่สำเร็จ: ' + err.message });
+      return reply(event.replyToken, { 
+  type: 'text', 
+  text: '⌛กรุณาสืบค้นใหม่อีกครั้ง⌛'
+});
     }
   }
 
@@ -4619,7 +4622,10 @@ if (text === 'ดูสมาชิกรอตรวจสอบ') {
       return reply(event.replyToken, { type: 'text', text: res.message || '❌ไม่พบข้อมูลคุมประพฤติ' });
     } catch (err) {
       console.error('pb error:', err?.response?.data || err.message);
-      return reply(event.replyToken, { type: 'text', text: '❌ดึงข้อมูลคุมประพฤติไม่สำเร็จ: ' + err.message });
+      return reply(event.replyToken, { 
+  type: 'text', 
+  text: '⌛กรุณาสืบค้นใหม่อีกครั้ง⌛'
+});
     }
   }
 
@@ -4655,7 +4661,10 @@ if (text === 'ดูสมาชิกรอตรวจสอบ') {
         return reply(event.replyToken, { type: 'text', text: 'ไม่พบข้อมูลทะเบียนรถ' });
       }
     } catch (err) {
-      return reply(event.replyToken, { type: 'text', text: '❌ดึงข้อมูลทะเบียนรถไม่สำเร็จ' });
+      return reply(event.replyToken, { 
+  type: 'text', 
+  text: '⌛กรุณาสืบค้นใหม่อีกครั้ง⌛'
+});
     }
   }
 
@@ -4693,7 +4702,10 @@ if (text === 'ดูสมาชิกรอตรวจสอบ') {
         return reply(event.replyToken, { type: 'text', text: 'ไม่พบข้อมูลทะเบียนรถ' });
       }
     } catch (err) {
-      return reply(event.replyToken, { type: 'text', text: '❌ดึงข้อมูลทะเบียนรถไม่สำเร็จ' });
+      return reply(event.replyToken, { 
+  type: 'text', 
+  text: '⌛กรุณาสืบค้นใหม่อีกครั้ง⌛'
+});
     }
   }
 
@@ -4902,7 +4914,10 @@ text: newText
       return reply(event.replyToken, { type: 'text', text: result });
     } catch (err) {
       console.error('ps error:', err?.response?.data || err.message);
-      return reply(event.replyToken, { type: 'text', text: '❌ดึงข้อมูลผู้ต้องขัง (ยังไม่พิพากษา) ไม่สำเร็จ: ' + err.message });
+      return reply(event.replyToken, { 
+  type: 'text', 
+  text: '⌛กรุณาสืบค้นใหม่อีกครั้ง⌛'
+});
     }
   }
 
