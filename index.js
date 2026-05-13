@@ -1768,50 +1768,70 @@ async function searchIMEI(imei) {
       dateStr = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')} ${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')} (UTC+02:00)`;
     }
 
-    return `📳MEGABOT
-📱ข้อมูลอุปกรณ์ (Device Info)
-📅วันที่บันทึกข้อมูล: ${dateStr}
-🔢IMEI 1: ${data.result.imei || '-'}
-🔢IMEI 2: ${data.imei2 || 'ไม่ระบุ'}
-🔖Serial Number (SN): ${data.sn || 'ไม่ระบุ'}
-📞หมายเลขโทรศัพท์: ${data.phone_number || 'ไม่ระบุ'}
----
-🖥 รายละเอียดอุปกรณ์
-🏷️ยี่ห้อ (Brand): ${data.result.brand_name || '-'}
-📌รุ่น (Model): ${data.result.model || '-'}
----`;
-  } catch (e) {
-    return `⚡ THUNDER Report ⚡
-📱 ข้อมูลอุปกรณ์ (Device Info)
+    return `🔎[${data.result.imei || imei}]
 
-⛔ไม่พบข้อมูลรายการ หรือ ตัวเลขไม่ถูกต้อง
-📎หมายเหตุ
-🆔IMEI ต้องมีตัวเลข 15 หลัก
-🔄หาก IMEI จาก CDR ตัวสุดท้ายเป็น 0 แล้วค้นไม่พบ ให้เปลี่ยนเป็น 1-9`;
-  }
+┌●ข้อมูลอุปกรณ์ (Device Info)
+├●วันที่บันทึกข้อมูล: ${dateStr}
+├●IMEI 1: ${data.result.imei || '-'}
+├●IMEI 2: ${data.imei2 || 'ไม่ระบุ'}
+├●Serial Number (SN): ${data.sn || 'ไม่ระบุ'}
+├●หมายเลขโทรศัพท์: ${data.phone_number || 'ไม่ระบุ'}
+├●รายละเอียดอุปกรณ์
+├●ยี่ห้อ (Brand): ${data.result.brand_name || '-'}
+└●รุ่น (Model): ${data.result.model || '-'}`;
+
+} catch (e) {
+
+return `🔎[${imei}]
+
+┌●📱ข้อมูลอุปกรณ์ (Device Info)
+├●⛔ไม่พบข้อมูลรายการ หรือ ตัวเลขไม่ถูกต้อง
+├●📎หมายเหตุ
+├●IMEI ต้องมีตัวเลข 15 หลัก
+└●หาก IMEI จาก CDR ตัวสุดท้ายเป็น 0 แล้วค้นไม่พบ ให้เปลี่ยนเป็น 1-9`;
+
 }
 
 async function searchIMSI(imsiNumber) {
   try {
-    const response = await axios.post('https://www.giraffai.com/api/imsi-lookup', { imsi: imsiNumber }, {
-      headers: { 'Content-Type': 'application/json' },
-      timeout: 30000
-    });
+
+    const response = await axios.post(
+      'https://www.giraffai.com/api/imsi-lookup',
+      { imsi: imsiNumber },
+      {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 30000
+      }
+    );
+
     const data = response.data;
-    if (!data || !data.imsi) return '❌ ไม่พบข้อมูล IMSI หรือรูปแบบไม่ถูกต้อง';
-    return `🔍 IMSI Details
-🆔IMSI: ${data.imsi}
-🌐ประเทศ: ${data.country || 'ไม่ทราบ'} ${data.flag || ''}
-📶MCC: ${data.mcc || '-'}
-📶MNC: ${data.mnc || '-'}
-📱ข้อมูลผู้ใช้งานเครือข่าย
-🔢MSIN: ${data.msin || '-'}
-🏢ผู้ให้บริการ: ${data.operator || 'ไม่ทราบ'}
-📡ประเภทเครือข่าย
-❓Network Type: ${data.networkTypes || 'Unknown'}`;
+
+    if (!data || !data.imsi) {
+      return `🔎[${imsiNumber}]
+
+┌● 📶ข้อมูล IMSI
+└● ❌ ไม่พบข้อมูล IMSI หรือรูปแบบไม่ถูกต้อง`;
+    }
+
+    return `🔎[${data.imsi || imsiNumber}]
+
+┌●ข้อมูล IMSI
+├●IMSI: ${data.imsi || '-'}
+├●ประเทศ: ${data.country || 'ไม่ทราบ'} ${data.flag || ''}
+├●MCC: ${data.mcc || '-'}
+├●MNC: ${data.mnc || '-'}
+├●ข้อมูลผู้ใช้งานเครือข่าย
+├●MSIN: ${data.msin || '-'}
+├●ผู้ให้บริการ: ${data.operator || 'ไม่ทราบ'}
+└●Network Type: ${data.networkTypes || 'Unknown'}`;
+
   } catch (error) {
-    if (error.code === 'ECONNABORTED') return '❌ หมดเวลาการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง';
-    return '❌ เกิดข้อผิดพลาดในการค้นหา IMSI: ' + error.message;
+
+    return `🔎[${imsiNumber}]
+
+┌● 📶ข้อมูล IMSI
+└● ⌛กรุณาสืบค้นใหม่อีกครั้ง⌛`;
+
   }
 }
 
