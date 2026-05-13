@@ -3914,7 +3914,7 @@ if (text === 'ดูสมาชิกรอตรวจสอบ') {
 
     return reply(event.replyToken, {
       type: 'text',
-      text: '⏳คำสั่งนี่เปิดเวลา 10:30-22:00น'
+      text: '⏳System processing'
     });
   }
 
