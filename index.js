@@ -1794,44 +1794,25 @@ return `🔎[${imei}]
 
 async function searchIMSI(imsiNumber) {
   try {
-
-    const response = await axios.post(
-      'https://www.giraffai.com/api/imsi-lookup',
-      { imsi: imsiNumber },
-      {
-        headers: { 'Content-Type': 'application/json' },
-        timeout: 30000
-      }
-    );
-
+    const response = await axios.post('https://www.giraffai.com/api/imsi-lookup', { imsi: imsiNumber }, {
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 30000
+    });
     const data = response.data;
-
-    if (!data || !data.imsi) {
-      return `🔎[${imsiNumber}]
-
-┌● 📶ข้อมูล IMSI
-└● ❌ ไม่พบข้อมูล IMSI หรือรูปแบบไม่ถูกต้อง`;
-    }
-
-    return `🔎[${data.imsi || imsiNumber}]
-
-┌●ข้อมูล IMSI
-├●IMSI: ${data.imsi || '-'}
-├●ประเทศ: ${data.country || 'ไม่ทราบ'} ${data.flag || ''}
-├●MCC: ${data.mcc || '-'}
-├●MNC: ${data.mnc || '-'}
-├●ข้อมูลผู้ใช้งานเครือข่าย
-├●MSIN: ${data.msin || '-'}
-├●ผู้ให้บริการ: ${data.operator || 'ไม่ทราบ'}
-└●Network Type: ${data.networkTypes || 'Unknown'}`;
-
+    if (!data || !data.imsi) return '❌ ไม่พบข้อมูล IMSI หรือรูปแบบไม่ถูกต้อง';
+    return `🔍 IMSI Details
+🆔IMSI: ${data.imsi}
+🌐ประเทศ: ${data.country || 'ไม่ทราบ'} ${data.flag || ''}
+📶MCC: ${data.mcc || '-'}
+📶MNC: ${data.mnc || '-'}
+📱ข้อมูลผู้ใช้งานเครือข่าย
+🔢MSIN: ${data.msin || '-'}
+🏢ผู้ให้บริการ: ${data.operator || 'ไม่ทราบ'}
+📡ประเภทเครือข่าย
+❓Network Type: ${data.networkTypes || 'Unknown'}`;
   } catch (error) {
-
-    return `🔎[${imsiNumber}]
-
-┌● 📶ข้อมูล IMSI
-└● ⌛กรุณาสืบค้นใหม่อีกครั้ง⌛`;
-
+    if (error.code === 'ECONNABORTED') return '❌ หมดเวลาการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง';
+    return '❌ เกิดข้อผิดพลาดในการค้นหา IMSI: ' + error.message;
   }
 }
 
