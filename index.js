@@ -913,10 +913,35 @@ function tvgAddress(row) {
   return tvgValue(row?.addressNo || row?.address || row?.address_no || row?.addressDefault);
 }
 
+function formatTVGCCDirectResult(result, query) {
+  const mode = result?.mode === 'phone' ? 'เบอร์' : 'ชื่อ';
+  const lines = [
+    `🔎 ค้นหาจาก${mode}: ${result?.query || query}`,
+    '-------------------',
+    '┌● ข้อมูลลูกค้า',
+    `├● ชื่อ-สกุล: ${tvgValue(result?.name)}`,
+    `├● รหัสลูกค้า: ${tvgValue(result?.customerNumber)}`,
+    `├● ที่อยู่: ${tvgValue(result?.address)}`,
+    `├● เบอร์โทรศัพท์: ${tvgValue(result?.phone)}`,
+    `├● Office Phone: ${tvgValue(result?.officePhone)}`,
+    `├● Fax/Mobile: ${tvgValue(result?.faxMobile)}`,
+    `├● Latitude: ${tvgValue(result?.latitude)}`,
+    `├● Longitude: ${tvgValue(result?.longitude)}`,
+    `└● Address ID: ${tvgValue(result?.addressId)}`,
+    '-------------------'
+  ];
+
+  return limitLineMessage(lines.join('\n'));
+}
+
 function formatTVGCCResult(result, query) {
   const rows = tvgRows(result);
   if (result?.success === false && !rows.length) {
     return result.message ? `❌ ${result.message}` : `❌[${query}] ไม่พบข้อมูลเบอร์รายเดือน`;
+  }
+
+  if (result?.success === true && (result.name || result.address || result.customerNumber)) {
+    return formatTVGCCDirectResult(result, query);
   }
 
   const mode = result?.mode === 'phone' ? 'เบอร์' : result?.mode === 'id' ? 'เลขบัตร' : 'ชื่อ';
