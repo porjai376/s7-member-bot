@@ -4475,7 +4475,10 @@ if (text === 'ดูสมาชิกรอตรวจสอบ') {
       return reply(event.replyToken, { type: 'text', text: formatPiLookup(data, pid) });
     } catch (err) {
       console.error('pi lookup error:', err?.response?.data || err.message);
-      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูลไม่สำเร็จ: ' + err.message });
+     return reply(event.replyToken, { 
+  type: 'text', 
+  text: '⌛Fixing the system⌛'
+});
     }
   }
 
