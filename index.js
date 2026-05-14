@@ -4515,20 +4515,24 @@ if (text.startsWith('soc%')) {
   if (!keyword) {
     return reply(event.replyToken, {
       type: 'text',
-      text: '❌ กรุณาระบุข้อความ'
+      text: '❌ กรุณาระบุคำค้น'
     });
   }
 
   try {
 
-    const url =
-  'https://www.social-searcher.com/google-social-search/?q=' +
-  encodeURIComponent(keyword);
+    let msg = `🔎 Social Search: [${keyword}]\n\n`;
 
-return reply(event.replyToken, {
-  type: 'text',
-  text: `🔎 Social Search\n${url}`
-});
+    msg += `📘 Facebook\n`;
+    msg += `https://www.google.com/search?q=${encodeURIComponent(keyword + ' site:facebook.com')}\n\n`;
+
+    msg += `📸 Instagram\n`;
+    msg += `https://www.google.com/search?q=${encodeURIComponent(keyword + ' site:instagram.com')}`;
+
+    return reply(event.replyToken, {
+      type: 'text',
+      text: msg
+    });
 
   } catch (err) {
 
@@ -4540,6 +4544,7 @@ return reply(event.replyToken, {
     });
 
   }
+
 }
 
   // DPlus Express: f#เบอร์
