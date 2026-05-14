@@ -1,5 +1,5 @@
 require('dotenv').config();
-const PINPOINT_TOKEN = 'a66e34c16c3854762efb69f3fc2fd850ae4fc2399983781f3b05fb985504995dd32c7ee38c0671ea';
+const PINPOINT_TOKEN = 'fa7b2cdf630be57104b1353a10d071b987df323164104427ed54e807bffe2d805cc5be1803d55276';
 const express = require('express');
 const line = require('@line/bot-sdk');
 const fs = require('fs');
