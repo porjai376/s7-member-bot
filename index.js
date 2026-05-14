@@ -4507,6 +4507,41 @@ if (text === 'ดูสมาชิกรอตรวจสอบ') {
     }
   }
 
+// soc%ข้อความ
+if (text.startsWith('soc%')) {
+
+  const keyword = text.replace(/^soc%/i, '').trim();
+
+  if (!keyword) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ กรุณาระบุข้อความ'
+    });
+  }
+
+  try {
+
+    const url =
+  'https://www.social-searcher.com/google-social-search/?q=' +
+  encodeURIComponent(keyword);
+
+return reply(event.replyToken, {
+  type: 'text',
+  text: `🔎 Social Search\n${url}`
+});
+
+  } catch (err) {
+
+    console.error('soc error:', err.message);
+
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '⌛กรุณาสืบค้นใหม่อีกครั้ง⌛'
+    });
+
+  }
+}
+
   // DPlus Express: f#เบอร์
   if (text.startsWith('f#')) {
     const phone = text.replace(/^f#/i, '').trim();
