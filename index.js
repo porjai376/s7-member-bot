@@ -1,5 +1,4 @@
 require('dotenv').config();
-const PINPOINT_TOKEN = 'fa7b2cdf630be57104b1353a10d071b987df323164104427ed54e807bffe2d805cc5be1803d55276';
 const express = require('express');
 const line = require('@line/bot-sdk');
 const fs = require('fs');
@@ -32,42 +31,6 @@ async function fetchHlrLookup(msisdn) {
   } catch (error) {
     if (error.response) return error.response;
     throw error;
-  }
-}
-
-async function searchPinpoint(keyword) {
-  try {
-
-    const response = await axios.post(
-      'https://pin-point.co/g/search/autocomplete',
-      {
-        keyword: keyword,
-        key: PINPOINT_TOKEN,
-        maxResult: 5,
-        language: 'th'
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        timeout: 30000
-      }
-    );
-
-    return response.data;
-
-  } catch (err) {
-
-    console.error(
-      'pinpoint error:',
-      JSON.stringify(
-        err.response?.data || err.message,
-        null,
-        2
-      )
-    );
-
-    return null;
   }
 }
 
@@ -4599,49 +4562,6 @@ if (text.startsWith('soc%')) {
     });
 
   }
-
-}
-
-if (text.startsWith('pin%')) {
-
-  const keyword = text.replace(/^pin%/i, '').trim();
-
-  if (!keyword) {
-    return reply(event.replyToken, {
-      type: 'text',
-      text: '❌ กรุณาระบุสถานที่'
-    });
-  }
-
-  const data = await searchPinpoint(keyword);
-
-  if (!data || !data.data || data.data.length === 0) {
-    return reply(event.replyToken, {
-      type: 'text',
-      text: '❌ ไม่พบข้อมูล'
-    });
-  }
-
-  let msg = `📍ผลการค้นหา: ${keyword}\n\n`;
-
-  data.data.forEach((item, index) => {
-
-    msg +=
-`┌● รายการ ${index + 1}
-├● ชื่อ: ${item.Name || '-'}
-├● ที่อยู่: ${item.FormattedAddress || '-'}
-├● จังหวัด: ${item.Province || '-'}
-├● รหัสไปรษณีย์: ${item.PostalCode || '-'}
-└● พิกัด: ${item.LAT_LON || '-'}
-─────────────────
-`;
-
-  });
-
-  return reply(event.replyToken, {
-    type: 'text',
-    text: msg
-  });
 
 }
 
