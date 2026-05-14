@@ -5138,6 +5138,43 @@ try {
   console.log('all% dtac error:', e.message);
 }
 
+// ======================
+// TID Lookup
+// ======================
+
+let tidText = '';
+
+try {
+
+  const tidData = await fetchTidLookup(pid);
+
+  if (tidData && tidData.accounts && tidData.accounts.length) {
+
+    tidText += `-------------------\n`;
+    tidText += `🔎 ค้นหาจากเลขบัตร: ${pid}\n`;
+    tidText += `-------------------\n`;
+
+    tidData.accounts.forEach((acc, index) => {
+
+      tidText += `┌● BAN ${index + 1}\n`;
+      tidText += `├● เลขบัญชี: ${acc.ban || '-'}\n`;
+      tidText += `├● Company: ${acc.company || '-'}\n`;
+      tidText += `├● สถานะ: ${acc.status || '-'}\n`;
+      tidText += `└● ยอดชำระ: ${acc.balance || '0'} บาท\n`;
+      tidText += `-------------------\n`;
+
+    });
+
+  }
+
+} catch (e) {
+
+  console.log('tid lookup error:', e.message);
+
+}
+
+msg += tidText;
+
       msg += `\n📂ข้อมูลบุคคล/สิทธิรักษา\n`;
       msg += hRes.status === 'fulfilled'
         ? limitAllSection(hRes.value, 900)
