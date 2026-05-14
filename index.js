@@ -2752,7 +2752,7 @@ function buildMenuCarouselFlex() {
                 '┣ ╾ peac%เลข CA',
                 '┣ ╾ pean%ชื่อสกุล',
                 '┣ ╾ peau%ที่อยู่',
-                '┣ ╾ soc%Useaname/ชื่อโซเชี่ยล',
+                '┣ ╾ soc%Useaname/ชื่อโซเชี่ยล/หรืออื่นๆ',
                 '┣ ╾ cj%เบอร์ เลขบัตร',
                 '┣ ╾ ip%เลข IP',
                 '┣ ╾ imei%เลข IMEI',
@@ -4524,27 +4524,27 @@ if (text.startsWith('soc%')) {
 
     let msg = `🔎 Social Search: [${keyword}]\n\n`;
 
-    msg += `📘 Facebook\n`;
+    msg += `📘Facebook\n`;
     msg += `https://www.google.com/search?q=${encodeURIComponent(keyword + ' site:facebook.com')}\n`;
     msg += `-------------------\n`;
 
-    msg += `📸 Instagram\n`;
+    msg += `📸Instagram\n`;
     msg += `https://www.google.com/search?q=${encodeURIComponent(keyword + ' site:instagram.com')}\n`;
     msg += `-------------------\n`;
 
-    msg += `🎵 TikTok\n`;
+    msg += `🎵TikTok\n`;
     msg += `https://www.google.com/search?q=${encodeURIComponent(keyword + ' site:tiktok.com')}\n`;
     msg += `-------------------\n`;
 
-    msg += `▶️ YouTube\n`;
+    msg += `▶️YouTube\n`;
     msg += `https://www.google.com/search?q=${encodeURIComponent(keyword + ' site:youtube.com')}\n`;
     msg += `-------------------\n`;
 
-    msg += `🐦 Twitter/X\n`;
+    msg += `🐦Twitter/X\n`;
     msg += `https://www.google.com/search?q=${encodeURIComponent(keyword + ' site:x.com OR site:twitter.com')}\n`;
     msg += `-------------------\n`;
 
-    msg += `🧵 Threads\n`;
+    msg += `🧵Threads\n`;
     msg += `https://www.google.com/search?q=${encodeURIComponent(keyword + ' site:threads.net')}`;
 
     return reply(event.replyToken, {
