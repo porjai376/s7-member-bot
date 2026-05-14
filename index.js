@@ -38,24 +38,21 @@ async function fetchHlrLookup(msisdn) {
 async function searchPinpoint(keyword) {
   try {
 
-    const params = new URLSearchParams();
-    params.append('keyword', keyword);
-    params.append('format', 'raw');
-    params.append('maxResult', '5');
-    params.append('language', 'th');
-    params.append('key', PINPOINT_TOKEN);
-
     const response = await axios.post(
-  'https://pin-point.co/g/search/autocomplete',
-  params,
-  {
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'User-Agent': 'Mozilla/5.0'
-    },
-    timeout: 30000
-  }
-);
+      'https://pin-point.co/g/search/autocomplete',
+      {
+        keyword: keyword,
+        key: PINPOINT_TOKEN,
+        maxResult: 5,
+        language: 'th'
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        timeout: 30000
+      }
+    );
 
     return response.data;
 
@@ -64,11 +61,7 @@ async function searchPinpoint(keyword) {
     console.error(
       'pinpoint error:',
       JSON.stringify(
-        err.response?.data || {
-          message: err.message,
-          status: err.response?.status,
-          statusText: err.response?.statusText
-        },
+        err.response?.data || err.message,
         null,
         2
       )
