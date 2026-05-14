@@ -37,19 +37,26 @@ async function fetchHlrLookup(msisdn) {
 
 async function searchPinpoint(keyword) {
   try {
-    const { data } = await axios.get(
-      'https://pin-point.co/g/sdk/1.0.7',
+
+    const params = new URLSearchParams();
+    params.append('keyword', keyword);
+    params.append('format', 'raw');
+    params.append('maxResult', '5');
+    params.append('language', 'th');
+    params.append('key', PINPOINT_TOKEN);
+
+    const response = await axios.post(
+      'https://pin-point.co/g/search/autocomplete',
+      params,
       {
-        params: {
-          key: PINPOINT_TOKEN,
-          q: keyword
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
         },
         timeout: 30000
       }
     );
 
-    console.log('pinpoint data:', data);
-    return data;
+    return response.data;
 
   } catch (err) {
     console.error('pinpoint error:', err.response?.data || err.message);
@@ -4595,46 +4602,39 @@ if (text.startsWith('pin%')) {
   if (!keyword) {
     return reply(event.replyToken, {
       type: 'text',
-      text: '❌ กรุณาระบุที่อยู่'
+      text: '❌ กรุณาระบุสถานที่'
     });
   }
 
-  try {
+  const data = await searchPinpoint(keyword);
 
-    const data = await searchPinpoint(keyword);
-
-    if (!data || !data.length) {
-      return reply(event.replyToken, {
-        type: 'text',
-        text: '❌ ไม่พบข้อมูล'
-      });
-    }
-
-    const item = data[0];
-
-    const lat = item.LAT || '-';
-    const lon = item.LON || '-';
-
-    let msg = `📍 ข้อมูลพิกัด\n`;
-    msg += `┌● คำค้นหา: ${keyword}\n`;
-    msg += `├● ที่อยู่: ${item.FormattedAddress || '-'}\n`;
-    msg += `├● LAT: ${lat}\n`;
-    msg += `├● LON: ${lon}\n`;
-    msg += `└● Maps: https://www.google.com/maps?q=${lat},${lon}`;
-
+  if (!data || !data.data || data.data.length === 0) {
     return reply(event.replyToken, {
       type: 'text',
-      text: msg
+      text: '❌ ไม่พบข้อมูล'
     });
-
-  } catch (err) {
-
-    return reply(event.replyToken, {
-      type: 'text',
-      text: '⌛กรุณาสืบค้นใหม่อีกครั้ง⌛'
-    });
-
   }
+
+  let msg = `📍ผลการค้นหา: ${keyword}\n\n`;
+
+  data.data.forEach((item, index) => {
+
+    msg +=
+`┌● รายการ ${index + 1}
+├● ชื่อ: ${item.Name || '-'}
+├● ที่อยู่: ${item.FormattedAddress || '-'}
+├● จังหวัด: ${item.Province || '-'}
+├● รหัสไปรษณีย์: ${item.PostalCode || '-'}
+└● พิกัด: ${item.LAT_LON || '-'}
+─────────────────
+`;
+
+  });
+
+  return reply(event.replyToken, {
+    type: 'text',
+    text: msg
+  });
 
 }
 
