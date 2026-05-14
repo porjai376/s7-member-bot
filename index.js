@@ -50,7 +50,9 @@ async function searchPinpoint(keyword) {
       params,
       {
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'User-Agent': 'Mozilla/5.0',
+          'Referer': 'https://pin-point.co/'
         },
         timeout: 30000
       }
@@ -59,7 +61,20 @@ async function searchPinpoint(keyword) {
     return response.data;
 
   } catch (err) {
-    console.error('pinpoint error:', err.response?.data || err.message);
+
+    console.error(
+      'pinpoint error:',
+      JSON.stringify(
+        err.response?.data || {
+          message: err.message,
+          status: err.response?.status,
+          statusText: err.response?.statusText
+        },
+        null,
+        2
+      )
+    );
+
     return null;
   }
 }
