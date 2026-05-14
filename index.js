@@ -2752,6 +2752,7 @@ function buildMenuCarouselFlex() {
                 '┣ ╾ peac%เลข CA',
                 '┣ ╾ pean%ชื่อสกุล',
                 '┣ ╾ peau%ที่อยู่',
+                '┣ ╾ soc%Useaname/ชื่อโซเชี่ยล',
                 '┣ ╾ cj%เบอร์ เลขบัตร',
                 '┣ ╾ ip%เลข IP',
                 '┣ ╾ imei%เลข IMEI',
