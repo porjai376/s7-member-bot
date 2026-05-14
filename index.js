@@ -1,4 +1,5 @@
 require('dotenv').config();
+const PINPOINT_TOKEN = a66e34c16c3854762efb69f3fc2fd850ae4fc2399983781f3b05fb985504995dd32c7ee38c0671ea
 const express = require('express');
 const line = require('@line/bot-sdk');
 const fs = require('fs');
@@ -31,6 +32,34 @@ async function fetchHlrLookup(msisdn) {
   } catch (error) {
     if (error.response) return error.response;
     throw error;
+  }
+}
+
+async function searchPinpoint(keyword) {
+
+  try {
+
+    const response = await axios.post(
+      'https://pin-point.co/api/v1/search',
+      {
+        keyword: keyword,
+        key: PINPOINT_TOKEN
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        timeout: 30000
+      }
+    );
+
+    return response.data;
+
+  } catch (err) {
+
+    console.error('pinpoint error:', err.response?.data || err.message);
+
+    return null;
   }
 }
 
@@ -4555,6 +4584,56 @@ if (text.startsWith('soc%')) {
   } catch (err) {
 
     console.error('soc error:', err.message);
+
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '⌛กรุณาสืบค้นใหม่อีกครั้ง⌛'
+    });
+
+  }
+
+}
+
+if (text.startsWith('pin%')) {
+
+  const keyword = text.replace(/^pin%/i, '').trim();
+
+  if (!keyword) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ กรุณาระบุที่อยู่'
+    });
+  }
+
+  try {
+
+    const data = await searchPinpoint(keyword);
+
+    if (!data || !data.length) {
+      return reply(event.replyToken, {
+        type: 'text',
+        text: '❌ ไม่พบข้อมูล'
+      });
+    }
+
+    const item = data[0];
+
+    const lat = item.LAT || '-';
+    const lon = item.LON || '-';
+
+    let msg = `📍 ข้อมูลพิกัด\n`;
+    msg += `┌● คำค้นหา: ${keyword}\n`;
+    msg += `├● ที่อยู่: ${item.FormattedAddress || '-'}\n`;
+    msg += `├● LAT: ${lat}\n`;
+    msg += `├● LON: ${lon}\n`;
+    msg += `└● Maps: https://www.google.com/maps?q=${lat},${lon}`;
+
+    return reply(event.replyToken, {
+      type: 'text',
+      text: msg
+    });
+
+  } catch (err) {
 
     return reply(event.replyToken, {
       type: 'text',
