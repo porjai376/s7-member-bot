@@ -46,17 +46,16 @@ async function searchPinpoint(keyword) {
     params.append('key', PINPOINT_TOKEN);
 
     const response = await axios.post(
-      'https://pin-point.co/g/search/autocomplete',
-      params,
-      {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'User-Agent': 'Mozilla/5.0',
-          'Referer': 'https://pin-point.co/'
-        },
-        timeout: 30000
-      }
-    );
+  'https://pin-point.co/g/search/autocomplete',
+  params,
+  {
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'User-Agent': 'Mozilla/5.0'
+    },
+    timeout: 30000
+  }
+);
 
     return response.data;
 
