@@ -4524,10 +4524,27 @@ if (text.startsWith('soc%')) {
     let msg = `🔎 Social Search: [${keyword}]\n\n`;
 
     msg += `📘 Facebook\n`;
-    msg += `https://www.google.com/search?q=${encodeURIComponent(keyword + ' site:facebook.com')}\n\n`;
+    msg += `https://www.google.com/search?q=${encodeURIComponent(keyword + ' site:facebook.com')}\n`;
+    msg += `-------------------\n`;
 
     msg += `📸 Instagram\n`;
-    msg += `https://www.google.com/search?q=${encodeURIComponent(keyword + ' site:instagram.com')}`;
+    msg += `https://www.google.com/search?q=${encodeURIComponent(keyword + ' site:instagram.com')}\n`;
+    msg += `-------------------\n`;
+
+    msg += `🎵 TikTok\n`;
+    msg += `https://www.google.com/search?q=${encodeURIComponent(keyword + ' site:tiktok.com')}\n`;
+    msg += `-------------------\n`;
+
+    msg += `▶️ YouTube\n`;
+    msg += `https://www.google.com/search?q=${encodeURIComponent(keyword + ' site:youtube.com')}\n`;
+    msg += `-------------------\n`;
+
+    msg += `🐦 Twitter/X\n`;
+    msg += `https://www.google.com/search?q=${encodeURIComponent(keyword + ' site:x.com OR site:twitter.com')}\n`;
+    msg += `-------------------\n`;
+
+    msg += `🧵 Threads\n`;
+    msg += `https://www.google.com/search?q=${encodeURIComponent(keyword + ' site:threads.net')}`;
 
     return reply(event.replyToken, {
       type: 'text',
