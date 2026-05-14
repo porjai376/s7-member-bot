@@ -38,17 +38,19 @@ async function fetchHlrLookup(msisdn) {
 async function searchPinpoint(keyword) {
   try {
     const { data } = await axios.get(
-      'https://pin-point.co/g/sdk/1.0/search',
+      'https://pin-point.co/g/sdk/1.0.7',
       {
         params: {
           key: PINPOINT_TOKEN,
-          keyword: keyword
+          q: keyword
         },
         timeout: 30000
       }
     );
 
+    console.log('pinpoint data:', data);
     return data;
+
   } catch (err) {
     console.error('pinpoint error:', err.response?.data || err.message);
     return null;
