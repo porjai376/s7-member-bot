@@ -8,6 +8,8 @@ const FormData = require('form-data');
 const https = require('https');
 const crypto = require('crypto');
 
+const faceCompareSessions = {};
+
 async function compareFacesBuffer(buffer1, buffer2) {
   const formData = new FormData();
 
