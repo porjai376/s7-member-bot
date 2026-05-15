@@ -3953,10 +3953,74 @@ Host Country (MCC) Thailand (${mcc})
 Host Provider (MNC) ${provider}`;
 }
 
+function todayKeyThai() {
+  return new Date().toLocaleDateString('th-TH');
+}
+
+function increaseSearch(db, userId) {
+
+  db.searchLogs = db.searchLogs || {};
+
+  const today = todayKeyThai();
+
+  if (!db.searchLogs[userId]) {
+    db.searchLogs[userId] = {};
+  }
+
+  if (!db.searchLogs[userId][today]) {
+    db.searchLogs[userId][today] = 0;
+  }
+
+  db.searchLogs[userId][today]++;
+
+  saveDB(db);
+
+  return {
+    date: today,
+    count: db.searchLogs[userId][today]
+  };
+
+}
+
+function buildSearchInfo(db,userId){
+
+    const today = todayKeyThai();
+
+    const count =
+      db.searchLogs?.[userId]?.[today] || 0;
+
+    return `
+-------------------
+จำนวนการสืบค้น
+[${today}] [${count}/500]
+`;
+
+}
+
 async function handleText(event) {
   const userId = event.source.userId;
   const text = (event.message.text || '').trim();
   const db = loadDB();
+  const searchCommands = [
+'pi%',
+'all%',
+'imei%',
+'imsi%',
+'tid#',
+'soc%',
+'@',
+'d#'
+];
+
+const isSearch =
+searchCommands.some(
+cmd=>text.startsWith(cmd)
+);
+
+if(isSearch){
+   increaseSearch(db,userId);
+}
+
   const member = db.members[userId];
 
 if (text === 'b!') {
@@ -4590,7 +4654,15 @@ if (text === 'ดูสมาชิกรอตรวจสอบ') {
       const url = `https://dtac-api.jedi-r3cloud.org/dtac?phone=${encodeURIComponent(phone)}&token=jedi-api-2026`;
       const res = await axios.get(url, { timeout: 45000 });
       const msg = formatDtacSearch(res.data, phone);
-      return reply(event.replyToken, { type: 'text', text: msg });
+      return reply(event.replyToken, {
+  type: 'text',
+  text:
+    msg +
+    buildSearchInfo(
+      db,
+      userId
+    )
+});
     } catch (err) {
       console.error('dtac lookup error:', err?.response?.data || err.message);
       return reply(event.replyToken, { type: 'text', text: '🔎 สืบค้นใหม่อีกครั้ง' });
