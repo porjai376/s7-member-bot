@@ -847,7 +847,7 @@ function formatDPlusCustomers(data, keyword) {
     return `❌ ไม่พบข้อมูลลูกค้าสำหรับเบอร์ ${keyword}`;
   }
 
-  const msg = data.map((item, index) => `┌● ลำดับ: ${index + 1}
+  const msg = `📁รายการ Shipping\n` + data.map((item, index) => `┌● ลำดับ: ${index + 1}
 ├● ชื่อ: ${dplusValue(item.name)}
 ├● เบอร์โทร: ${dplusValue(item.phone)}
 ├● ที่อยู่: ${dplusValue(item.address || item.address_no)}
@@ -856,7 +856,7 @@ function formatDPlusCustomers(data, keyword) {
 ├● จังหวัด: ${dplusValue(item.province)}
 └● รหัสไปรษณีย์: ${dplusValue(item.zipcode)}`).join('\n\n');
 
-  return limitLineMessage(msg);
+return limitLineMessage(msg);
 }
 
 async function fetchTVGCCApi(query) {
@@ -916,7 +916,7 @@ function tvgAddress(row) {
 function formatTVGCCDirectResult(result, query) {
   const mode = result?.mode === 'phone' ? 'เบอร์' : 'ชื่อ';
   const lines = [
-    `🔎 ค้นหาจาก${mode}: ${result?.query || query}`,
+    `📙 ค้นหาจาก${mode}: ${result?.query || query}`,
     '-------------------',
     '┌● ข้อมูลลูกค้า',
     `├● ชื่อ-สกุล: ${tvgValue(result?.name)}`,
@@ -952,7 +952,7 @@ function formatTVGCCResult(result, query) {
   }
 
   const lines = [
-    `🔎 ค้นหาจาก${mode}: ${result.query || query}`,
+    `📙 ค้นหาจาก${mode}: ${result.query || query}`,
     `✅ พบข้อมูลทั้งหมด: ${result.count ?? rows.length} รายการ`
   ];
 
