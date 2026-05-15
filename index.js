@@ -3953,11 +3953,74 @@ Host Country (MCC) Thailand (${mcc})
 Host Provider (MNC) ${provider}`;
 }
 
+function todayKeyThai() {
+  return new Date().toLocaleDateString('th-TH', {
+    timeZone: 'Asia/Bangkok'
+  });
+}
+
+function increaseSearch(db, userId) {
+  db.searchLogs = db.searchLogs || {};
+
+  const today = todayKeyThai();
+
+  if (!db.searchLogs[userId]) {
+    db.searchLogs[userId] = {};
+  }
+
+  if (!db.searchLogs[userId][today]) {
+    db.searchLogs[userId][today] = 0;
+  }
+
+  if (db.searchLogs[userId][today] >= 500) {
+    return {
+      ok: false,
+      count: db.searchLogs[userId][today],
+      date: today
+    };
+  }
+
+  db.searchLogs[userId][today]++;
+
+  saveDB(db);
+
+  return {
+    ok: true,
+    count: db.searchLogs[userId][today],
+    date: today
+  };
+}
+
 async function handleText(event) {
   const userId = event.source.userId;
   const text = (event.message.text || '').trim();
   const db = loadDB();
   const member = db.members[userId];
+  const freeCommands = [
+  'menu%',
+  'regis%',
+  'สมัคร',
+  'ดูสมาชิกรอตรวจสอบ',
+  'b!'
+];
+
+const isFreeCommand = freeCommands.some(cmd => text === cmd);
+
+if (!isFreeCommand && text.length > 0) {
+
+  const usage = increaseSearch(db, userId);
+
+  if (!usage.ok) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: `❌ คุณใช้ครบ 500 ครั้งแล้ว
+
+วันที่: ${usage.date}
+จำนวน: ${usage.count}/500`
+    });
+  }
+
+}
 
 if (text === 'b!') {
   db.bMode = db.bMode || {};
