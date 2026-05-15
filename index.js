@@ -258,8 +258,19 @@ function isEventProcessed(db, eventId) {
   return !!db.processedEvents[eventId];
 }
 
-async function reply(replyToken, messages) {
+async function reply(replyToken, messages, userId = null) {
   const arr = Array.isArray(messages) ? messages : [messages];
+
+  if (userId) {
+    const db = loadDB();
+
+    arr.forEach(msg => {
+      if (msg.type === 'text' && !msg.text.includes('จำนวนการสืบค้น')) {
+        msg.text += buildSearchInfo(db, userId);
+      }
+    });
+  }
+
   return client.replyMessage({
     replyToken,
     messages: arr
@@ -3962,6 +3973,24 @@ function todayKeyThai() {
 function increaseSearch(db, userId) {
   db.searchLogs = db.searchLogs || {};
 
+function buildSearchInfo(db, userId) {
+
+  const today = todayKeyThai();
+
+  const count =
+    db.searchLogs?.[userId]?.[today] || 0;
+
+  const member =
+    db.members?.[userId] || {};
+
+  return `
+-------------------
+จำนวนการสืบค้น
+[${today}] [${count}/500]
+ชื่อ:${member.name || member.fullname || '-'}
+หมดอายุ:${member.expireAt || '-'}`;
+}
+
   const today = todayKeyThai();
 
   if (!db.searchLogs[userId]) {
@@ -4646,19 +4675,51 @@ if (text === 'ดูสมาชิกรอตรวจสอบ') {
 
   // เช็คจดทะเบียน DTAC: d#เบอร์โทร หรือ 13หลัก
   if (text.startsWith('d#')) {
-    const phone = text.replace(/^d#/, '').trim();
-    if (!phone) return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเบอร์โทรศัพท์ หรือเลขบัตร 13 หลัก เช่น d#0993606353' });
+  const phone = text.replace(/^d#/, '').trim();
 
-    try {
-      const url = `https://dtac-api.jedi-r3cloud.org/dtac?phone=${encodeURIComponent(phone)}&token=jedi-api-2026`;
-      const res = await axios.get(url, { timeout: 45000 });
-      const msg = formatDtacSearch(res.data, phone);
-      return reply(event.replyToken, { type: 'text', text: msg });
-    } catch (err) {
-      console.error('dtac lookup error:', err?.response?.data || err.message);
-      return reply(event.replyToken, { type: 'text', text: '🔎 สืบค้นใหม่อีกครั้ง' });
-    }
+  if (!phone)
+    return reply(event.replyToken,{
+      type:'text',
+      text:'❌ กรุณาระบุเบอร์โทร'
+    });
+
+  try {
+
+    const url=`https://dtac-api.jedi-r3cloud.org/dtac?phone=${encodeURIComponent(phone)}`;
+
+    const res = await axios.get(url,{
+      timeout:45000
+    });
+
+    const msg =
+      formatDtacSearch(
+        res.data,
+        phone
+      );
+
+    return reply(
+      event.replyToken,
+      {
+        type:'text',
+        text:msg
+      },
+      userId
+    );
+
+  } catch(err){
+
+    console.log(
+      'dtac lookup error:',
+      err?.response?.data || err.message
+    );
+
+    return reply(event.replyToken,{
+      type:'text',
+      text:'🔎 สืบค้นใหม่อีกครั้ง'
+    });
+
   }
+}
 
   // ค้นหาข้อมูลบุคคลและครัวเรือน: pi%เลขบัตร
   if (text.startsWith('pi%')) {
