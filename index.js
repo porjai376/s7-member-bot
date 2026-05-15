@@ -3953,74 +3953,10 @@ Host Country (MCC) Thailand (${mcc})
 Host Provider (MNC) ${provider}`;
 }
 
-function todayKeyThai() {
-  return new Date().toLocaleDateString('th-TH');
-}
-
-function increaseSearch(db, userId) {
-
-  db.searchLogs = db.searchLogs || {};
-
-  const today = todayKeyThai();
-
-  if (!db.searchLogs[userId]) {
-    db.searchLogs[userId] = {};
-  }
-
-  if (!db.searchLogs[userId][today]) {
-    db.searchLogs[userId][today] = 0;
-  }
-
-  db.searchLogs[userId][today]++;
-
-  saveDB(db);
-
-  return {
-    date: today,
-    count: db.searchLogs[userId][today]
-  };
-
-}
-
-function buildSearchInfo(db,userId){
-
-    const today = todayKeyThai();
-
-    const count =
-      db.searchLogs?.[userId]?.[today] || 0;
-
-    return `
-
-จำนวนการสืบค้น
-[${today}] [${count}/500]
-`;
-
-}
-
 async function handleText(event) {
   const userId = event.source.userId;
   const text = (event.message.text || '').trim();
   const db = loadDB();
-  const searchCommands = [
-'pi%',
-'all%',
-'imei%',
-'imsi%',
-'tid#',
-'soc%',
-'@',
-'d#'
-];
-
-const isSearch =
-searchCommands.some(
-cmd=>text.startsWith(cmd)
-);
-
-if(isSearch){
-   increaseSearch(db,userId);
-}
-
   const member = db.members[userId];
 
 if (text === 'b!') {
@@ -4223,14 +4159,115 @@ if (text === 'ดูสมาชิกรอตรวจสอบ') {
   }
 
   if (text === 'menu%') {
-    return reply(event.replyToken, [
-      {
-        type: 'text',
-        text: '📋 เมนูคำสั่ง MEGABOT\nเลื่อนดูเมนูแต่ละหน้าได้เลย'
-      },
-      buildMenuCarouselFlex()
-    ]);
-  }
+
+return reply(event.replyToken,{
+type:'text',
+text:`📂 คำสั่งใช้งาน
+-  -  -  -  -  -  -  -  -  -
+📲 เครือข่าย / สถานะเบอร์
+├ %66xxxxxxxxx → ตรวจสอบสถานะเบอร์
+└ ?เบอร์โทร → ค้นหาข้อมูลเบอร์
+
+📗 ตรวจสอบการลงทะเบียน AIS
+└ a#เบอร์โทร/เลขบัตร
+
+📘 ตรวจสอบการลงทะเบียน DTAC
+└ d#เบอร์โทร/เลขบัตร
+
+📙 ตรวจสอบการลงทะเบียน TRUE
+├ t#เบอร์โทร
+├ tid#เลขบัตร
+└ tn#ชื่อ-นามสกุล
+
+📦 ขนส่ง / ศูนย์บริการรถ
+├ f#เบอร์โทร
+├ bq%ชื่อ / เบอร์โทร / เลขบัตร
+├ fx#เบอร์โทร / ชื่อสกุล / พัสดุละเอียด
+└ tic%เลขพัสดุ
+
+🏦 พิกัด ATM / ธนาคาร
+├ bn%ชื่อธนาคาร
+├ bc%รหัสสาขา
+├ bk%เลขบัญชี
+├ atm%รหัสตู้
+└ cell%LAC,CID
+
+💊 ประวัติรักษา
+├ pi%เลขบัตร
+└ h%เลขบัตร
+
+🔎 บุคคล
+├ si%เลขบัตร → ประกันสังคม
+├ dl#เลขบัตร → ใบขับขี่
+├ pb%เลขบัตร → คุมประพฤติ
+├ psi#เลขบัตร → ผู้ต้องขัง
+├ ps#เลขบัตร → ผู้ต้องขังยังไม่พิพากษา
+├ cid#เลขบัตร → ตรวจข้อมูลจากบัตร
+└ car#จังหวัด หมวด ตัวเลข ประเภทรถ
+
+ตัวอย่าง:
+└ car#กรุงเทพ 1กก 334 1
+
+⚖️ หมายจับ
+├ c#เลขบัตร
+└ doc#เลขบัตร
+
+⚡ ไฟฟ้า / ข้อมูลอื่นๆ
+├ mea%ชื่อสกุล
+├ kru%เลขมิเตอร์
+├ peab%เลข CA + เลขมิเตอร์
+├ peac%เลข CA
+├ pean%ชื่อสกุล
+├ peau%ที่อยู่
+├ soc%Username / ชื่อโซเชียล
+├ cj%เบอร์ / เลขบัตร
+├ ip%เลข IP
+├ imei%เลข IMEI
+├ imsi%เลข IMSI
+├ icc%เลข ICCID
+├ wf%เลขบัตร
+├ map%ละติจูด,ลองจิจูด
+├ web%ชื่อเว็บไซต์
+└ se%รหัสสาขา 7-Eleven
+
+📺 ผ่อนเครื่องใช้ไฟฟ้า
+└ s%เลขบัตร
+
+🚗 ประเภทรถ
+1 = รถยนต์นั่งไม่เกิน 7 คน
+2 = รถยนต์นั่งเกิน 7 คน
+3 = รถบรรทุกส่วนบุคคล
+4 = สามล้อส่วนบุคคล
+5 = รับจ้างระหว่างจังหวัด
+6 = รับจ้างไม่เกิน 7 คน
+7 = สี่ล้อเล็กรับจ้าง
+8 = รับจ้างสามล้อ
+9 = บริการธุรกิจ
+10 = บริการทัศนาจร
+11 = บริการให้เช่า
+12 = จักรยานยนต์
+13 = รถแทรกเตอร์
+14 = รถบดถนน
+15 = รถใช้ในงานเกษตรกรรม
+16 = รถพ่วง
+17 = จักรยานยนต์สาธารณะ
+30 = รถโดยสารประจำทาง
+31 = รถขนาดเล็ก
+32 = โดยสารไม่ประจำทาง
+33 = โดยสารส่วนบุคคล
+34 = บรรทุกไม่ประจำทาง
+35 = บรรทุกส่วนบุคคล
+
+-  -  -  -  -  -  -  -  -  -
+🚨คำสั่งที่ทำการปรับปรุง🚨
+├ pi%
+├ fx#
+└ a#
+-  -  -  -  -  -  -  -  -  -
+`
+});
+
+}
 
   if (text === 'hadmin') {
     if (!isAdmin(userId)) {
@@ -4654,15 +4691,7 @@ if (text === 'ดูสมาชิกรอตรวจสอบ') {
       const url = `https://dtac-api.jedi-r3cloud.org/dtac?phone=${encodeURIComponent(phone)}&token=jedi-api-2026`;
       const res = await axios.get(url, { timeout: 45000 });
       const msg = formatDtacSearch(res.data, phone);
-      return reply(event.replyToken, {
-  type: 'text',
-  text:
-    msg +
-    buildSearchInfo(
-      db,
-      userId
-    )
-});
+      return reply(event.replyToken, { type: 'text', text: msg });
     } catch (err) {
       console.error('dtac lookup error:', err?.response?.data || err.message);
       return reply(event.replyToken, { type: 'text', text: '🔎 สืบค้นใหม่อีกครั้ง' });
