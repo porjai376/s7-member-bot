@@ -3879,11 +3879,119 @@ function buildPendingMembersFlex(db) {
   };
 }
 
+function encodePLMN(mcc, mnc) {
+  mcc = String(mcc || '').replace(/\D/g, '');
+  mnc = String(mnc || '').replace(/\D/g, '');
+
+  if (mcc.length !== 3) return '-';
+  if (mnc.length === 1) mnc = '0' + mnc;
+
+  const mcc1 = mcc[0];
+  const mcc2 = mcc[1];
+  const mcc3 = mcc[2];
+
+  const mnc1 = mnc[0];
+  const mnc2 = mnc[1];
+  const mnc3 = mnc.length === 3 ? mnc[2] : 'f';
+
+  return `${mcc2}${mcc1}${mnc3}${mcc3}${mnc2}${mnc1}`.toLowerCase();
+}
+
+function toHex4(num) {
+  const n = parseInt(String(num || '').replace(/\D/g, ''), 10);
+  if (Number.isNaN(n)) return '0000';
+  return n.toString(16).padStart(4, '0');
+}
+
+function getProviderName(mnc) {
+  const n = String(mnc || '').replace(/\D/g, '');
+  if (n === '4' || n === '04') return 'Truemove (4)';
+  if (n === '3' || n === '03') return 'AIS (3)';
+  if (n === '5' || n === '05') return 'DTAC (5)';
+  return `Unknown (${mnc || '-'})`;
+}
+
+function getField(raw, label) {
+  const re = new RegExp(`^${label}\\s*(.*)$`, 'im');
+  return raw.match(re)?.[1]?.trim() || '-';
+}
+
+function formatBCell(raw) {
+  const location = getField(raw, 'Location');
+  const receivedAt = getField(raw, 'Received at');
+  const gps = getField(raw, 'GPS');
+  const cid = getField(raw, 'CID');
+  const lac = getField(raw, 'LAC');
+  const plmn = getField(raw, 'PLMN');
+  const msisdn = getField(raw, 'MSISDN');
+  const deviceStatus = getField(raw, 'Device status');
+  const recency = getField(raw, 'Recency');
+  const received = getField(raw, 'Received');
+  const type = getField(raw, 'Type');
+
+  const [mcc, mnc] = plmn.split(/\s+/);
+  const cgi = `${encodePLMN(mcc, mnc)}${toHex4(lac)}${toHex4(cid)}`;
+
+  const provider = getProviderName(mnc);
+
+  return `Location
+${location}
+Received at ${receivedAt}
+GPS ${gps}
+CID ${cid}
+LAC ${lac}
+CGI ${cgi}
+PLMN ${plmn}
+MSISDN ${msisdn}
+Device status ${deviceStatus}
+Recency ${recency}
+Recieved ${received}
+Type ${type}
+Home Country (MCC) Thailand (${mcc})
+Home Provider (MNC) ${provider}
+Host Country (MCC) Thailand (${mcc})
+Host Provider (MNC) ${provider}`;
+}
+
 async function handleText(event) {
   const userId = event.source.userId;
   const text = (event.message.text || '').trim();
   const db = loadDB();
   const member = db.members[userId];
+
+if (text === 'b!') {
+  db.bMode = db.bMode || {};
+  db.bMode[userId] = true;
+  saveDB(db);
+
+  return reply(event.replyToken, {
+    type: 'text',
+    text: `กรอกข้อมูลตามนี้แล้วส่งกลับมา:
+
+Location
+
+Received at
+GPS
+CID
+LAC
+PLMN
+MSISDN
+Device status
+Recency 0 Minutes
+Received
+Type 3G/4G/5G`
+  });
+}
+
+if (db.bMode?.[userId]) {
+  delete db.bMode[userId];
+  saveDB(db);
+
+  return reply(event.replyToken, {
+    type: 'text',
+    text: formatBCell(text)
+  });
+}
 
 if (text === 'ดูสมาชิกรอตรวจสอบ') {
   if (!isAdmin(userId)) {
