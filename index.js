@@ -4,8 +4,34 @@ const line = require('@line/bot-sdk');
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
+const FormData = require('form-data');
 const https = require('https');
 const crypto = require('crypto');
+
+async function compareFacesBuffer(buffer1, buffer2) {
+  const formData = new FormData();
+
+  formData.append("file1", buffer1, {
+    filename: "face1.jpg"
+  });
+
+  formData.append("file2", buffer2, {
+    filename: "face2.jpg"
+  });
+
+  const response = await axios.post(
+    "https://api.iapp.co.th/v3/store/ekyc/face-comparison",
+    formData,
+    {
+      headers: {
+        apikey: process.env.IAPP_API_KEY,
+        ...formData.getHeaders()
+      }
+    }
+  );
+
+  return response.data;
+}
 
 async function fetchHlrLookup(msisdn) {
   const key = 'fcd01b61e422';
@@ -3959,6 +3985,17 @@ async function handleText(event) {
   const db = loadDB();
   const member = db.members[userId];
 
+if(text==="fc"){
+   faceCompareSessions[userId]={
+      images:[]
+   };
+
+   return reply(event.replyToken,{
+      type:'text',
+      text:'📸 ส่งรูปที่ 1'
+   });
+}
+
 if (text === 'b!') {
   db.bMode = db.bMode || {};
   db.bMode[userId] = true;
@@ -5390,7 +5427,76 @@ try {
 }
 
 async function handleImage(event) {
-  const userId = event.source.userId;
+    const userId = event.source.userId;
+
+    const session = faceCompareSessions[userId];
+
+    if (session) {
+        try {
+
+            const chunks = [];
+
+            const stream = await client.getMessageContent(
+                event.message.id
+            );
+
+            for await (const chunk of stream) {
+                chunks.push(chunk);
+            }
+
+            const imageBuffer = Buffer.concat(chunks);
+
+            session.images.push(imageBuffer);
+
+            if (session.images.length === 1) {
+                return reply(event.replyToken,{
+                    type:'text',
+                    text:'📸 ได้รูปที่ 1 แล้ว\nส่งรูปที่ 2'
+                });
+            }
+
+            const result =
+            await compareFacesBuffer(
+                session.images[0],
+                session.images[1]
+            );
+
+            delete faceCompareSessions[userId];
+
+            return reply(event.replyToken,{
+                type:'text',
+                text:
+`📗 ผลเปรียบเทียบใบหน้า
+- - - - - - - - -
+├● สถานะ: ${
+result?.status?.match
+?'ตรงกัน'
+:'ไม่ตรงกัน'
+}
+├● คะแนน: ${
+result?.similarity_score ??
+'-'
+}
+└● ตรวจสอบสำเร็จ`
+            });
+
+        } catch(err){
+
+            console.log(err);
+
+            delete faceCompareSessions[userId];
+
+            return reply(
+                event.replyToken,
+                {
+                    type:'text',
+                    text:'❌ เปรียบเทียบไม่สำเร็จ'
+                }
+            );
+
+        }
+    }
+
   const db = loadDB();
   const member = db.members[userId];
   const topup = db.topups?.[userId];
