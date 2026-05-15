@@ -24,7 +24,7 @@ async function compareFacesBuffer(buffer1, buffer2) {
   });
 
   const response = await axios.post(
-    "https://api.iapp.co.th/v3/store/ekyc/face-comparison",
+    "https://api.iapp.co.th/v3/store/ekyc/face-verification",
     formData,
     {
       headers: {
