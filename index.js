@@ -5438,9 +5438,9 @@ async function handleImage(event) {
 
             const chunks = [];
 
-            const stream = await client.getMessageContent(
-                event.message.id
-            );
+            const stream = await client.getMessageContentStream(
+    event.message.id
+);
 
             for await (const chunk of stream) {
                 chunks.push(chunk);
