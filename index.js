@@ -14,11 +14,13 @@ async function compareFacesBuffer(buffer1, buffer2) {
   const formData = new FormData();
 
   formData.append("file1", buffer1, {
-    filename: "face1.jpg"
+    filename: "face1.jpg",
+    contentType: "image/jpeg"
   });
 
   formData.append("file2", buffer2, {
-    filename: "face2.jpg"
+    filename: "face2.jpg",
+    contentType: "image/jpeg"
   });
 
   const response = await axios.post(
