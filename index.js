@@ -258,19 +258,8 @@ function isEventProcessed(db, eventId) {
   return !!db.processedEvents[eventId];
 }
 
-async function reply(replyToken, messages, userId = null) {
+async function reply(replyToken, messages) {
   const arr = Array.isArray(messages) ? messages : [messages];
-
-  if (userId) {
-    const db = loadDB();
-
-    arr.forEach(msg => {
-      if (msg.type === 'text' && !msg.text.includes('จำนวนการสืบค้น')) {
-        msg.text += buildSearchInfo(db, userId);
-      }
-    });
-  }
-
   return client.replyMessage({
     replyToken,
     messages: arr
@@ -3964,92 +3953,11 @@ Host Country (MCC) Thailand (${mcc})
 Host Provider (MNC) ${provider}`;
 }
 
-function todayKeyThai() {
-  return new Date().toLocaleDateString('th-TH', {
-    timeZone: 'Asia/Bangkok'
-  });
-}
-
-function increaseSearch(db, userId) {
-  db.searchLogs = db.searchLogs || {};
-
-function buildSearchInfo(db, userId) {
-
-  const today = todayKeyThai();
-
-  const count =
-    db.searchLogs?.[userId]?.[today] || 0;
-
-  const member =
-    db.members?.[userId] || {};
-
-  return `
--------------------
-จำนวนการสืบค้น
-[${today}] [${count}/500]
-ชื่อ:${member.name || member.fullname || '-'}
-หมดอายุ:${member.expireAt || '-'}`;
-}
-
-  const today = todayKeyThai();
-
-  if (!db.searchLogs[userId]) {
-    db.searchLogs[userId] = {};
-  }
-
-  if (!db.searchLogs[userId][today]) {
-    db.searchLogs[userId][today] = 0;
-  }
-
-  if (db.searchLogs[userId][today] >= 500) {
-    return {
-      ok: false,
-      count: db.searchLogs[userId][today],
-      date: today
-    };
-  }
-
-  db.searchLogs[userId][today]++;
-
-  saveDB(db);
-
-  return {
-    ok: true,
-    count: db.searchLogs[userId][today],
-    date: today
-  };
-}
-
 async function handleText(event) {
   const userId = event.source.userId;
   const text = (event.message.text || '').trim();
   const db = loadDB();
   const member = db.members[userId];
-  const freeCommands = [
-  'menu%',
-  'regis%',
-  'สมัคร',
-  'ดูสมาชิกรอตรวจสอบ',
-  'b!'
-];
-
-const isFreeCommand = freeCommands.some(cmd => text === cmd);
-
-if (!isFreeCommand && text.length > 0) {
-
-  const usage = increaseSearch(db, userId);
-
-  if (!usage.ok) {
-    return reply(event.replyToken, {
-      type: 'text',
-      text: `❌ คุณใช้ครบ 500 ครั้งแล้ว
-
-วันที่: ${usage.date}
-จำนวน: ${usage.count}/500`
-    });
-  }
-
-}
 
 if (text === 'b!') {
   db.bMode = db.bMode || {};
@@ -4675,51 +4583,19 @@ if (text === 'ดูสมาชิกรอตรวจสอบ') {
 
   // เช็คจดทะเบียน DTAC: d#เบอร์โทร หรือ 13หลัก
   if (text.startsWith('d#')) {
-  const phone = text.replace(/^d#/, '').trim();
+    const phone = text.replace(/^d#/, '').trim();
+    if (!phone) return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเบอร์โทรศัพท์ หรือเลขบัตร 13 หลัก เช่น d#0993606353' });
 
-  if (!phone)
-    return reply(event.replyToken,{
-      type:'text',
-      text:'❌ กรุณาระบุเบอร์โทร'
-    });
-
-  try {
-
-    const url=`https://dtac-api.jedi-r3cloud.org/dtac?phone=${encodeURIComponent(phone)}`;
-
-    const res = await axios.get(url,{
-      timeout:45000
-    });
-
-    const msg =
-      formatDtacSearch(
-        res.data,
-        phone
-      );
-
-    return reply(
-      event.replyToken,
-      {
-        type:'text',
-        text:msg
-      },
-      userId
-    );
-
-  } catch(err){
-
-    console.log(
-      'dtac lookup error:',
-      err?.response?.data || err.message
-    );
-
-    return reply(event.replyToken,{
-      type:'text',
-      text:'🔎 สืบค้นใหม่อีกครั้ง'
-    });
-
+    try {
+      const url = `https://dtac-api.jedi-r3cloud.org/dtac?phone=${encodeURIComponent(phone)}&token=jedi-api-2026`;
+      const res = await axios.get(url, { timeout: 45000 });
+      const msg = formatDtacSearch(res.data, phone);
+      return reply(event.replyToken, { type: 'text', text: msg });
+    } catch (err) {
+      console.error('dtac lookup error:', err?.response?.data || err.message);
+      return reply(event.replyToken, { type: 'text', text: '🔎 สืบค้นใหม่อีกครั้ง' });
+    }
   }
-}
 
   // ค้นหาข้อมูลบุคคลและครัวเรือน: pi%เลขบัตร
   if (text.startsWith('pi%')) {
