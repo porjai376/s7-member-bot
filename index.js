@@ -5443,7 +5443,7 @@ async function handleImage(event) {
   {
     responseType: 'arraybuffer',
     headers: {
-      Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`
+      Authorization: `Bearer ${CHANNEL_ACCESS_TOKEN}`
     }
   }
 );
