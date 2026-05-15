@@ -3990,7 +3990,7 @@ function buildSearchInfo(db,userId){
       db.searchLogs?.[userId]?.[today] || 0;
 
     return `
--------------------
+
 จำนวนการสืบค้น
 [${today}] [${count}/500]
 `;
