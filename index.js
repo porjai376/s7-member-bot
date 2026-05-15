@@ -5438,15 +5438,17 @@ async function handleImage(event) {
 
             const chunks = [];
 
-            const stream = await client.getMessageContentStream(
-    event.message.id
+            const imageRes = await axios.get(
+  `https://api-data.line.me/v2/bot/message/${event.message.id}/content`,
+  {
+    responseType: 'arraybuffer',
+    headers: {
+      Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`
+    }
+  }
 );
 
-            for await (const chunk of stream) {
-                chunks.push(chunk);
-            }
-
-            const imageBuffer = Buffer.concat(chunks);
+const imageBuffer = Buffer.from(imageRes.data);
 
             session.images.push(imageBuffer);
 
