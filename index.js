@@ -4287,6 +4287,21 @@ text:`📂 คำสั่งใช้งาน
     });
   }
 
+if (text === 'face%') {
+  db.faceCompare = db.faceCompare || {};
+  db.faceCompare[userId] = {
+    step: 1,
+    file1: '',
+    file2: ''
+  };
+  saveDB(db);
+
+  return reply(event.replyToken, {
+    type: 'text',
+    text: '📸 กรุณาส่งรูปใบหน้ารูปที่ 1'
+  });
+}
+
   if (text.startsWith('send#')) {
     if (!isAdmin(userId)) {
       return reply(event.replyToken, {
@@ -5389,6 +5404,34 @@ try {
   return;
 }
 
+async function compareFace(file1, file2) {
+  const form = new FormData();
+
+  form.append('file1', fs.createReadStream(file1));
+  form.append('file2', fs.createReadStream(file2));
+
+  const { data } = await axios.post(
+    'https://api.iapp.co.th/v3/store/ekyc/face-verification',
+    form,
+    {
+      headers: {
+        apikey: IAPP_API_KEY,
+        ...form.getHeaders()
+      },
+      timeout: 60000
+    }
+  );
+
+  return data;
+}
+
+function formatFaceCompare(data) {
+  return `🧑‍💻 เปรียบเทียบใบหน้า
+┌● ผลลัพธ์: ${data?.is_same_person ?? '-'}
+├● คะแนนความเหมือน: ${data?.confidence || data?.score || '-'}
+└● สถานะ: ${data?.message || 'success'}`;
+}
+
 async function handleImage(event) {
   const userId = event.source.userId;
   const db = loadDB();
@@ -5417,6 +5460,57 @@ async function handleImage(event) {
       const savePath = path.join(UPLOAD_DIR, fileName);
 
       await downloadLineImage(event.message.id, savePath);
+
+if (db.faceCompare?.[userId]) {
+  const state = db.faceCompare[userId];
+
+  if (state.step === 1) {
+    state.file1 = savePath;
+    state.step = 2;
+    saveDB(db);
+
+    return reply(event.replyToken,{
+      type:'text',
+      text:'✅ ได้รับรูปที่ 1 แล้ว\n📸 กรุณาส่งรูปใบหน้ารูปที่ 2'
+    });
+  }
+
+  if(state.step===2){
+    state.file2=savePath;
+
+    try{
+
+      const result=
+      await compareFace(
+        state.file1,
+        state.file2
+      );
+
+      delete db.faceCompare[userId];
+      saveDB(db);
+
+      return reply(event.replyToken,{
+        type:'text',
+        text:formatFaceCompare(result)
+      });
+
+    }catch(err){
+
+      console.log(
+       'face compare:',
+       err.response?.data || err.message
+      );
+
+      delete db.faceCompare[userId];
+      saveDB(db);
+
+      return reply(event.replyToken,{
+        type:'text',
+        text:'⌛กรุณาส่งรูปใหม่อีกครั้ง⌛'
+      });
+    }
+  }
+}
 
       topup.status = 'pending_review';
       topup.updatedAt = nowThai();
