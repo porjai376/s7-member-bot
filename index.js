@@ -5471,39 +5471,18 @@ const imageBuffer = Buffer.from(imageRes.data);
 
             return reply(event.replyToken,{
                 type:'text',
-                console.log("FACE RESULT:", JSON.stringify(result,null,2));
-
-const score =
-result?.similarity_score ??
-result?.comparison_score ??
-result?.score ??
-result?.data?.similarity_score ??
-result?.data?.comparison_score ??
-"-";
-
-const match =
-result?.match ??
-result?.status?.match ??
-result?.data?.match;
-
-const matchText =
-match===true
-? "ตรงกัน"
-: match===false
-? "ไม่ตรงกัน"
-: Number(score)>=0.8
-? "ตรงกัน"
-: "ไม่ตรงกัน";
-
-return reply(event.replyToken,{
-type:'text',
-text:
+                text:
 `📗 ผลเปรียบเทียบใบหน้า
 ---------
-├● สถานะ: ${matchText}
-├● คะแนน: ${score}
+├● สถานะ: ${
+result?.status?.match
+? 'ตรงกัน'
+: 'ไม่ตรงกัน'
+}
+├● คะแนน: ${
+result?.similarity_score ?? '-'
+}
 └● ตรวจสอบสำเร็จ`
-});
 
         } catch(err){
 
