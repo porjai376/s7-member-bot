@@ -4104,11 +4104,6 @@ answer = answer.replace(
 ''
 );
 
-   return reply(event.replyToken,{
-      type:'text',
-      text:`🤖 MEGABOT\n-  -  -  -  -  -  -\n${res.response[0].text}`
-   });
-
 if (event.type === 'message' && event.message.type === 'text') {
   const text = event.message.text.trim();
   const userId = event.source.userId;
@@ -4127,6 +4122,11 @@ if (event.type === 'message' && event.message.type === 'text') {
     });
   }
 }
+
+   return reply(event.replyToken,{
+      type:'text',
+      text:`🤖 MEGABOT\n-  -  -  -  -  -  -\n${res.response[0].text}`
+   });
 
 if (event.type === 'message' && event.message.type === 'image') {
   const userId = event.source.userId;
