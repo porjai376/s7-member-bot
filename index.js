@@ -3753,7 +3753,7 @@ function buildWelcomeWarningFlex() {
 }
 
 async function saveLineImage(messageId, filePath) {
-  const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
+  const token = process.env.CHANNEL_ACCESS_TOKEN;
 
   const res = await axios.get(
     `https://api-data.line.me/v2/bot/message/${messageId}/content`,
