@@ -5461,20 +5461,6 @@ async function handleImage(event) {
 
       await downloadLineImage(event.message.id, savePath);
 
-if (db.faceCompare?.[userId]) {
-  const state = db.faceCompare[userId];
-
-  if (state.step === 1) {
-    state.file1 = savePath;
-    state.step = 2;
-    saveDB(db);
-
-    return reply(event.replyToken,{
-      type:'text',
-      text:'✅ ได้รับรูปที่ 1 แล้ว\n📸 กรุณาส่งรูปใบหน้ารูปที่ 2'
-    });
-  }
-
   if(state.step===2){
     state.file2=savePath;
 
@@ -5564,6 +5550,60 @@ if (db.faceCompare?.[userId]) {
     const savePath = path.join(UPLOAD_DIR, fileName);
 
     await downloadLineImage(event.message.id, savePath);
+
+// ================= FACE COMPARE =================
+if (db.faceCompare?.[userId]) {
+  const state = db.faceCompare[userId];
+
+  if (state.step === 1) {
+    state.file1 = savePath;
+    state.step = 2;
+    saveDB(db);
+
+    return reply(event.replyToken,{
+      type:'text',
+      text:'✅ ได้รับรูปที่ 1 แล้ว\n📸 กรุณาส่งรูปใบหน้ารูปที่ 2'
+    });
+  }
+
+  if (state.step === 2) {
+
+    state.file2 = savePath;
+
+    try {
+
+      const result =
+      await compareFace(
+        state.file1,
+        state.file2
+      );
+
+      delete db.faceCompare[userId];
+      saveDB(db);
+
+      return reply(event.replyToken,{
+        type:'text',
+        text: formatFaceCompare(result)
+      });
+
+    } catch(err) {
+
+      console.log(
+        err.response?.data ||
+        err.message
+      );
+
+      delete db.faceCompare[userId];
+      saveDB(db);
+
+      return reply(event.replyToken,{
+        type:'text',
+        text:'⌛กรุณาส่งรูปใหม่อีกครั้ง⌛'
+      });
+    }
+  }
+}
+// ================= END =================
 
     member.status = 'pending';
     member.updatedAt = nowThai();
