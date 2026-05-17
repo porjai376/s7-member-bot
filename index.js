@@ -2792,6 +2792,7 @@ function buildMenuCarouselFlex() {
                 '┣ ╾ imsi%เลข IMSI',
                 '┣ ╾ icc%เลข ICCID',
                 '┣ ╾ wf%เลขบัตร',
+                '┣ ╾ กฏหมาย lw%คำถาม',
                 '┣ ╾ map%ละติจูด,ลองจิจูด',
                 '┣ ╾ web%ชื่อเว็บไซต์',
                 '┗ ╾ se%รหัสสาขา7-11'
