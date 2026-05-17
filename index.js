@@ -4072,6 +4072,23 @@ async function handleText(event) {
   const userId = event.source.userId;
   const text = (event.message.text || '').trim();
 
+ // ===== ff% =====
+  if (text === 'ff%') {
+
+    faceCompareSessions[userId] = {
+      step: 1,
+      images: []
+    };
+
+    return reply(event.replyToken,{
+      type:'text',
+      text:`📸 โหมดเปรียบเทียบใบหน้า
+
+กรุณาส่งรูปใบหน้าที่ 1`
+    });
+
+  }
+
   if (text.startsWith('lw%')) {
 
    const q = text.replace(/^lw%/,'').trim();
@@ -4103,25 +4120,6 @@ answer = answer.replace(
 /สวัสดีครับ!.*?ครับผม!\s*/s,
 ''
 );
-
-if (event.type === 'message' && event.message.type === 'text') {
-  const text = event.message.text.trim();
-  const userId = event.source.userId;
-
-  if (text === 'ff%') {
-    faceCompareSessions[userId] = {
-      step: 1,
-      images: []
-    };
-
-    return reply(event.replyToken, {
-      type: 'text',
-      text: `📸 โหมดเปรียบเทียบใบหน้า
-
-กรุณาส่งรูปใบหน้าที่ 1`
-    });
-  }
-}
 
    return reply(event.replyToken,{
       type:'text',
@@ -5662,6 +5660,75 @@ async function handleImage(event) {
   const db = loadDB();
   const member = db.members[userId];
   const topup = db.topups?.[userId];
+
+ // ===== ff% เปรียบเทียบใบหน้า =====
+  const session = faceCompareSessions[userId];
+
+  if (session) {
+
+    const dir = path.join(__dirname,'tmp');
+
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir);
+    }
+
+    const imagePath = path.join(
+      dir,
+      `${userId}_${Date.now()}_${session.images.length+1}.jpg`
+    );
+
+    await saveLineImage(
+      event.message.id,
+      imagePath
+    );
+
+    session.images.push(imagePath);
+
+    if(session.images.length===1){
+
+      return reply(event.replyToken,{
+        type:'text',
+        text:`✅ รับรูปใบหน้าที่ 1 แล้ว
+
+กรุณาส่งรูปใบหน้าที่ 2`
+      });
+
+    }
+
+    if(session.images.length===2){
+
+      try{
+
+        const result= await compareFace(
+          session.images[0],
+          session.images[1]
+        );
+
+        delete faceCompareSessions[userId];
+
+        fs.unlinkSync(session.images[0]);
+        fs.unlinkSync(session.images[1]);
+
+        return reply(event.replyToken,{
+          type:'text',
+          text:formatFaceCompare(result)
+        });
+
+      }catch(err){
+
+        console.log(err);
+
+        delete faceCompareSessions[userId];
+
+        return reply(event.replyToken,{
+          type:'text',
+          text:'❌ เปรียบเทียบใบหน้าไม่สำเร็จ'
+        });
+
+      }
+
+    }
+  }
 
   if (!member) {
     return reply(event.replyToken, {
