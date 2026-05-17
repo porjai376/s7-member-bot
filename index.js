@@ -5641,32 +5641,55 @@ try {
   return;
 }
 
-async function compareFace(file1, file2) {
-  const form = new FormData();
+async function compareFaces(image1Path, image2Path) {
 
-  form.append('file1', fs.createReadStream(file1));
-  form.append('file2', fs.createReadStream(file2));
+  const formData = new FormData();
 
-  const { data } = await axios.post(
-    'https://api.iapp.co.th/v3/store/ekyc/face-verification',
-    form,
+  formData.append(
+    'file1',
+    fs.createReadStream(image1Path)
+  );
+
+  formData.append(
+    'file2',
+    fs.createReadStream(image2Path)
+  );
+
+  const response = await axios.post(
+    'https://api.iapp.co.th/v3/store/ekyc/face-comparison',
+    formData,
     {
-      headers: {
-        apikey: IAPP_API_KEY,
-        ...form.getHeaders()
+      headers:{
+        apikey:IAPP_API_KEY,
+        ...formData.getHeaders()
       },
-      timeout: 60000
+      timeout:60000
     }
   );
 
-  return data;
+  return response.data;
 }
 
-function formatFaceCompare(data) {
-  return `🧑‍💻 เปรียบเทียบใบหน้า
-┌● ผลลัพธ์: ${data?.is_same_person ?? '-'}
-├● คะแนนความเหมือน: ${data?.confidence || data?.score || '-'}
-└● สถานะ: ${data?.message || 'success'}`;
+function formatFaceCompare(data){
+
+ const score =
+Math.round(
+(data.similarity_score || data.score || 0) * 100
+);
+
+ const same =
+data?.status?.match ?? (score>=70);
+
+ return `
+🕵️ เปรียบเทียบใบหน้า
+├ ผลลัพธ์: ${
+same
+? '✅ บุคคลเดียวกัน'
+: '❌ คนละบุคคล'
+}
+├ คะแนนความเหมือน: ${score}%
+└ สถานะ: ${data.message || '-'}
+ `;
 }
 
 async function handleImage(event) {
