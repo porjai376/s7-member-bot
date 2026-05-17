@@ -3753,12 +3753,14 @@ function buildWelcomeWarningFlex() {
 }
 
 async function saveLineImage(messageId, filePath) {
+  const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
+
   const res = await axios.get(
     `https://api-data.line.me/v2/bot/message/${messageId}/content`,
     {
       responseType: 'stream',
       headers: {
-        Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`
+        Authorization: `Bearer ${token}`
       }
     }
   );
@@ -5739,16 +5741,16 @@ if (session) {
 
       }catch(err){
 
-        console.log(err);
+  console.log("SAVE/COMPARE ERROR =", err.response?.data || err.message);
 
-        delete faceCompareSessions[userId];
+  delete faceCompareSessions[userId];
 
-        return reply(event.replyToken,{
-          type:'text',
-          text:'❌ เปรียบเทียบใบหน้าไม่สำเร็จ'
-        });
+  return reply(event.replyToken,{
+    type:'text',
+    text:'❌ เปรียบเทียบใบหน้าไม่สำเร็จ'
+  });
 
-      }
+}
 
     }
   }
