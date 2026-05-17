@@ -3751,6 +3751,54 @@ function buildWelcomeWarningFlex() {
   };
 }
 
+async function saveLineImage(messageId, filePath) {
+  const stream = await client.getMessageContent(messageId);
+  const writer = fs.createWriteStream(filePath);
+
+  return new Promise((resolve, reject) => {
+    stream.pipe(writer);
+    writer.on('finish', resolve);
+    writer.on('error', reject);
+  });
+}
+
+async function compareFaces(image1Path, image2Path) {
+  const formData = new FormData();
+  formData.append('file1', fs.createReadStream(image1Path));
+  formData.append('file2', fs.createReadStream(image2Path));
+  formData.append('min_score', '0.8');
+
+  const response = await axios.post(
+    'https://api.iapp.co.th/v3/store/ekyc/face-comparison',
+    formData,
+    {
+      headers: {
+        apikey: IAPP_API_KEY,
+        ...formData.getHeaders()
+      }
+    }
+  );
+
+  return response.data;
+}
+
+function formatFaceCompareResult(data) {
+  const match = data.status?.match === true;
+  const score = data.similarity_score || data.comparison_score || 0;
+  const percent = (score * 100).toFixed(2);
+
+  return `📸 ผลการเปรียบเทียบใบหน้า
+━━━━━━━━━━━━━━
+สถานะใบหน้าที่ 1: ${data.status?.face1_detected ? 'ตรวจพบ' : 'ไม่พบ'}
+สถานะใบหน้าที่ 2: ${data.status?.face2_detected ? 'ตรวจพบ' : 'ไม่พบ'}
+
+ผลลัพธ์: ${match ? '✅ ใบหน้ามีความคล้ายกัน' : '❌ ใบหน้าไม่ตรงกัน'}
+คะแนนความเหมือน: ${score}
+คิดเป็น: ${percent}%
+
+⏱️ เวลาประมวลผล: ${data.process_time || '-'} วินาที`;
+}
+
 function formatPhoneData(raw) {
   const mainId = raw.match(/📂\[\s*(.*?)\s*\]/)?.[1]?.trim() || '-';
   const name = raw.match(/👤\s*ชื่อ:\s*(.*)/)?.[1]?.trim() || 'ไม่มีข้อมูล';
@@ -4060,6 +4108,77 @@ answer = answer.replace(
       type:'text',
       text:`🤖 MEGABOT\n-  -  -  -  -  -  -\n${res.response[0].text}`
    });
+
+if (event.type === 'message' && event.message.type === 'text') {
+  const text = event.message.text.trim();
+  const userId = event.source.userId;
+
+  if (text === 'ff%') {
+    faceCompareSessions[userId] = {
+      step: 1,
+      images: []
+    };
+
+    return reply(event.replyToken, {
+      type: 'text',
+      text: `📸 โหมดเปรียบเทียบใบหน้า
+
+กรุณาส่งรูปใบหน้าที่ 1`
+    });
+  }
+}
+
+if (event.type === 'message' && event.message.type === 'image') {
+  const userId = event.source.userId;
+  const session = faceCompareSessions[userId];
+
+  if (!session) return null;
+
+  const dir = path.join(__dirname, 'tmp');
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir);
+
+  const imagePath = path.join(
+    dir,
+    `${userId}_${Date.now()}_${session.images.length + 1}.jpg`
+  );
+
+  await saveLineImage(event.message.id, imagePath);
+  session.images.push(imagePath);
+
+  if (session.images.length === 1) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: `✅ รับรูปใบหน้าที่ 1 แล้ว
+
+กรุณาส่งรูปใบหน้าที่ 2`
+    });
+  }
+
+  if (session.images.length === 2) {
+    try {
+      const result = await compareFaces(session.images[0], session.images[1]);
+
+      delete faceCompareSessions[userId];
+
+      fs.unlinkSync(session.images[0]);
+      fs.unlinkSync(session.images[1]);
+
+      return reply(event.replyToken, {
+        type: 'text',
+        text: formatFaceCompareResult(result)
+      });
+    } catch (err) {
+      delete faceCompareSessions[userId];
+
+      return reply(event.replyToken, {
+        type: 'text',
+        text: `❌ เปรียบเทียบใบหน้าไม่สำเร็จ
+
+กรุณาตรวจสอบว่ารูปทั้ง 2 รูปมีใบหน้าชัดเจน`
+      });
+    }
+  }
+}
 
 }
   const db = loadDB();
