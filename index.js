@@ -4047,6 +4047,14 @@ async function handleText(event) {
       });
    }
 
+let answer = res.response[0].text;
+
+// ลบข้อความเปิดของทนอย
+answer = answer.replace(
+/สวัสดีครับ!.*?ครับผม!\s*/s,
+''
+);
+
    return reply(event.replyToken,{
       type:'text',
       text:`🤖 MEGABOT\n-  -  -  -  -  -  -\n${res.response[0].text}`
