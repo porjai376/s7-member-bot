@@ -3779,7 +3779,7 @@ async function compareFaces(image1Path, image2Path) {
   const formData = new FormData();
   formData.append('file1', fs.createReadStream(image1Path));
   formData.append('file2', fs.createReadStream(image2Path));
-  formData.append('min_score', '0.8');
+  formData.append('min_score', '0.5');
 
   const response = await axios.post(
     'https://api.iapp.co.th/v3/store/ekyc/face-comparison',
@@ -5662,10 +5662,14 @@ async function compareFace(file1, file2) {
 }
 
 function formatFaceCompare(data) {
-  return `🧑‍💻 เปรียบเทียบใบหน้า
-┌● ผลลัพธ์: ${data?.is_same_person ?? '-'}
-├● คะแนนความเหมือน: ${data?.confidence || data?.score || '-'}
-└● สถานะ: ${data?.message || 'success'}`;
+  const score = data.similarity_score || data.comparison_score || 0;
+  const percent = score * 100;
+  const match = percent >= 50;
+
+  return `📸 เปรียบเทียบใบหน้า
+┌ ผลลัพธ์: ${match ? '✅ บุคคลเดียวกัน' : '❌ คนละบุคคล'}
+├ คะแนนความเหมือน: ${percent.toFixed(2)}%
+└ สถานะ: ${data.message || 'success'}`;
 }
 
 async function handleImage(event) {
