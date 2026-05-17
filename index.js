@@ -4039,7 +4039,7 @@ async function handleText(event) {
    await reply(
    event.replyToken,{
       type:'text',
-      text:'⚖️ กำลังสอบถามกฎหมาย...'
+      text:'🤖 MEGA ประมวลสักครู่...'
    });
 
    const result=
@@ -4061,7 +4061,7 @@ async function handleText(event) {
    userId,{
       type:'text',
       text:
-`⚖️ ทนอยตอบ
+`🤖 MEGABOT...
 
 คำถาม:
 ${query}
