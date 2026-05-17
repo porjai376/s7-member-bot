@@ -5749,7 +5749,7 @@ if (session) {
 
       try{
 
-        const result= await compareFace(
+        const result= await compareFaces(
           session.images[0],
           session.images[1]
         );
