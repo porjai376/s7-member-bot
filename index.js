@@ -6,6 +6,7 @@ const path = require('path');
 const axios = require('axios');
 const https = require('https');
 const crypto = require('crypto');
+const IAPP_API_KEY = 'iapp_live_ccd35e461ddb1ba1f44096afde50cff5118c2013eb30491047d7a5cd69dcc443';
 
 async function fetchHlrLookup(msisdn) {
   const key = 'fcd01b61e422';
@@ -32,6 +33,40 @@ async function fetchHlrLookup(msisdn) {
     if (error.response) return error.response;
     throw error;
   }
+}
+
+const IAPP_API_KEY = 'iapp_live_ccd35e461ddb1ba1f44096afde50cff5118c2013eb30491047d7a5cd69dcc443';
+
+async function askLaw(query) {
+
+   try {
+
+      const { data } = await axios.post(
+         'https://api.iapp.co.th/thanoy',
+         {
+            query: query
+         },
+         {
+            headers:{
+               apikey:IAPP_API_KEY,
+               'Content-Type':'application/json'
+            },
+            timeout:60000
+         }
+      );
+
+      return data;
+
+   } catch(err){
+
+      console.log(
+         'law error:',
+         err.response?.data || err.message
+      );
+
+      return null;
+   }
+
 }
 
 const app = express();
@@ -3953,9 +3988,90 @@ Host Country (MCC) Thailand (${mcc})
 Host Provider (MNC) ${provider}`;
 }
 
+async function askLaw(query){
+
+  try{
+
+    const {data} =
+    await axios.post(
+      'https://api.iapp.co.th/thanoy',
+      {
+        query
+      },
+      {
+        headers:{
+          apikey:IAPP_API_KEY,
+          'Content-Type':'application/json'
+        },
+        timeout:60000
+      }
+    );
+
+    return data;
+
+  }catch(err){
+
+    console.log(
+      'law error:',
+      err.response?.data ||
+      err.message
+    );
+
+    return null;
+  }
+}
+
 async function handleText(event) {
   const userId = event.source.userId;
   const text = (event.message.text || '').trim();
+
+  if(text.startsWith('lw%')){
+
+   const query=
+   text.replace(/^lw%/,'').trim();
+
+   if(!query){
+      return reply(
+      event.replyToken,{
+         type:'text',
+         text:'❌ กรุณาระบุคำถาม'
+      });
+   }
+
+   await reply(
+   event.replyToken,{
+      type:'text',
+      text:'⚖️ กำลังสอบถามกฎหมาย...'
+   });
+
+   const result=
+   await askLaw(query);
+
+   if(!result){
+      return push(
+      userId,{
+        type:'text',
+        text:'❌ ไม่สามารถเชื่อมต่อระบบได้'
+      });
+   }
+
+   const answer=
+   result?.response?.[0]?.text
+   || 'ไม่พบคำตอบ';
+
+   return push(
+   userId,{
+      type:'text',
+      text:
+`⚖️ ทนอยตอบ
+
+คำถาม:
+${query}
+
+${answer}`
+   });
+
+}
   const db = loadDB();
   const member = db.members[userId];
 
