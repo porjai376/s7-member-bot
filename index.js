@@ -35,8 +35,6 @@ async function fetchHlrLookup(msisdn) {
   }
 }
 
-const IAPP_API_KEY = 'iapp_live_ccd35e461ddb1ba1f44096afde50cff5118c2013eb30491047d7a5cd69dcc443';
-
 async function askLaw(query) {
 
    try {
