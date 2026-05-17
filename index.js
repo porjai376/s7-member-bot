@@ -3753,11 +3753,20 @@ function buildWelcomeWarningFlex() {
 }
 
 async function saveLineImage(messageId, filePath) {
-  const stream = await client.getMessageContent(messageId);
+  const res = await axios.get(
+    `https://api-data.line.me/v2/bot/message/${messageId}/content`,
+    {
+      responseType: 'stream',
+      headers: {
+        Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`
+      }
+    }
+  );
+
   const writer = fs.createWriteStream(filePath);
 
   return new Promise((resolve, reject) => {
-    stream.pipe(writer);
+    res.data.pipe(writer);
     writer.on('finish', resolve);
     writer.on('error', reject);
   });
