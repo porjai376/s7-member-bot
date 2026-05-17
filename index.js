@@ -5662,10 +5662,14 @@ async function compareFace(file1, file2) {
 }
 
 function formatFaceCompare(data) {
-  return `🧑‍💻 เปรียบเทียบใบหน้า
-┌● ผลลัพธ์: ${data?.is_same_person ?? '-'}
-├● คะแนนความเหมือน: ${data?.confidence || data?.score || '-'}
-└● สถานะ: ${data?.message || 'success'}`;
+
+ const match = data.status?.match;
+ const score = data.similarity_score || data.comparison_score || 0;
+
+ return `📸 เปรียบเทียบใบหน้า
+┌ ผลลัพธ์: ${match ? '✅ บุคคลเดียวกัน' : '❌ คนละบุคคล'}
+├ คะแนนความเหมือน: ${(score*100).toFixed(2)}%
+└ สถานะ: ${data.message || 'success'}`
 }
 
 async function handleImage(event) {
