@@ -7,6 +7,7 @@ const axios = require('axios');
 const https = require('https');
 const crypto = require('crypto');
 const IAPP_API_KEY = 'iapp_live_ccd35e461ddb1ba1f44096afde50cff5118c2013eb30491047d7a5cd69dcc443';
+const faceCompareSessions = {};
 
 async function fetchHlrLookup(msisdn) {
   const key = 'fcd01b61e422';
