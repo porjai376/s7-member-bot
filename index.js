@@ -5665,7 +5665,11 @@ async function handleImage(event) {
  // ===== ff% เปรียบเทียบใบหน้า =====
   const session = faceCompareSessions[userId];
 
-  if (session) {
+console.log("SESSION =", session);
+
+if (session) {
+
+    console.log("เข้าโหมด ff");
 
     const dir = path.join(__dirname,'tmp');
 
@@ -5678,12 +5682,21 @@ async function handleImage(event) {
       `${userId}_${Date.now()}_${session.images.length+1}.jpg`
     );
 
+    console.log("กำลังโหลดรูป...");
+
     await saveLineImage(
       event.message.id,
       imagePath
     );
 
+    console.log("บันทึกรูปแล้ว");
+
     session.images.push(imagePath);
+
+    console.log(
+      "จำนวนรูป:",
+      session.images.length
+    );
 
     if(session.images.length===1){
 
