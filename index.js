@@ -4023,50 +4023,33 @@ async function handleText(event) {
   const userId = event.source.userId;
   const text = (event.message.text || '').trim();
 
-  if(text.startsWith('lw%')){
+  if (text.startsWith('lw%')) {
 
-   const query=
-   text.replace(/^lw%/,'').trim();
+   const q = text.replace(/^lw%/,'').trim();
 
-   if(!query){
-      return reply(
-      event.replyToken,{
+   if(!q){
+      return reply(event.replyToken,{
          type:'text',
-         text:'❌ กรุณาระบุคำถาม'
+         text:'❌ ใช้งาน: lw%คำถาม'
       });
    }
 
-   await reply(
-   event.replyToken,{
-      type:'text',
-      text:'🤖 MEGA ประมวลสักครู่...'
-   });
+   const res=await askLaw(q);
 
-   const result=
-   await askLaw(query);
-
-   if(!result){
-      return push(
-      userId,{
-        type:'text',
-        text:'❌ ไม่สามารถเชื่อมต่อระบบได้'
+   if(
+      !res ||
+      !res.response ||
+      !res.response.length
+   ){
+      return reply(event.replyToken,{
+         type:'text',
+         text:'❌ ไม่สามารถติดต่อระบบกฎหมายได้'
       });
    }
 
-   const answer=
-   result?.response?.[0]?.text
-   || 'ไม่พบคำตอบ';
-
-   return push(
-   userId,{
+   return reply(event.replyToken,{
       type:'text',
-      text:
-`🤖 MEGABOT...
-
-คำถาม:
-${query}
-
-${answer}`
+      text:`🤖 MEGABOT\n-  -  -  -  -  -  -\n${res.response[0].text}`
    });
 
 }
