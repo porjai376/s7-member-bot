@@ -11,35 +11,6 @@ const IAPP_API_KEY = 'iapp_live_ccd35e461ddb1ba1f44096afde50cff5118c2013eb304910
 const faceCompareSessions = {};
 const plateOcrSessions = {};
 
-const fs = require('fs');
-
-let dtacPermissions = {};
-
-try{
-  dtacPermissions =
-  JSON.parse(
-    fs.readFileSync(
-      './dtac_permissions.json',
-      'utf8'
-    )
-  );
-}catch{
-  dtacPermissions={};
-}
-
-function saveDtacPermissions(){
-
- fs.writeFileSync(
-   './dtac_permissions.json',
-   JSON.stringify(
-      dtacPermissions,
-      null,
-      2
-   )
- );
-
-}
-
 async function fetchHlrLookup(msisdn) {
   const key = 'fcd01b61e422';
   const secret = 's7hE-jh43-C4hN-F!49-B!eC-e*7C';
@@ -4984,86 +4955,21 @@ if (text === 'face%') {
     });
   }
 
-const text = event.message.text.trim();
-const userId = event.source.userId;
-
   // เช็คจดทะเบียน DTAC: d#เบอร์โทร หรือ 13หลัก
   if (text.startsWith('d#')) {
-
-  const db = loadDB();
-  const member = db.members?.[userId];
-
-  const registeredPhone =
-    member?.phone ||
-    member?.tel ||
-    member?.mobile ||
-    '';
-
-  const alreadyApproved =
-    member?.status === 'approved';
-
-  const extraPermission =
-    dtacPermissions?.[registeredPhone] === true;
-
-  if (!alreadyApproved && !extraPermission) {
-
-  return reply(event.replyToken,{
-    type:'text',
-    text:`⛔ยังไม่มีสิทธิ์สืบค้นคำสั่ง DTAC⛔
-
-📂ต้องการใช้งานติดต่อ admin📂
-Contact Admin:
-https://line.me/ti/p/mVmD-ncfvU
-------------`
-  });
-
-}
-
-  const phone = text.replace(/^d#/, '').trim();
-
-  if (!phone) {
-    return reply(event.replyToken, {
-      type: 'text',
-      text: '❌ กรุณาระบุเบอร์โทรศัพท์ หรือเลขบัตร 13 หลัก เช่น d#0993606353'
-    });
-  }
-
     const phone = text.replace(/^d#/, '').trim();
+    if (!phone) return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเบอร์โทรศัพท์ หรือเลขบัตร 13 หลัก เช่น d#0993606353' });
 
-if (!phone) {
-  return reply(event.replyToken, {
-    type:'text',
-    text:'❌ กรุณาระบุเบอร์โทรศัพท์ หรือเลขบัตร 13 หลัก เช่น d#0993606353'
-  });
-}
-
-try {
-  const url = `https://dtac-api.jedi-r3cloud.org/dtac?phone=${encodeURIComponent(phone)}&token=jedi-api-2026`;
-
-  const res = await axios.get(url, {
-    timeout:45000
-  });
-
-  const msg = formatDtacSearch(res.data, phone);
-
-  return reply(event.replyToken,{
-    type:'text',
-    text:msg
-  });
-
-} catch (err) {
-
-  console.error(
-    'dtac lookup error:',
-    err?.response?.data || err.message
-  );
-
-  return reply(event.replyToken,{
-    type:'text',
-    text:'🔎 สืบค้นใหม่อีกครั้ง'
-  });
-
-}
+    try {
+      const url = `https://dtac-api.jedi-r3cloud.org/dtac?phone=${encodeURIComponent(phone)}&token=jedi-api-2026`;
+      const res = await axios.get(url, { timeout: 45000 });
+      const msg = formatDtacSearch(res.data, phone);
+      return reply(event.replyToken, { type: 'text', text: msg });
+    } catch (err) {
+      console.error('dtac lookup error:', err?.response?.data || err.message);
+      return reply(event.replyToken, { type: 'text', text: '🔎 สืบค้นใหม่อีกครั้ง' });
+    }
+  }
 
   // ค้นหาข้อมูลบุคคลและครัวเรือน: pi%เลขบัตร
   if (text.startsWith('pi%')) {
