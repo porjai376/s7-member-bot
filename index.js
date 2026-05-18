@@ -5664,12 +5664,18 @@ async function compareFace(file1, file2) {
 
 function formatFaceCompare(data){
 
-  const score = Math.round(
-    (data.similarity_score ||
-     data.comparison_score ||
-     data.score ||
-     0) * 100
-  );
+  let score =
+      data.similarity_score ??
+      data.comparison_score ??
+      data.score ??
+      0;
+
+  // ถ้าเป็น 0.69 ค่อยแปลงเป็น 69
+  if(score <= 1){
+     score = score * 100;
+  }
+
+  score = Math.round(score);
 
   const same = score >= 50;
 
@@ -5681,6 +5687,7 @@ same
 }
 ├● คะแนนความเหมือน: ${score}%
 └● สถานะ: ${data.message || '-'}
+
 - - - - - - - - - - - - -
 ⚠️ใช้ประกอบการวิเคราะห์
 การสืบสวนเท่านั้น !!`;
