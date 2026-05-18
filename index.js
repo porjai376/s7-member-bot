@@ -4200,6 +4200,7 @@ const img1 =
 const img2 =
 `${BASE_URL}/tmp/${path.basename(session.images[1])}`;
 
+console.log("FACE RESULT =", result);
 console.log("BASE_URL =", BASE_URL);
 console.log("IMG1 URL =", img1);
 console.log("IMG2 URL =", img2);
@@ -4214,15 +4215,15 @@ return reply(
  )
 );
     } catch (err) {
-      delete faceCompareSessions[userId];
+  console.log("FLEX/COMPARE ERROR =", err.response?.data || err.message || err);
 
-      return reply(event.replyToken, {
-        type: 'text',
-        text: `❌ เปรียบเทียบใบหน้าไม่สำเร็จ
+  delete faceCompareSessions[userId];
 
-กรุณาตรวจสอบว่ารูปทั้ง 2 รูปมีใบหน้าชัดเจน`
-      });
-    }
+  return reply(event.replyToken, {
+    type: 'text',
+    text: '❌ เปรียบเทียบใบหน้าไม่สำเร็จ'
+  });
+}
   }
 }
 
