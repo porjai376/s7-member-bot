@@ -5662,11 +5662,25 @@ async function compareFace(file1, file2) {
   return data;
 }
 
-function formatFaceCompare(data) {
+function formatFaceCompare(data){
+
+  const score = Math.round(
+    (data.similarity_score ||
+     data.comparison_score ||
+     data.score ||
+     0) * 100
+  );
+
+  const same = score >= 50;
+
   return `🧑‍💻 เปรียบเทียบใบหน้า
-┌● ผลลัพธ์: ${data?.is_same_person ?? '-'}
-├● คะแนนความเหมือน: ${data?.confidence || data?.score || '-'}
-└● สถานะ: ${data?.message || 'success'}`;
+┌● ผลลัพธ์: ${
+same
+? '✅ บุคคลเดียวกัน'
+: '❌ คนละบุคคล'
+}
+├● คะแนนความเหมือน: ${score}%
+└● สถานะ: ${data.message || '-'}`;
 }
 
 async function handleImage(event) {
