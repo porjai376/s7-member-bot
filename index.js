@@ -153,14 +153,21 @@ function loadDB() {
     if (!db.members) db.members = {};
     if (!db.processedEvents) db.processedEvents = {};
     if (!db.topups) db.topups = {};
+    if (!db.dtacPermissions) db.dtacPermissions = {};
     return db;
   } catch (e) {
-    return { members: {}, processedEvents: {}, topups: {} };
+    return {
+  members: {},
+  processedEvents: {},
+  topups: {},
+  dtacPermissions: {}
+};
   }
 }
 
 function saveDB(db) {
   if (!db.topups) db.topups = {};
+  if (!db.dtacPermissions) db.dtacPermissions = {};
   fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2), 'utf8');
 }
 
@@ -4087,9 +4094,102 @@ async function askLaw(query){
   }
 }
 
+function findMemberByPhone(db, phone) {
+  const cleanPhone = String(phone || '').replace(/\D/g, '');
+
+  const found = Object.entries(db.members || {}).find(([uid, member]) => {
+    const memberPhone = String(
+      member.phone || member.tel || member.mobile || ''
+    ).replace(/\D/g, '');
+
+    return memberPhone === cleanPhone;
+  });
+
+  if (!found) return null;
+
+  return {
+    userId: found[0],
+    member: found[1]
+  };
+}
+
 async function handleText(event) {
   const userId = event.source.userId;
   const text = (event.message.text || '').trim();
+
+  const db = loadDB();
+  const member = db.members?.[userId];
+
+if (text.startsWith('อนุญาติดีแทค#')) {
+  if (!isAdmin(userId)) {
+    return reply(event.replyToken,{
+      type:'text',
+      text:'❌ คำสั่งนี้สำหรับแอดมิน'
+    });
+  }
+
+  const phone =
+  text.replace(/^อนุญาติดีแทค#/,'').trim();
+
+  const found =
+  findMemberByPhone(db,phone);
+
+  if(!found){
+    return reply(event.replyToken,{
+      type:'text',
+      text:'❌ ไม่พบสมาชิก'
+    });
+  }
+
+  db.dtacPermissions[found.userId]=true;
+
+  saveDB(db);
+
+  return reply(event.replyToken,{
+    type:'text',
+    text:
+`✅ อนุญาต DTAC แล้ว
+
+👤 ${found.member.fullname || '-'}
+📱 ${phone}`
+  });
+}
+
+if (text.startsWith('ยกเลิกดีแทค#')) {
+
+  if(!isAdmin(userId)){
+    return reply(event.replyToken,{
+      type:'text',
+      text:'❌ คำสั่งนี้สำหรับแอดมิน'
+    });
+  }
+
+  const phone =
+  text.replace(/^ยกเลิกดีแทค#/,'').trim();
+
+  const found =
+  findMemberByPhone(db,phone);
+
+  if(!found){
+    return reply(event.replyToken,{
+      type:'text',
+      text:'❌ ไม่พบสมาชิก'
+    });
+  }
+
+  delete db.dtacPermissions[found.userId];
+
+  saveDB(db);
+
+  return reply(event.replyToken,{
+    type:'text',
+    text:
+`⛔ ยกเลิกสิทธิ์ DTAC แล้ว
+
+👤 ${found.member.fullname || '-'}
+📱 ${phone}`
+  });
+}
 
  // ===== ff% =====
   if (text === 'ff%') {
@@ -4957,6 +5057,23 @@ if (text === 'face%') {
 
   // เช็คจดทะเบียน DTAC: d#เบอร์โทร หรือ 13หลัก
   if (text.startsWith('d#')) {
+
+const canUseDtac =
+  member?.status === 'approved' ||
+  db.dtacPermissions?.[userId] === true;
+
+if (!canUseDtac) {
+  return reply(event.replyToken, {
+    type: 'text',
+    text: `⛔ยังไม่มีสิทธิ์สืบค้นคำสั่ง DTAC⛔
+
+📂ต้องการใช้งานติดต่อ admin📂
+Contact Admin:
+https://line.me/ti/p/mVmD-ncfvU
+------------`
+  });
+}
+
     const phone = text.replace(/^d#/, '').trim();
     if (!phone) return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเบอร์โทรศัพท์ หรือเลขบัตร 13 หลัก เช่น d#0993606353' });
 
