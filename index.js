@@ -5772,14 +5772,12 @@ function buildFaceCompareFlex(img1, img2, resultText) {
             layout: 'horizontal',
             spacing: 'sm',
             margin: 'lg',
-
             contents: [
 
               {
                 type: 'box',
                 layout: 'vertical',
                 flex: 1,
-
                 contents: [
 
                   {
@@ -5804,7 +5802,6 @@ function buildFaceCompareFlex(img1, img2, resultText) {
                 type: 'box',
                 layout: 'vertical',
                 flex: 1,
-
                 contents: [
 
                   {
