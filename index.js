@@ -4120,6 +4120,38 @@ async function handleText(event) {
   const db = loadDB();
   const member = db.members?.[userId];
 
+// ===== คำสั่งแอดมินเปิดสิทธิ์ DTAC =====
+if(/^อนุญาติดีแทค#/.test(text)){
+
+const phone=text.replace(/^อนุญาติดีแทค#/,'').trim();
+
+db.dtacPermissions=db.dtacPermissions||{};
+db.dtacPermissions[phone]=true;
+
+saveDB(db);
+
+return reply(event.replyToken,{
+type:'text',
+text:`✅ อนุญาต ${phone} ใช้ d# แล้ว`
+});
+}
+
+
+// ===== คำสั่งแอดมินยกเลิกสิทธิ์ =====
+if(/^ยกเลิกดีแทค#/.test(text)){
+
+const phone=text.replace(/^ยกเลิกดีแทค#/,'').trim();
+
+delete db.dtacPermissions[phone];
+
+saveDB(db);
+
+return reply(event.replyToken,{
+type:'text',
+text:`❌ ยกเลิก ${phone} แล้ว`
+});
+}
+
 if (text.startsWith('อนุญาติดีแทค#')) {
   if (!isAdmin(userId)) {
     return reply(event.replyToken,{
@@ -5056,35 +5088,68 @@ if (text === 'face%') {
   // เช็คจดทะเบียน DTAC: d#เบอร์โทร หรือ 13หลัก
   if (text.startsWith('d#')) {
 
-const canUseDtac =
-  member?.status === 'approved' ||
-  db.dtacPermissions?.[userId] === true;
+const db = loadDB();
+const member = db.members?.[userId];
 
-if (!canUseDtac) {
-  return reply(event.replyToken, {
-    type: 'text',
-    text: `⛔ยังไม่มีสิทธิ์สืบค้นคำสั่ง DTAC⛔
+const registeredPhone =
+member?.phone ||
+member?.tel ||
+member?.mobile ||
+'';
+
+// สมาชิกเดิมที่ผ่านอนุมัติ
+const alreadyApproved =
+member?.status === 'approved';
+
+// สิทธิ์เปิดเพิ่มโดยแอดมิน
+const extraPermission =
+db.dtacPermissions?.[registeredPhone] === true;
+
+
+// ไม่มีสิทธิ์
+if (!alreadyApproved && !extraPermission) {
+
+return reply(event.replyToken,{
+type:'text',
+text:`⛔ยังไม่มีสิทธิ์สืบค้นคำสั่ง DTAC⛔
 
 📂ต้องการใช้งานติดต่อ admin📂
 Contact Admin:
-https://line.me/ti/p/mVmD-ncfvU
-------------`
-  });
+https://line.me/ti/p/mVmD-ncfvU`
+});
+
 }
 
-    const phone = text.replace(/^d#/, '').trim();
-    if (!phone) return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเบอร์โทรศัพท์ หรือเลขบัตร 13 หลัก เช่น d#0993606353' });
+const phone = text.replace(/^d#/, '').trim();
 
-    try {
-      const url = `https://dtac-api.jedi-r3cloud.org/dtac?phone=${encodeURIComponent(phone)}&token=jedi-api-2026`;
-      const res = await axios.get(url, { timeout: 45000 });
-      const msg = formatDtacSearch(res.data, phone);
-      return reply(event.replyToken, { type: 'text', text: msg });
-    } catch (err) {
-      console.error('dtac lookup error:', err?.response?.data || err.message);
-      return reply(event.replyToken, { type: 'text', text: '🔎 สืบค้นใหม่อีกครั้ง' });
-    }
-  }
+if (!phone){
+return reply(event.replyToken,{
+type:'text',
+text:'❌ กรุณาระบุเบอร์'
+});
+}
+
+try{
+const url=`https://dtac-api.jedi-r3cloud.org/dtac?phone=${encodeURIComponent(phone)}&token=jedi-api-2026`;
+
+const res=await axios.get(url,{timeout:45000});
+
+const msg=formatDtacSearch(res.data,phone);
+
+return reply(event.replyToken,{
+type:'text',
+text:msg
+});
+
+}catch(err){
+
+return reply(event.replyToken,{
+type:'text',
+text:'🔎 สืบค้นใหม่อีกครั้ง'
+});
+
+}
+}
 
   // ค้นหาข้อมูลบุคคลและครัวเรือน: pi%เลขบัตร
   if (text.startsWith('pi%')) {
