@@ -72,13 +72,6 @@ async function askLaw(query) {
 
 const app = express();
 
-app.use(
- '/tmp',
- express.static(
-   path.join(__dirname,'tmp')
- )
-);
-
 const CHANNEL_ACCESS_TOKEN = process.env.CHANNEL_ACCESS_TOKEN;
 const CHANNEL_SECRET = process.env.CHANNEL_SECRET;
 const PORT = process.env.PORT || 3000;
@@ -3784,38 +3777,23 @@ async function saveLineImage(messageId, filePath) {
 }
 
 async function compareFaces(image1Path, image2Path) {
+  const formData = new FormData();
+  formData.append('file1', fs.createReadStream(image1Path));
+  formData.append('file2', fs.createReadStream(image2Path));
+  formData.append('min_score', '0.8');
 
- const formData = new FormData();
+  const response = await axios.post(
+    'https://api.iapp.co.th/v3/store/ekyc/face-comparison',
+    formData,
+    {
+      headers: {
+        apikey: IAPP_API_KEY,
+        ...formData.getHeaders()
+      }
+    }
+  );
 
- formData.append(
-   'file1',
-   fs.createReadStream(image1Path)
- );
-
- formData.append(
-   'file2',
-   fs.createReadStream(image2Path)
- );
-
- console.log("กำลังส่ง API face-comparison...");
- console.log("รูป1 =", image1Path);
- console.log("รูป2 =", image2Path);
-
- const response = await axios.post(
-   'https://api.iapp.co.th/v3/store/ekyc/face-comparison',
-   formData,
-   {
-      headers:{
-         apikey:IAPP_API_KEY,
-         ...formData.getHeaders()
-      },
-      timeout:60000
-   }
- );
-
- console.log("API ตอบกลับ =", response.data);
-
- return response.data;
+  return response.data;
 }
 
 function formatFaceCompareResult(data) {
@@ -4201,44 +4179,27 @@ if (event.type === 'message' && event.message.type === 'image') {
 
   if (session.images.length === 2) {
     try {
-      const result = await compareFaces(
-  session.images[0],
-  session.images[1]
-);
+      const result = await compareFaces(session.images[0], session.images[1]);
 
-const textResult =
-formatFaceCompare(result);
+      delete faceCompareSessions[userId];
 
-const img1 =
-`${BASE_URL}/tmp/${path.basename(session.images[0])}`;
+      fs.unlinkSync(session.images[0]);
+      fs.unlinkSync(session.images[1]);
 
-const img2 =
-`${BASE_URL}/tmp/${path.basename(session.images[1])}`;
-
-console.log("FACE RESULT =", result);
-console.log("BASE_URL =", BASE_URL);
-console.log("IMG1 URL =", img1);
-console.log("IMG2 URL =", img2);
-console.log("TEXT RESULT =", textResult);
-
-return reply(
- event.replyToken,
- buildFaceCompareFlex(
-   img1,
-   img2,
-   textResult
- )
-);
+      return reply(event.replyToken, {
+        type: 'text',
+        text: formatFaceCompareResult(result)
+      });
     } catch (err) {
-  console.log("FLEX/COMPARE ERROR =", err.response?.data || err.message || err);
+      delete faceCompareSessions[userId];
 
-  delete faceCompareSessions[userId];
+      return reply(event.replyToken, {
+        type: 'text',
+        text: `❌ เปรียบเทียบใบหน้าไม่สำเร็จ
 
-  return reply(event.replyToken, {
-    type: 'text',
-    text: '❌ เปรียบเทียบใบหน้าไม่สำเร็จ'
-  });
-}
+กรุณาตรวจสอบว่ารูปทั้ง 2 รูปมีใบหน้าชัดเจน`
+      });
+    }
   }
 }
 
@@ -5703,7 +5664,7 @@ async function compareFace(file1, file2) {
   form.append('file2', fs.createReadStream(file2));
 
   const { data } = await axios.post(
-    'https://api.iapp.co.th/v3/store/ekyc/face-comparison',
+    'https://api.iapp.co.th/v3/store/ekyc/face-verification',
     form,
     {
       headers: {
@@ -5786,95 +5747,6 @@ function formatPlateOcr(data) {
 - - - - - - - - - - - - -
 ⚠️ใช้ประกอบการวิเคราะห์
 การสืบสวนเท่านั้น !!`;
-}
-
-function buildFaceCompareFlex(img1, img2, resultText) {
-  return {
-    type: 'flex',
-    altText: 'ผลเปรียบเทียบใบหน้า',
-    contents: {
-      type: 'bubble',
-      size: 'giga',
-      body: {
-        type: 'box',
-        layout: 'vertical',
-        contents: [
-
-          {
-            type:'text',
-            text:'🧑‍💻 ผลเปรียบเทียบใบหน้า',
-            weight:'bold',
-            size:'lg',
-            align:'center'
-          },
-
-          {
-            type:'box',
-            layout:'horizontal',
-            margin:'lg',
-            spacing:'sm',
-            contents:[
-
-              {
-                type:'box',
-                layout:'vertical',
-                contents:[
-                  {
-                    type:'image',
-                    url:img1,
-                    size:'full',
-                    aspectMode:'cover',
-                    aspectRatio:'1:1'
-                  },
-                  {
-                    type:'text',
-                    text:'ภาพที่ 1',
-                    size:'xs',
-                    align:'center'
-                  }
-                ]
-              },
-
-              {
-                type:'box',
-                layout:'vertical',
-                contents:[
-                  {
-                    type:'image',
-                    url:img2,
-                    size:'full',
-                    aspectMode:'cover',
-                    aspectRatio:'1:1'
-                  },
-                  {
-                    type:'text',
-                    text:'ภาพที่ 2',
-                    size:'xs',
-                    align:'center'
-                  }
-                ]
-              }
-
-            ]
-          },
-
-          {
-            type:'separator',
-            margin:'lg'
-          },
-
-          {
-            type:'text',
-            text:resultText,
-            wrap:true,
-            margin:'lg',
-            size:'sm'
-          }
-
-        ]
-      }
-    }
-  }
 }
 
 async function handleImage(event) {
