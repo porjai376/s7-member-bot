@@ -4200,13 +4200,17 @@ const img1 =
 const img2 =
 `${process.env.BASE_URL}/tmp/${path.basename(session.images[1])}`;
 
+console.log("IMG1 URL =", img1);
+console.log("IMG2 URL =", img2);
+console.log("TEXT RESULT =", textResult);
+
 return reply(
-  event.replyToken,
-  buildFaceCompareFlex(
-    img1,
-    img2,
-    textResult
-  )
+event.replyToken,
+buildFaceCompareFlex(
+   img1,
+   img2,
+   textResult
+ )
 );
     } catch (err) {
       delete faceCompareSessions[userId];
