@@ -9,6 +9,7 @@ const https = require('https');
 const crypto = require('crypto');
 const IAPP_API_KEY = 'iapp_live_ccd35e461ddb1ba1f44096afde50cff5118c2013eb30491047d7a5cd69dcc443';
 const faceCompareSessions = {};
+const plateOcrSessions = {};
 
 async function fetchHlrLookup(msisdn) {
   const key = 'fcd01b61e422';
@@ -4102,6 +4103,17 @@ async function handleText(event) {
 
   }
 
+if (text === 'pt%') {
+  plateOcrSessions[userId] = true;
+
+  return reply(event.replyToken, {
+    type: 'text',
+    text: `🚘 โหมดอ่านป้ายทะเบียน
+
+กรุณาส่งรูปรถหรือป้ายทะเบียน`
+  });
+}
+
   if (text.startsWith('lw%')) {
 
    const q = text.replace(/^lw%/,'').trim();
@@ -5695,6 +5707,46 @@ same
 การสืบสวนเท่านั้น !!`;
 }
 
+async function readPlateOcr(imagePath) {
+  const formData = new FormData();
+
+  formData.append('file', fs.createReadStream(imagePath));
+
+  const response = await axios.post(
+    'https://api.iapp.co.th/license-plate-recognition/file',
+    formData,
+    {
+      headers: {
+        apikey: IAPP_API_KEY,
+        ...formData.getHeaders()
+      },
+      timeout: 60000
+    }
+  );
+
+  return response.data;
+}
+
+function formatPlateOcr(data) {
+  return `🚘 ผลอ่านป้ายทะเบียน
+┌● ป้ายทะเบียน: ${data.lp_number || '-'}
+├● จังหวัด: ${data.province || '-'}
+├● ประเทศ: ${data.country || '-'}
+├● ความมั่นใจ: ${data.conf || '-'}%
+├● พบยานพาหนะ: ${data.is_vehicle || '-'}
+├● ป้ายหาย/ไม่ชัด: ${data.is_missing_plate || '-'}
+├● ยี่ห้อ: ${data.vehicle_brand || '-'}
+├● รุ่น: ${data.vehicle_model || '-'}
+├● สี: ${data.vehicle_color || '-'}
+├● ประเภทรถ: ${data.vehicle_body_type || '-'}
+├● ปีรถ: ${data.vehicle_year || '-'}
+└● สถานะ: ${data.message || '-'}
+
+- - - - - - - - - - - - -
+⚠️ใช้ประกอบการวิเคราะห์
+การสืบสวนเท่านั้น !!`;
+}
+
 async function handleImage(event) {
   const userId = event.source.userId;
   const db = loadDB();
@@ -5782,6 +5834,41 @@ if (session) {
 
     }
   }
+
+if (plateOcrSessions[userId]) {
+  const dir = path.join(__dirname, 'tmp');
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+
+  const imagePath = path.join(
+    dir,
+    `${userId}_${Date.now()}_plate.jpg`
+  );
+
+  try {
+    await saveLineImage(event.message.id, imagePath);
+
+    const result = await readPlateOcr(imagePath);
+
+    delete plateOcrSessions[userId];
+
+    if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
+
+    return reply(event.replyToken, {
+      type: 'text',
+      text: formatPlateOcr(result)
+    });
+
+  } catch (err) {
+    console.log('PLATE OCR ERROR =', err.response?.data || err.message);
+
+    delete plateOcrSessions[userId];
+
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ อ่านป้ายทะเบียนไม่สำเร็จ'
+    });
+  }
+}
 
   if (!member) {
     return reply(event.replyToken, {
