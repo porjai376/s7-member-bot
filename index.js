@@ -3784,23 +3784,38 @@ async function saveLineImage(messageId, filePath) {
 }
 
 async function compareFaces(image1Path, image2Path) {
-  const formData = new FormData();
-  formData.append('file1', fs.createReadStream(image1Path));
-  formData.append('file2', fs.createReadStream(image2Path));
-  formData.append('min_score', '0.8');
 
-  const response = await axios.post(
-    'https://api.iapp.co.th/v3/store/ekyc/face-comparison',
-    formData,
-    {
-      headers: {
-        apikey: IAPP_API_KEY,
-        ...formData.getHeaders()
-      }
-    }
-  );
+ const formData = new FormData();
 
-  return response.data;
+ formData.append(
+   'file1',
+   fs.createReadStream(image1Path)
+ );
+
+ formData.append(
+   'file2',
+   fs.createReadStream(image2Path)
+ );
+
+ console.log("กำลังส่ง API face-comparison...");
+ console.log("รูป1 =", image1Path);
+ console.log("รูป2 =", image2Path);
+
+ const response = await axios.post(
+   'https://api.iapp.co.th/v3/store/ekyc/face-comparison',
+   formData,
+   {
+      headers:{
+         apikey:IAPP_API_KEY,
+         ...formData.getHeaders()
+      },
+      timeout:60000
+   }
+ );
+
+ console.log("API ตอบกลับ =", response.data);
+
+ return response.data;
 }
 
 function formatFaceCompareResult(data) {
@@ -5688,7 +5703,7 @@ async function compareFace(file1, file2) {
   form.append('file2', fs.createReadStream(file2));
 
   const { data } = await axios.post(
-    'https://api.iapp.co.th/v3/store/ekyc/face-verification',
+    'https://api.iapp.co.th/v3/store/ekyc/face-comparison',
     form,
     {
       headers: {
