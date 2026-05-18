@@ -461,8 +461,13 @@ function formatInstallment(data) {
       .replace(/จังหวัด/g, 'จ.');
   };
 
-  const homes = addresses.filter(a => (a.type || '').toUpperCase() === 'HOME');
-  const works = addresses.filter(a => (a.type || '').toUpperCase() === 'WORK');
+  const homes = addresses.filter(a =>
+  ['HOME','COHOME'].includes((a.type || '').toUpperCase())
+);
+
+const works = addresses.filter(a =>
+  ['WORK','COWORK'].includes((a.type || '').toUpperCase())
+);
 
   const accountStatus = safe(p.is_active) === 'YES'
     ? '🟢 ใช้งานอยู่'
