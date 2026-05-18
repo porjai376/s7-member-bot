@@ -4195,18 +4195,19 @@ const textResult =
 formatFaceCompare(result);
 
 const img1 =
-`${process.env.BASE_URL}/tmp/${path.basename(session.images[0])}`;
+`${BASE_URL}/tmp/${path.basename(session.images[0])}`;
 
 const img2 =
-`${process.env.BASE_URL}/tmp/${path.basename(session.images[1])}`;
+`${BASE_URL}/tmp/${path.basename(session.images[1])}`;
 
+console.log("BASE_URL =", BASE_URL);
 console.log("IMG1 URL =", img1);
 console.log("IMG2 URL =", img2);
 console.log("TEXT RESULT =", textResult);
 
 return reply(
-event.replyToken,
-buildFaceCompareFlex(
+ event.replyToken,
+ buildFaceCompareFlex(
    img1,
    img2,
    textResult
