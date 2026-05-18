@@ -4129,6 +4129,9 @@ const phone=text.replace(/^อนุญาติดีแทค#/,'').trim();
 db.dtacPermissions=db.dtacPermissions||{};
 db.dtacPermissions[phone]=true;
 
+db.dtacBlocked = db.dtacBlocked || {};
+delete db.dtacBlocked[phone];
+
 saveDB(db);
 
 return reply(event.replyToken,{
@@ -5112,7 +5115,9 @@ return reply(event.replyToken,{
 type:'text',
 text:`⛔สิทธิ์สืบค้นคำสั่ง DTAC ถูกยกเลิกแล้ว⛔
 
-📂ติดต่อ admin`
+📂ต้องการใช้งานติดต่อ admin📂
+Contact Admin:
+https://line.me/ti/p/mVmD-ncfvU`
 });
 
 }
