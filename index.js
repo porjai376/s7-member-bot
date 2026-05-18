@@ -154,6 +154,7 @@ function loadDB() {
     if (!db.processedEvents) db.processedEvents = {};
     if (!db.topups) db.topups = {};
     if (!db.dtacPermissions) db.dtacPermissions = {};
+    if (!db.dtacBlocked) db.dtacBlocked = {};
     return db;
   } catch (e) {
     return {
@@ -4142,13 +4143,18 @@ if(/^ยกเลิกดีแทค#/.test(text)){
 
 const phone=text.replace(/^ยกเลิกดีแทค#/,'').trim();
 
+db.dtacPermissions = db.dtacPermissions || {};
 delete db.dtacPermissions[phone];
+
+// เพิ่มตรงนี้
+db.dtacBlocked = db.dtacBlocked || {};
+db.dtacBlocked[phone] = true;
 
 saveDB(db);
 
 return reply(event.replyToken,{
 type:'text',
-text:`❌ ยกเลิก ${phone} แล้ว`
+text:`❌ ยกเลิก ${phone} ใช้ d# แล้ว`
 });
 }
 
@@ -5096,6 +5102,20 @@ member?.phone ||
 member?.tel ||
 member?.mobile ||
 '';
+
+const isBlocked =
+db.dtacBlocked?.[registeredPhone] === true;
+
+if(isBlocked){
+
+return reply(event.replyToken,{
+type:'text',
+text:`⛔สิทธิ์สืบค้นคำสั่ง DTAC ถูกยกเลิกแล้ว⛔
+
+📂ติดต่อ admin`
+});
+
+}
 
 // สมาชิกเดิมที่ผ่านอนุมัติ
 const alreadyApproved =
