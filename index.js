@@ -1369,24 +1369,45 @@ function formatOpecStudentResult(res, citizenId) {
   if (res.message) return limitLineMessage(res.message);
 
   const data = res.data || {};
-  const address = data.address || {};
-  const father = data.family?.father || data.father || {};
-  const mother = data.family?.mother || data.mother || {};
-  const fullName = `${data.prefix || ''}${data.firstNameTh || ''} ${data.lastNameTh || ''}`.trim() || '-';
-  const lines = [
-    '🎓 ข้อมูลนักเรียน (OPEC)',
-    '====================',
-    `🆔 เลขประจำตัวประชาชน: ${data.idcard || citizenId}`,
-    `👤 ชื่อ-สกุล: ${fullName}`,
-    data.gender ? `เพศ: ${data.gender}` : '',
-    data.birthdate ? `วันเกิด: ${data.birthdate}` : '',
-    data.nationality ? `สัญชาติ: ${data.nationality}` : '',
-    address.full ? `\n📍 ที่อยู่\n${address.full}` : '',
-    father.name ? `\n👨 บิดา\n${father.name}${father.idCard ? `\nเลข ปชช: ${father.idCard}` : ''}` : '',
-    mother.name ? `\n👩 มารดา\n${mother.name}${mother.idCard ? `\nเลข ปชช: ${mother.idCard}` : ''}` : ''
-  ].filter(Boolean);
-  return limitLineMessage(lines.join('\n'));
-}
+const address = data.address || {};
+const father = data.family?.father || data.father || {};
+const mother = data.family?.mother || data.mother || {};
+
+const fullName = `${data.prefix || ''}${data.firstNameTH || ''} ${data.lastNameTH || ''}`.trim();
+
+return limitLineMessage(`🔎[${data.idcard || citizenId}]
+-  -  -  -  -  -  -  -  -  -  -
+
+┌●ข้อมูลนักเรียน
+├●โรงเรียน: ${data.schoolName || '-'}
+├●เลขประจำตัวประชาชน: ${data.idcard || citizenId}
+├●ชื่อ-สกุล: ${fullName || '-'}
+├●เพศ: ${data.gender || '-'}
+├●วันเกิด: ${data.birthdate || '-'}
+├●สัญชาติ: ${data.nationality || '-'}
+└●เชื้อชาติ: ${data.race || '-'}
+
+┌●ข้อมูลความพิการ
+└●ประเภทความพิการ: ${data.disability || 'ไม่พิการ'}
+
+┌●ข้อมูลที่อยู่
+├●รหัสประจำบ้าน: ${address.houseCode || data.houseCode || '-'}
+└●ที่อยู่: ${address.full || data.addressFull || '-'}
+
+┌●รายละเอียดนักเรียน
+└●ความด้อยโอกาส: ${data.disadvantage || 'ไม่ด้อยโอกาส'}
+
+┌●ข้อมูลบิดา
+├●เลข ปชช: ${father.idCard || father.idcard || '-'}
+├●ชื่อ: ${father.name || '-'}
+└●สัญชาติ: ${father.nationality || '-'}
+
+┌●ข้อมูลมารดา
+├●เลข ปชช: ${mother.idCard || mother.idcard || '-'}
+├●ชื่อ: ${mother.name || '-'}
+└●สัญชาติ: ${mother.nationality || '-'}
+
+-  -  -  -  -  -  -  -  -  -  -`);
 
 async function fetchDPlusCustomerApi(phone) {
   const { data } = await axios.get(SEARCH_API_BASE, {
