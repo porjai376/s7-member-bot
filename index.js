@@ -3767,6 +3767,105 @@ function buildWelcomeWarningFlex() {
   };
 }
 
+function buildSupportFlex() {
+return {
+type:'flex',
+altText:'ช่องทางสนับสนุนเซิฟเวอร์',
+contents:{
+type:'bubble',
+size:'mega',
+
+hero:{
+type:'image',
+url:'https://cdn.phototourl.com/free/2026-05-19-466c8d1d-3b3f-4408-a172-5c63f62d81e6.jpg',
+size:'full',
+aspectRatio:'1:1',
+aspectMode:'cover'
+},
+
+body:{
+type:'box',
+layout:'vertical',
+backgroundColor:'#0B0F14',
+contents:[
+
+{
+type:'text',
+text:'💛 ช่องทางสนับสนุนเซิฟเวอร์',
+weight:'bold',
+size:'xl',
+align:'center',
+color:'#FFD700'
+},
+
+{
+type:'separator',
+margin:'lg',
+color:'#334155'
+},
+
+{
+type:'text',
+text:'สแกน QR ด้านบนเพื่อร่วมสนับสนุน\nค่าเซิร์ฟเวอร์และพัฒนาระบบ',
+wrap:true,
+align:'center',
+margin:'lg',
+size:'sm',
+color:'#E2E8F0'
+},
+
+{
+type:'separator',
+margin:'lg',
+color:'#334155'
+},
+
+{
+type:'text',
+text:'🙏 ขอบพระคุณทุกท่าน\nที่ร่วมสนับสนุน',
+wrap:true,
+align:'center',
+margin:'lg',
+weight:'bold',
+size:'md',
+color:'#22C55E'
+},
+
+{
+type:'text',
+text:'MEGABOT SERVER',
+align:'center',
+margin:'md',
+size:'xs',
+color:'#94A3B8'
+}
+
+]
+},
+
+footer:{
+type:'box',
+layout:'vertical',
+spacing:'sm',
+contents:[
+
+{
+type:'button',
+style:'primary',
+color:'#EAB308',
+action:{
+type:'uri',
+label:'📩 ติดต่อแอดมิน',
+uri:'https://line.me/ti/p/mVmD-ncfvU'
+}
+}
+
+]
+}
+}
+};
+}
+
 async function saveLineImage(messageId, filePath) {
   const token = process.env.CHANNEL_ACCESS_TOKEN;
 
@@ -4549,6 +4648,19 @@ if (text === 'ดูสมาชิกรอตรวจสอบ') {
       });
     }
   }
+
+if(
+text === '#สนับสนุน' ||
+text === 'สนับสนุน' ||
+text === '#donate'
+){
+
+return reply(
+event.replyToken,
+buildSupportFlex()
+);
+
+}
 
   if (text === 'menu%') {
 
