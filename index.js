@@ -4247,43 +4247,56 @@ function findMemberByPhone(db, phone) {
 }
 
 async function handleText(event) {
-  const userId = event.source.userId;
-  const text = (event.message.text || '').trim();
+const userId = event.source.userId;
+const text = (event.message.text || '').trim();
 
-  const db = loadDB();
-  const member = db.members?.[userId];
+const db = loadDB();
+const member = db.members?.[userId];
 
-// ===== คำสั่งแอดมินเปิดสิทธิ์ DTAC =====
-if(/^อนุญาติดีแทค#/.test(text)){
 
-const phone=text.replace(/^อนุญาติดีแทค#/,'').trim();
+// ===== คำสั่งแอดมินอนุมัติ DTAC =====
+if(/^อนุมัติดีแทค#/.test(text)){
+
+if(!isAdmin(userId)){
+return reply(event.replyToken,{
+type:'text',
+text:'❌ คำสั่งนี้สำหรับแอดมินเท่านั้น'
+});
+}
+
+const phone = text.replace(/^อนุมัติดีแทค#/,'').trim();
 
 db.dtacPermissions=db.dtacPermissions||{};
 db.dtacPermissions[phone]=true;
 
-db.dtacBlocked = db.dtacBlocked || {};
+db.dtacBlocked=db.dtacBlocked||{};
 delete db.dtacBlocked[phone];
 
 saveDB(db);
 
 return reply(event.replyToken,{
 type:'text',
-text:`✅ อนุญาต ${phone} ใช้ d# แล้ว`
+text:`✅ อนุมัติ ${phone} ใช้ d# แล้ว`
+});
+
+}
+
+// ===== คำสั่งแอดมินยกเลิก =====
+if(/^ยกเลิกดีแทค#/.test(text)){
+
+if(!isAdmin(userId)){
+return reply(event.replyToken,{
+type:'text',
+text:'❌ คำสั่งนี้สำหรับแอดมินเท่านั้น'
 });
 }
 
-
-// ===== คำสั่งแอดมินยกเลิกสิทธิ์ =====
-if(/^ยกเลิกดีแทค#/.test(text)){
-
 const phone=text.replace(/^ยกเลิกดีแทค#/,'').trim();
 
-db.dtacPermissions = db.dtacPermissions || {};
-delete db.dtacPermissions[phone];
+db.dtacBlocked=db.dtacBlocked||{};
+db.dtacBlocked[phone]=true;
 
-// เพิ่มตรงนี้
-db.dtacBlocked = db.dtacBlocked || {};
-db.dtacBlocked[phone] = true;
+delete db.dtacPermissions?.[phone];
 
 saveDB(db);
 
@@ -4291,77 +4304,7 @@ return reply(event.replyToken,{
 type:'text',
 text:`❌ ยกเลิก ${phone} ใช้ d# แล้ว`
 });
-}
 
-if (text.startsWith('อนุญาติดีแทค#')) {
-  if (!isAdmin(userId)) {
-    return reply(event.replyToken,{
-      type:'text',
-      text:'❌ คำสั่งนี้สำหรับแอดมิน'
-    });
-  }
-
-  const phone =
-  text.replace(/^อนุญาติดีแทค#/,'').trim();
-
-  const found =
-  findMemberByPhone(db,phone);
-
-  if(!found){
-    return reply(event.replyToken,{
-      type:'text',
-      text:'❌ ไม่พบสมาชิก'
-    });
-  }
-
-  db.dtacPermissions[found.userId]=true;
-
-  saveDB(db);
-
-  return reply(event.replyToken,{
-    type:'text',
-    text:
-`✅ อนุญาต DTAC แล้ว
-
-👤 ${found.member.fullname || '-'}
-📱 ${phone}`
-  });
-}
-
-if (text.startsWith('ยกเลิกดีแทค#')) {
-
-  if(!isAdmin(userId)){
-    return reply(event.replyToken,{
-      type:'text',
-      text:'❌ คำสั่งนี้สำหรับแอดมิน'
-    });
-  }
-
-  const phone =
-  text.replace(/^ยกเลิกดีแทค#/,'').trim();
-
-  const found =
-  findMemberByPhone(db,phone);
-
-  if(!found){
-    return reply(event.replyToken,{
-      type:'text',
-      text:'❌ ไม่พบสมาชิก'
-    });
-  }
-
-  delete db.dtacPermissions[found.userId];
-
-  saveDB(db);
-
-  return reply(event.replyToken,{
-    type:'text',
-    text:
-`⛔ ยกเลิกสิทธิ์ DTAC แล้ว
-
-👤 ${found.member.fullname || '-'}
-📱 ${phone}`
-  });
 }
 
  // ===== ff% =====
@@ -5288,39 +5231,27 @@ text:`📂คำสั่งDTAC ใช้ในเวลา
 });
 
 }
-    
-if(isBlocked){
 
-return reply(event.replyToken,{
-type:'text',
-text:`⛔สิทธิ์สืบค้นคำสั่ง DTAC ถูกยกเลิกแล้ว⛔
+const registeredPhone =
+member?.phone ||
+member?.tel ||
+member?.mobile ||
+'';
 
-📂ต้องการใช้งานติดต่อ admin📂
-Contact Admin:
-https://line.me/ti/p/mVmD-ncfvU`
-});
-
-}
-
-// สมาชิกเดิมที่ผ่านอนุมัติ
-const alreadyApproved =
-member?.status === 'approved';
-
-// สิทธิ์เปิดเพิ่มโดยแอดมิน
-const extraPermission =
+const canUseDtac =
+isAdmin(userId) ||
 db.dtacPermissions?.[registeredPhone] === true;
 
-
-// ไม่มีสิทธิ์
-if (!alreadyApproved && !extraPermission) {
+if(!canUseDtac){
 
 return reply(event.replyToken,{
 type:'text',
-text:`⛔ยังไม่มีสิทธิ์สืบค้นคำสั่ง DTAC⛔
+text:`⛔ยังไม่มีสิทธิ์ใช้งานคำสั่ง DTAC⛔
 
 📂ต้องการใช้งานติดต่อ admin📂
 Contact Admin:
-https://line.me/ti/p/mVmD-ncfvU`
+https://line.me/ti/p/mVmD-ncfvU
+------------`
 });
 
 }
