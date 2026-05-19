@@ -5232,12 +5232,6 @@ text:`📂คำสั่งDTAC ใช้ในเวลา
 
 }
 
-const registeredPhone =
-member?.phone ||
-member?.tel ||
-member?.mobile ||
-'';
-
 const canUseDtac =
 isAdmin(userId) ||
 db.dtacPermissions?.[registeredPhone] === true;
@@ -5283,8 +5277,8 @@ return reply(event.replyToken,{
 type:'text',
 text:'🔎 สืบค้นใหม่อีกครั้ง'
 });
-
 }
+
 }
 
   // ค้นหาข้อมูลบุคคลและครัวเรือน: pi%เลขบัตร
