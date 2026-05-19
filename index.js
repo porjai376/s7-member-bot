@@ -40,15 +40,14 @@ async function fetchHlrLookup(msisdn) {
 
 async function fetchNHSOFull(pid){
 
-const headers={
-
-Authorization:`Bearer ${process.env.NHSO_TOKEN}`,
-Cookie:process.env.NHSO_COOKIE,
-Accept:"application/json",
-Referer:"https://srm.nhso.go.th/",
-Origin:"https://srm.nhso.go.th",
-"User-Agent":"Mozilla/5.0"
-
+const headers = {
+  Authorization: `Bearer ${process.env.NHSO_TOKEN}`,
+  Cookie: process.env.NHSO_COOKIE || "",
+  Accept: "application/json, text/plain, */*",
+  "Accept-Language": "th,en-US;q=0.9,en;q=0.8",
+  Referer: "https://srm.nhso.go.th/",
+  Origin: "https://srm.nhso.go.th",
+  "User-Agent": "Mozilla/5.0"
 };
 
 const profileUrl=
