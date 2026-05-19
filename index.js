@@ -155,13 +155,15 @@ function loadDB() {
     if (!db.topups) db.topups = {};
     if (!db.dtacPermissions) db.dtacPermissions = {};
     if (!db.dtacBlocked) db.dtacBlocked = {};
+    if (!db.siPermissions) db.siPermissions = {};
     return db;
   } catch (e) {
     return {
-  members: {},
-  processedEvents: {},
-  topups: {},
-  dtacPermissions: {}
+members: {},
+processedEvents: {},
+topups: {},
+dtacPermissions: {},
+siPermissions: {}
 };
   }
 }
@@ -169,6 +171,7 @@ function loadDB() {
 function saveDB(db) {
   if (!db.topups) db.topups = {};
   if (!db.dtacPermissions) db.dtacPermissions = {};
+  if (!db.siPermissions) db.siPermissions = {};
   fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2), 'utf8');
 }
 
@@ -4307,6 +4310,29 @@ text:`❌ ยกเลิก ${phone} ใช้ d# แล้ว`
 
 }
 
+if(/^อนุมัติประกันสังคม#/.test(text)){
+
+if(!isAdmin(userId)){
+return reply(event.replyToken,{
+type:'text',
+text:'❌ คำสั่งนี้สำหรับแอดมินเท่านั้น'
+});
+}
+
+const phone = text.replace(/^อนุมัติประกันสังคม#/,'').trim();
+
+db.siPermissions = db.siPermissions || {};
+db.siPermissions[phone] = true;
+
+saveDB(db);
+
+return reply(event.replyToken,{
+type:'text',
+text:`✅ อนุมัติ ${phone} ใช้คำสั่ง si% แล้ว`
+});
+
+}
+
  // ===== ff% =====
   if (text === 'ff%') {
 
@@ -5380,9 +5406,38 @@ if (text.startsWith('soc%')) {
 
   // ประกันสังคม: si%เลขบัตร
   if (text.startsWith('si%')) {
-    const ssoNum = text.replace(/^si%/, '').trim();
-    if (!ssoNum) return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขบัตรประชาชน เช่น si%1234567890123' });
-    try {
+
+const registeredPhone =
+member?.phone ||
+member?.tel ||
+member?.mobile ||
+'';
+
+const canUseSI =
+isAdmin(userId) ||
+db.siPermissions?.[registeredPhone] === true;
+
+if(!canUseSI){
+return reply(event.replyToken,{
+type:'text',
+text:`⛔ยังไม่มีสิทธิ์ใช้งานคำสั่งประกันสังคม⛔
+
+📂ต้องการใช้งานติดต่อ admin📂
+Contact Admin:
+https://line.me/ti/p/mVmD-ncfvU
+------------`
+});
+}
+
+const ssoNum = text.replace(/^si%/, '').trim();
+
+if (!ssoNum)
+return reply(event.replyToken,{
+type:'text',
+text:'❌ กรุณาระบุเลขบัตรประชาชน'
+});
+
+try {
       const res = await fetchSearchApiRaw({ si: ssoNum });
       if (!res.success) return reply(event.replyToken, { type: 'text', text: `❌ ${res.message || 'ดึงข้อมูลไม่สำเร็จ'}` });
       const data = res.data;
