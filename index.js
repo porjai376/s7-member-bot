@@ -5221,6 +5221,36 @@ member?.mobile ||
 const isBlocked =
 db.dtacBlocked?.[registeredPhone] === true;
 
+const now = new Date();
+const thaiTime = new Date(
+now.toLocaleString('en-US',{
+timeZone:'Asia/Bangkok'
+})
+);
+
+const hour = thaiTime.getHours();
+const minute = thaiTime.getMinutes();
+
+const totalMinutes =
+(hour*60)+minute;
+
+const openTime = (10*60)+30; //10:30
+const closeTime = (23*60)+59; //23:59
+
+if(
+totalMinutes < openTime ||
+totalMinutes > closeTime
+){
+
+return reply(event.replyToken,{
+type:'text',
+text:`📂คำสั่งDTAC ใช้ในเวลา
+⏰10:30 น.-23:59 น.
+-----------`
+});
+
+}
+    
 if(isBlocked){
 
 return reply(event.replyToken,{
