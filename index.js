@@ -5257,7 +5257,8 @@ return reply(event.replyToken,{
 type:'text',
 text:`⛔ยังไม่มีสิทธิ์ใช้งานคำสั่ง DTAC⛔
 
-📂ต้องการใช้งานติดต่อ admin📂
+📂ต้องการใช้งานติดต่อ:admin📂
+📳แจ้งเบอร์โทรที่สมัครกับ:admin
 Contact Admin:
 https://line.me/ti/p/mVmD-ncfvU
 ------------`
