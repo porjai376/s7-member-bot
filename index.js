@@ -5300,10 +5300,22 @@ member?.tel ||
 member?.mobile ||
 '';
 
+const db = loadDB();
+const member = db.members?.[userId];
+
+const registeredPhone =
+member?.phone ||
+member?.tel ||
+member?.mobile ||
+'';
+
+
+// ตรวจคนถูกยกเลิกสิทธิ์
 const isBlocked =
 db.dtacBlocked?.[registeredPhone] === true;
 
 if(isBlocked){
+
 return reply(event.replyToken,{
 type:'text',
 text:`⛔สิทธิ์สืบค้นคำสั่ง DTAC ถูกยกเลิกแล้ว⛔
@@ -5313,15 +5325,57 @@ Contact Admin:
 https://line.me/ti/p/mVmD-ncfvU
 ------------`
 });
+
 }
 
-const phone = text.replace(/^d#/, '').trim();
 
-if (!phone){
+// ===== เช็กเวลา =====
+
+const now = new Date();
+
+const thaiTime = new Date(
+now.toLocaleString('en-US',{
+timeZone:'Asia/Bangkok'
+})
+);
+
+const hour = thaiTime.getHours();
+const minute = thaiTime.getMinutes();
+
+const totalMinutes =
+(hour*60)+minute;
+
+const openTime=(10*60)+30; //10:30
+const closeTime=(23*60)+59; //23:59
+
+
+if(
+totalMinutes < openTime ||
+totalMinutes > closeTime
+){
+
+return reply(event.replyToken,{
+type:'text',
+text:`📂คำสั่งDTAC ใช้ในเวลา
+⏰10:30 น.-23:59 น.
+-----------`
+});
+
+}
+
+
+// ===== เริ่มค้นหา d# =====
+
+const phone =
+text.replace(/^d#/,'').trim();
+
+if(!phone){
+
 return reply(event.replyToken,{
 type:'text',
 text:'❌ กรุณาระบุเบอร์'
 });
+
 }
 
 try{
