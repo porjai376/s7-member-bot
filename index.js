@@ -5515,27 +5515,6 @@ if (text.startsWith('soc%')) {
   }
 
   // ประกันสังคม: si%เลขบัตร
-  if (text.startsWith('si%')) {
-    const registeredPhone =
-member?.phone ||
-member?.tel ||
-member?.mobile ||
-'';
-
-const isSiBlocked =
-db.siBlocked?.[registeredPhone] === true;
-
-if(isSiBlocked){
-return reply(event.replyToken,{
-type:'text',
-text:`⛔สิทธิ์สืบค้นคำสั่งประกันสังคมถูกยกเลิกแล้ว⛔
-
-📂ต้องการใช้งานติดต่อ admin📂
-Contact Admin:
-https://line.me/ti/p/mVmD-ncfvU
-------------`
-});
-}
     const ssoNum = text.replace(/^si%/, '').trim();
     if (!ssoNum) return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขบัตรประชาชน เช่น si%1234567890123' });
     try {
