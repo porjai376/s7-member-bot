@@ -6595,7 +6595,7 @@ function formatPlateOcr(data) {
 ⚠️ใช้ประกอบการวิเคราะห์
 การสืบสวนเท่านั้น !!`;
 }
-
+}
 async function handleImage(event) {
   const userId = event.source.userId;
   const db = loadDB();
