@@ -1321,7 +1321,9 @@ function summarizeSI(data) {
 
   let msg = `📊 จำนวนที่พบ: ${rows.length} รายการ\n`;
 
-  rows.slice(0, 3).forEach((item, i) => {
+  msg += `"แสดงเฉพาะรายการล่าสุด"\n`;
+
+rows.slice(0, 1).forEach((item, i) => {
     msg += `\n 🏢 บริษัท ${i + 1}\n`;
     msg += `┌● ชื่อบริษัท: ${item.companyName || item.company || item.name || '-'}\n`;
     msg += `├● รหัสสาขา: ${item.branchCode || '-'}\n`;
@@ -1331,7 +1333,7 @@ function summarizeSI(data) {
     msg += `└● สถานะ: ${item.employStatusDesc || '-'}\n`;
   });
 
-  if (rows.length > 3) msg += `\n...แสดง 3 จาก ${rows.length} รายการ`;
+  if (rows.length > 1) msg += `\n...แสดง 1 จาก ${rows.length} รายการ`;
   return msg.trim();
 }
 
@@ -6125,6 +6127,7 @@ fetchSearchApiRaw({ cid: pid })
 
 try {
   if (dData) {
+    msg += `📂จดดีแทค\n`;
     const dtacText = formatDtacSearch(dData, pid)
       .replace(new RegExp(`เลขบัตร:\\s*${pid.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`), `เลขบัตร: *********${String(pid).slice(-4)}`);
     msg += dtacText;
@@ -6160,6 +6163,18 @@ msg += cidRes.status==='fulfilled'
       msg += siRes.status === 'fulfilled'
         ? summarizeSI(siRes.value)
         : '❌ไม่พบข้อมูลประกันสังคม';
+
+msg += `\n\n-------------------\n📂Railway\n`;
+msg += `❌ ไม่พบข้อมูล`;
+
+msg += `\n-------------------\n📂Bus\n`;
+msg += `❌ ไม่พบข้อมูล`;
+
+msg += `\n-------------------\n📂กรมเจ้าท่า\n`;
+msg += `❌ ไม่พบข้อมูล`;
+
+msg += `\n-------------------\n📂กรรมการบริษัท\n`;
+msg += `❌ ไม่พบข้อมูล`;
 
       msg += `\n\n-------------------\n📂ศูนย์บริการรถ\n`;
       msg += bqRes
