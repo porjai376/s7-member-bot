@@ -4265,7 +4265,19 @@ async function handleText(event) {
   const db = loadDB();
   const member = db.members?.[userId];
 
-// ===== คำสั่งแอดมินเปิดสิทธิ์ DTAC =====
+  if(
+text === '#สนับสนุน' ||
+text === 'สนับสนุน' ||
+text === '#donate'
+){
+
+return reply(
+event.replyToken,
+buildSupportFlex()
+);
+
+}
+
 if(/^อนุญาติดีแทค#/.test(text)){
 
 const phone=text.replace(/^อนุญาติดีแทค#/,'').trim();
@@ -4739,19 +4751,6 @@ if (text === 'ดูสมาชิกรอตรวจสอบ') {
       });
     }
   }
-
-if(
-text === '#สนับสนุน' ||
-text === 'สนับสนุน' ||
-text === '#donate'
-){
-
-return reply(
-event.replyToken,
-buildSupportFlex()
-);
-
-}
 
   if (text === 'menu%') {
 
