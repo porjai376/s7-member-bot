@@ -4497,66 +4497,6 @@ async function handleText(event) {
   const db = loadDB();
   const member = db.members?.[userId];
 
-if(
-text==="topup30" ||
-text==="topup90" ||
-text==="topup180" ||
-text==="topup365"
-){
-
-let day='';
-let price='';
-
-if(text==="topup30"){
-day='30';
-price='499';
-}
-
-if(text==="topup90"){
-day='90';
-price='1299';
-}
-
-if(text==="topup180"){
-day='180';
-price='2500';
-}
-
-if(text==="topup365"){
-day='365';
-price='4999';
-}
-
-db.topups = db.topups || {};
-
-db.topups[userId] = {
-status:'waiting_slip',
-days:Number(day),
-price:Number(price),
-createdAt:nowThai(),
-updatedAt:nowThai()
-};
-
-saveDB(db);
-
-return reply(event.replyToken,[
-
-buildSupportFlex(),
-
-{
-type:'text',
-text:
-`คุณเลือกแพ็กเกจ ${day} วัน แล้ว
-
-สนับสนุน ${price} B.
-
-กรุณาส่งสลิปเข้ามาในแชตนี้ได้เลย`
-}
-
-]);
-
-}
-  
   if(
 text === '#สนับสนุน' ||
 text === 'สนับสนุน' ||
@@ -5044,6 +4984,67 @@ if (text === 'ดูสมาชิกรอตรวจสอบ') {
     }
   }
 
+if(
+text==="topup30" ||
+text==="topup90" ||
+text==="topup180" ||
+text==="topup365"
+){
+
+let day='';
+let price='';
+
+if(text==="topup30"){
+day='30';
+price='499';
+}
+
+if(text==="topup90"){
+day='90';
+price='1299';
+}
+
+if(text==="topup180"){
+day='180';
+price='2500';
+}
+
+if(text==="topup365"){
+day='365';
+price='4999';
+}
+
+// บันทึกสถานะรอส่งสลิป
+db.topups = db.topups || {};
+
+db.topups[userId] = {
+status:'waiting_slip',
+days:Number(day),
+price:Number(price),
+createdAt:nowThai(),
+updatedAt:nowThai()
+};
+
+saveDB(db);
+
+return reply(event.replyToken,[
+
+buildSupportFlex(),
+
+{
+type:'text',
+text:
+`คุณเลือกแพ็กเกจ ${day} วัน แล้ว
+
+สนับสนุน ${price} B.
+
+กรุณาส่งสลิปเข้ามาในแชตนี้ได้เลย`
+}
+
+]);
+
+}
+
 if (text.startsWith('nm%')) {
   const keyword = text.replace('nm%', '').trim();
 
@@ -5105,7 +5106,7 @@ text:`📂 คำสั่งใช้งาน
 
 🔎 บุคคล
 ├ si%เลขบัตร → ประกันสังคม
-├ dc%ชื่อ สกุล → ตรวจสอบแพทย์
+├ dc%ชื่อ สกุล → ตรวจสอบแพทยสภา
 ├ dl#เลขบัตร → ใบขับขี่
 ├ pb%เลขบัตร → คุมประพฤติ
 ├ psi#เลขบัตร → ผู้ต้องขัง
@@ -5140,7 +5141,7 @@ text:`📂 คำสั่งใช้งาน
 ┣ เช็คซิม icc%เลข ICCID
 ┣ เช็คเบี้ยยังชีพ wf%เลขบัตร
 ┣ หาข้อกฏหมาย lw%คำถาม
-┣ ข้อมูลสถานพยาบาล nm%รหัสหน่วยบริการ หรือ ชื่อสถานพยาบาล
+┣ หาข้อกฏหมาย nm%รหัสหน่วยบริการ หรือ ชื่อสถานพยาบาล
 ┣ หาแผนที่ map%ละติจูด,ลองจิจูด
 ┣ เช็คโดเมน web%ชื่อเว็บไซต์
 ┗ เช็คพิกัดเซเว่น se%รหัสสาขา7-11
@@ -5451,17 +5452,13 @@ if (text === 'face%') {
 
     saveDB(db);
 
-    return reply(event.replyToken,{
-type:'text',
-text:
-`✅ บันทึกข้อมูลสมัครเรียบร้อยแล้ว
-
-📌 ขั้นตอนถัดไป
-กรุณาส่งรูปบัตรข้าราชการของท่าน
-เพื่อให้ผู้ดูแลตรวจสอบและยืนยันสิทธิ์การใช้งาน
-
-⏳ สถานะ: รอการตรวจสอบจากผู้ดูแล`
-});
+    return reply(event.replyToken, {
+      type: 'text',
+      text:
+        'บันทึกข้อมูลสมัครเรียบร้อยแล้ว\n' +
+        'กรุณาส่งรูปบัตรข้าราชการและรอผู้ดูแลตรวจสอบ'
+    });
+  }
 
   if (text === 'members_all') {
     if (!isAdmin(userId)) {
@@ -6595,22 +6592,16 @@ function formatPlateOcr(data) {
 ⚠️ใช้ประกอบการวิเคราะห์
 การสืบสวนเท่านั้น !!`;
 }
-}
+
 async function handleImage(event) {
   const userId = event.source.userId;
   const db = loadDB();
-  const member = db.members?.[userId];
+  const member = db.members[userId];
   const topup = db.topups?.[userId];
-
-  const isRegistering =
-member &&
-member.status === 'waiting_card';
-
-if(
+  
+if (
 topup &&
-topup.status === 'waiting_slip' &&
-!plateOcrSessions[userId] &&
-!isRegistering
+topup.status === 'waiting_slip'
 ){
 
 try{
@@ -6905,18 +6896,10 @@ if (db.faceCompare?.[userId]) {
     db.members[userId] = member;
     saveDB(db);
 
-    await reply(event.replyToken,{
-type:'text',
-text:
-`✅ ระบบได้รับรูปหลักฐานของท่านแล้ว
-ข้อมูลถูกส่งเข้าสู่ขั้นตอนตรวจสอบเรียบร้อย
-
-🛡️ สถานะปัจจุบัน
-⏳ กำลังรอผู้ดูแลตรวจสอบและอนุมัติ
-
-โปรดรอสักครู่ เมื่อการตรวจสอบเสร็จสิ้น
-ระบบจะแจ้งผลให้ทราบอัตโนมัติ`
-});
+    await reply(event.replyToken, {
+      type: 'text',
+      text: 'รับรูปหลักฐานเรียบร้อยแล้ว\nขณะนี้อยู่ระหว่างรอการตรวจสอบจากผู้ดูแล'
+    });
 
     const adminMessages = [buildAdminApproveFlex(member, userId)];
 
@@ -7216,7 +7199,7 @@ return reply(event.replyToken, {
   }
 
   return reply(event.replyToken, {
-type: 'text',
-text: 'ไม่รู้จักคำสั่ง'
-});
+    type: 'text',
+    text: 'ไม่รู้จักคำสั่งนี้'
+  });
 }
