@@ -1353,6 +1353,38 @@ async function fetchSearchApiRaw(params) {
   return res;
 }
 
+async function fetchOpecStudentApi(citizenId) {
+  const { data: res } = await axios.get(SEARCH_API_BASE, {
+    params: { opec: citizenId, key: SEARCH_API_KEY },
+    timeout: 120000
+  });
+  return res;
+}
+
+function formatOpecStudentResult(res, citizenId) {
+  if (!res?.success) return `❌ ${res?.message || `ไม่พบข้อมูลนักเรียน ${citizenId}`}`;
+  if (res.message) return limitLineMessage(res.message);
+
+  const data = res.data || {};
+  const address = data.address || {};
+  const father = data.family?.father || data.father || {};
+  const mother = data.family?.mother || data.mother || {};
+  const fullName = `${data.prefix || ''}${data.firstNameTh || ''} ${data.lastNameTh || ''}`.trim() || '-';
+  const lines = [
+    '🎓 ข้อมูลนักเรียน (OPEC)',
+    '====================',
+    `🆔 เลขประจำตัวประชาชน: ${data.idcard || citizenId}`,
+    `👤 ชื่อ-สกุล: ${fullName}`,
+    data.gender ? `เพศ: ${data.gender}` : '',
+    data.birthdate ? `วันเกิด: ${data.birthdate}` : '',
+    data.nationality ? `สัญชาติ: ${data.nationality}` : '',
+    address.full ? `\n📍 ที่อยู่\n${address.full}` : '',
+    father.name ? `\n👨 บิดา\n${father.name}${father.idCard ? `\nเลข ปชช: ${father.idCard}` : ''}` : '',
+    mother.name ? `\n👩 มารดา\n${mother.name}${mother.idCard ? `\nเลข ปชช: ${mother.idCard}` : ''}` : ''
+  ].filter(Boolean);
+  return limitLineMessage(lines.join('\n'));
+}
+
 async function fetchDPlusCustomerApi(phone) {
   const { data } = await axios.get(SEARCH_API_BASE, {
     params: { f: phone, key: SEARCH_API_KEY },
@@ -2783,6 +2815,7 @@ function buildMenuCarouselFlex() {
             contents: [
               menuSection('🔎 บุคคล', [
                 '┌● ประกันสังคม si%เลขบัตร',
+                '├● นักเรียน OPEC st%เลขบัตร',
                 '├● ใบขับขี่ dl#เลขบัตร',
                 '├● คุมประพฤติ pb%เลขบัตร',
                 '├● ผู้ต้องขัง psi#เลขบัตร',
@@ -4701,6 +4734,7 @@ text:`📂 คำสั่งใช้งาน
 
 🔎 บุคคล
 ├ si%เลขบัตร → ประกันสังคม
+├ st%เลขบัตร → นักเรียน OPEC
 ├ dl#เลขบัตร → ใบขับขี่
 ├ pb%เลขบัตร → คุมประพฤติ
 ├ psi#เลขบัตร → ผู้ต้องขัง
@@ -5426,6 +5460,25 @@ if (text.startsWith('soc%')) {
   type: 'text', 
   text: '⌛กรุณาสืบค้นใหม่อีกครั้ง⌛'
 });
+    }
+  }
+
+  // นักเรียน OPEC: st%เลขบัตร
+  if (text.startsWith('st%')) {
+    const citizenId = text.replace(/^st%/i, '').trim();
+    if (!/^\d{13}$/.test(citizenId)) {
+      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขบัตรประชาชน 13 หลัก เช่น st%1409904942425' });
+    }
+
+    try {
+      const res = await fetchOpecStudentApi(citizenId);
+      return reply(event.replyToken, {
+        type: 'text',
+        text: formatOpecStudentResult(res, citizenId)
+      });
+    } catch (err) {
+      console.error('opec student error:', err?.response?.data || err.message);
+      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูลนักเรียน OPEC ไม่สำเร็จ' });
     }
   }
 
