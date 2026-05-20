@@ -5451,13 +5451,17 @@ if (text === 'face%') {
 
     saveDB(db);
 
-    return reply(event.replyToken, {
-      type: 'text',
-      text:
-        'บันทึกข้อมูลสมัครเรียบร้อยแล้ว\n' +
-        'กรุณาส่งรูปบัตรข้าราชการและรอผู้ดูแลตรวจสอบ'
-    });
-  }
+    return reply(event.replyToken,{
+type:'text',
+text:
+`✅ บันทึกข้อมูลสมัครเรียบร้อยแล้ว
+
+📌 ขั้นตอนถัดไป
+กรุณาส่งรูปบัตรข้าราชการของท่าน
+เพื่อให้ผู้ดูแลตรวจสอบและยืนยันสิทธิ์การใช้งาน
+
+⏳ สถานะ: รอการตรวจสอบจากผู้ดูแล`
+});
 
   if (text === 'members_all') {
     if (!isAdmin(userId)) {
@@ -6901,10 +6905,18 @@ if (db.faceCompare?.[userId]) {
     db.members[userId] = member;
     saveDB(db);
 
-    await reply(event.replyToken, {
-      type: 'text',
-      text: 'รับรูปหลักฐานเรียบร้อยแล้ว\nขณะนี้อยู่ระหว่างรอการตรวจสอบจากผู้ดูแล'
-    });
+    await reply(event.replyToken,{
+type:'text',
+text:
+`✅ ระบบได้รับรูปหลักฐานของท่านแล้ว
+ข้อมูลถูกส่งเข้าสู่ขั้นตอนตรวจสอบเรียบร้อย
+
+🛡️ สถานะปัจจุบัน
+⏳ กำลังรอผู้ดูแลตรวจสอบและอนุมัติ
+
+โปรดรอภายใน 24ชม. เมื่อการตรวจสอบเสร็จสิ้น
+ระบบจะแจ้งผลให้ทราบอัตโนมัติ`
+});
 
     const adminMessages = [buildAdminApproveFlex(member, userId)];
 
