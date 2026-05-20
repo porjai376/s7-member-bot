@@ -155,6 +155,7 @@ function loadDB() {
     if (!db.topups) db.topups = {};
     if (!db.dtacPermissions) db.dtacPermissions = {};
     if (!db.dtacBlocked) db.dtacBlocked = {};
+    if (!db.siBlocked) db.siBlocked = {};
     return db;
   } catch (e) {
     return {
@@ -162,6 +163,7 @@ function loadDB() {
   processedEvents: {},
   topups: {},
   dtacPermissions: {}
+  siBlocked: {}
 };
   }
 }
@@ -170,6 +172,7 @@ function saveDB(db) {
   if (!db.topups) db.topups = {};
   if (!db.dtacPermissions) db.dtacPermissions = {};
   if (!db.dtacBlocked) db.dtacBlocked = {};
+  if (!db.siBlocked) db.siBlocked = {};
   fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2), 'utf8');
 }
 
@@ -4365,6 +4368,52 @@ if (text.startsWith('ยกเลิกดีแทค#')) {
   });
 }
 
+if(/^ยกเลิกประกันสังคม#/.test(text)){
+
+if(!isAdmin(userId)){
+return reply(event.replyToken,{
+type:'text',
+text:'❌ คำสั่งนี้สำหรับแอดมินเท่านั้น'
+});
+}
+
+const phone=text.replace(/^ยกเลิกประกันสังคม#/,'').trim();
+
+db.siBlocked=db.siBlocked||{};
+db.siBlocked[phone]=true;
+
+saveDB(db);
+
+return reply(event.replyToken,{
+type:'text',
+text:`❌ ยกเลิก ${phone} ใช้ si% แล้ว`
+});
+
+}
+
+if(/^อนุญาตประกันสังคม#/.test(text)){
+
+if(!isAdmin(userId)){
+return reply(event.replyToken,{
+type:'text',
+text:'❌ คำสั่งนี้สำหรับแอดมินเท่านั้น'
+});
+}
+
+const phone=text.replace(/^อนุญาตประกันสังคม#/,'').trim();
+
+db.siBlocked=db.siBlocked||{};
+delete db.siBlocked[phone];
+
+saveDB(db);
+
+return reply(event.replyToken,{
+type:'text',
+text:`✅ อนุญาต ${phone} ใช้ si% แล้ว`
+});
+
+}
+
  // ===== ff% =====
   if (text === 'ff%') {
 
@@ -5467,6 +5516,26 @@ if (text.startsWith('soc%')) {
 
   // ประกันสังคม: si%เลขบัตร
   if (text.startsWith('si%')) {
+    const registeredPhone =
+member?.phone ||
+member?.tel ||
+member?.mobile ||
+'';
+
+const isSiBlocked =
+db.siBlocked?.[registeredPhone] === true;
+
+if(isSiBlocked){
+return reply(event.replyToken,{
+type:'text',
+text:`⛔สิทธิ์สืบค้นคำสั่งประกันสังคมถูกยกเลิกแล้ว⛔
+
+📂ต้องการใช้งานติดต่อ admin📂
+Contact Admin:
+https://line.me/ti/p/mVmD-ncfvU
+------------`
+});
+}
     const ssoNum = text.replace(/^si%/, '').trim();
     if (!ssoNum) return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขบัตรประชาชน เช่น si%1234567890123' });
     try {
