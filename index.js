@@ -4258,6 +4258,55 @@ function findMemberByPhone(db, phone) {
   };
 }
 
+function summarizeDL(data){
+const rows = data?.content || [];
+
+if(!rows.length) return '❌ไม่พบข้อมูลใบขับขี่';
+
+let msg = `🔎ข้อมูลใบขับขี่\n`;
+
+rows.slice(0,2).forEach((license,idx)=>{
+msg += `
+📄ใบขับขี่ที่${idx+1}
+🪪ประเภทใบขับขี่: ${license.type || '-'}
+📝 เลขที่ใบขับขี่: ${license.licenseNumber || '-'}
+📅 วันที่ออกใบอนุญาต: ${license.licenseIssueDate ? new Date(license.licenseIssueDate).toLocaleDateString('th-TH') : '-'}
+📅 วันที่หมดอายุ: ${license.licenseExpirationDate ? new Date(license.licenseExpirationDate).toLocaleDateString('th-TH') : '-'}`;
+});
+
+return msg.trim();
+}
+
+function summarizeVehicleCID(res){
+const rows = Array.isArray(res?.data)
+? res.data
+: Array.isArray(res?.data?.content)
+? res.data.content
+: Array.isArray(res?.content)
+? res.content
+: [];
+
+if(!rows.length) return '❌ไม่พบข้อมูลทะเบียนรถ';
+
+let msg = `🚗ข้อมูลทะเบียนรถ\n`;
+
+rows.slice(0,1).forEach((car,index)=>{
+msg += `
+┌●รถคันที่${index+1}
+├●ทะเบียน: ${safeVehicleValue(car?.plate1,'')}${safeVehicleValue(car?.plate2,'')}
+├●สำนักงาน: ${safeVehicleValue(car?.offLocDesc)}
+├●ยี่ห้อ: ${safeVehicleValue(car?.brnDesc)}
+├●รุ่น: ${safeVehicleValue(car?.modelName)}
+├●สี: ${getVehicleColor(car)}
+├●ประเภทรถ: ${safeVehicleValue(car?.vehTypeDesc)}
+├●ลักษณะรถ: ${safeVehicleValue(car?.kindDesc)}
+├●วันที่จดทะเบียน: ${formatThaiDateOnly(car?.regDate)}
+└●วันที่หมดอายุ: ${formatThaiDateOnly(car?.expDate)}`;
+});
+
+return msg.trim();
+}
+
 async function handleText(event) {
   const userId = event.source.userId;
   const text = (event.message.text || '').trim();
@@ -6047,16 +6096,23 @@ text: newText
     const pid = text.replace(/^all%/, '').trim();
 
     try {
-      const [hRes, cRes, siRes, sRes, dRes] = await Promise.allSettled([
-  searchJediHp(pid),
-  fetchCrime(pid),
-  fetchPEAApi({ si: pid }),
-  fetchInstallment(pid),
 
-  axios.get(
-    `https://dtac-api.jedi-r3cloud.org/dtac?phone=${encodeURIComponent(pid)}&token=jedi-api-2026`,
-    { timeout: 45000 }
-  )
+const [hRes, cRes, siRes, sRes, dRes, dlRes, cidRes] =
+await Promise.allSettled([
+
+searchJediHp(pid),
+fetchCrime(pid),
+fetchPEAApi({ si: pid }),
+fetchInstallment(pid),
+
+axios.get(
+`https://dtac-api.jedi-r3cloud.org/dtac?phone=${encodeURIComponent(pid)}&token=jedi-api-2026`,
+{ timeout:45000 }
+),
+
+fetchSearchApiRaw({ dl: pid }),
+fetchSearchApiRaw({ cid: pid })
+
 ]);
       const dData = dRes.status === 'fulfilled' ? dRes.value.data : null;
       const bqRes = await fetchBQuikForAll(pid, dData);
@@ -6087,6 +6143,18 @@ try {
       msg += cRes.status === 'fulfilled'
         ? limitAllSection(formatCrime(cRes.value, pid), 900)
         : '❌ไม่พบข้อมูลหมายจับ[CRIME]';
+
+msg += `\n\n-------------------\n`;
+
+msg += dlRes.status==='fulfilled'
+? summarizeDL(dlRes.value?.data)
+: '❌ไม่พบข้อมูลใบขับขี่';
+
+msg += `\n\n-------------------\n`;
+
+msg += cidRes.status==='fulfilled'
+? summarizeVehicleCID(cidRes.value)
+: '❌ไม่พบข้อมูลทะเบียนรถ';
 
       msg += `\n\n-------------------\n📂ประกันสังคม\n`;
       msg += siRes.status === 'fulfilled'
