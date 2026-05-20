@@ -4497,6 +4497,66 @@ async function handleText(event) {
   const db = loadDB();
   const member = db.members?.[userId];
 
+if(
+text==="topup30" ||
+text==="topup90" ||
+text==="topup180" ||
+text==="topup365"
+){
+
+let day='';
+let price='';
+
+if(text==="topup30"){
+day='30';
+price='499';
+}
+
+if(text==="topup90"){
+day='90';
+price='1299';
+}
+
+if(text==="topup180"){
+day='180';
+price='2500';
+}
+
+if(text==="topup365"){
+day='365';
+price='4999';
+}
+
+db.topups = db.topups || {};
+
+db.topups[userId] = {
+status:'waiting_slip',
+days:Number(day),
+price:Number(price),
+createdAt:nowThai(),
+updatedAt:nowThai()
+};
+
+saveDB(db);
+
+return reply(event.replyToken,[
+
+buildSupportFlex(),
+
+{
+type:'text',
+text:
+`คุณเลือกแพ็กเกจ ${day} วัน แล้ว
+
+สนับสนุน ${price} B.
+
+กรุณาส่งสลิปเข้ามาในแชตนี้ได้เลย`
+}
+
+]);
+
+}
+  
   if(
 text === '#สนับสนุน' ||
 text === 'สนับสนุน' ||
@@ -4983,67 +5043,6 @@ if (text === 'ดูสมาชิกรอตรวจสอบ') {
       });
     }
   }
-
-if(
-text==="topup30" ||
-text==="topup90" ||
-text==="topup180" ||
-text==="topup365"
-){
-
-let day='';
-let price='';
-
-if(text==="topup30"){
-day='30';
-price='499';
-}
-
-if(text==="topup90"){
-day='90';
-price='1299';
-}
-
-if(text==="topup180"){
-day='180';
-price='2500';
-}
-
-if(text==="topup365"){
-day='365';
-price='4999';
-}
-
-// บันทึกสถานะรอส่งสลิป
-db.topups = db.topups || {};
-
-db.topups[userId] = {
-status:'waiting_slip',
-days:Number(day),
-price:Number(price),
-createdAt:nowThai(),
-updatedAt:nowThai()
-};
-
-saveDB(db);
-
-return reply(event.replyToken,[
-
-buildSupportFlex(),
-
-{
-type:'text',
-text:
-`คุณเลือกแพ็กเกจ ${day} วัน แล้ว
-
-สนับสนุน ${price} B.
-
-กรุณาส่งสลิปเข้ามาในแชตนี้ได้เลย`
-}
-
-]);
-
-}
 
 if (text.startsWith('nm%')) {
   const keyword = text.replace('nm%', '').trim();
