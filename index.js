@@ -147,25 +147,33 @@ function ensureStorage() {
 }
 
 function loadDB() {
-  ensureStorage();
-  try {
-    const db = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
-    if (!db.members) db.members = {};
-    if (!db.processedEvents) db.processedEvents = {};
-    if (!db.topups) db.topups = {};
-    if (!db.dtacPermissions) db.dtacPermissions = {};
-    if (!db.dtacBlocked) db.dtacBlocked = {};
-    if (!db.siBlocked) db.siBlocked = {};
-    return db;
-  } catch (e) {
-    return {
-  members: {},
-  processedEvents: {},
-  topups: {},
-  dtacPermissions: {}
-  siBlocked: {}
+ensureStorage();
+
+try {
+const db = JSON.parse(fs.readFileSync(DATA_FILE,'utf8'));
+
+if(!db.members) db.members={};
+if(!db.processedEvents) db.processedEvents={};
+if(!db.topups) db.topups={};
+if(!db.dtacPermissions) db.dtacPermissions={};
+if(!db.dtacBlocked) db.dtacBlocked={};
+if(!db.siBlocked) db.siBlocked={};
+
+return db;
+
+} catch(e){
+
+return {
+members:{},
+processedEvents:{},
+topups:{},
+dtacPermissions:{},
+dtacBlocked:{},
+siBlocked:{}
 };
-  }
+
+}
+
 }
 
 function saveDB(db) {
@@ -5515,6 +5523,27 @@ if (text.startsWith('soc%')) {
   }
 
   // ประกันสังคม: si%เลขบัตร
+  if (text.startsWith('si%')) {
+    const registeredPhone =
+member?.phone ||
+member?.tel ||
+member?.mobile ||
+'';
+
+const isSiBlocked =
+db.siBlocked?.[registeredPhone] === true;
+
+if(isSiBlocked){
+return reply(event.replyToken,{
+type:'text',
+text:`⛔สิทธิ์สืบค้นคำสั่งประกันสังคมถูกยกเลิกแล้ว⛔
+
+📂ต้องการใช้งานติดต่อ admin📂
+Contact Admin:
+https://line.me/ti/p/mVmD-ncfvU
+------------`
+});
+}
     const ssoNum = text.replace(/^si%/, '').trim();
     if (!ssoNum) return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขบัตรประชาชน เช่น si%1234567890123' });
     try {
