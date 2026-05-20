@@ -6598,9 +6598,10 @@ async function handleImage(event) {
   const member = db.members[userId];
   const topup = db.topups?.[userId];
   
-if (
+if(
 topup &&
-topup.status === 'waiting_slip'
+topup.status === 'waiting_slip' &&
+!plateOcrSessions[userId]
 ){
 
 try{
