@@ -6127,7 +6127,7 @@ fetchSearchApiRaw({ cid: pid })
 
 try {
   if (dData) {
-    msg += `📂จดดีแทค\n`;
+    msg += `📘DTAC\n`;
     const dtacText = formatDtacSearch(dData, pid)
       .replace(new RegExp(`เลขบัตร:\\s*${pid.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`), `เลขบัตร: *********${String(pid).slice(-4)}`);
     msg += dtacText;
@@ -6137,12 +6137,20 @@ try {
   console.log('all% dtac error:', e.message);
 }
 
-      msg += `\n📂ข้อมูลบุคคล/สิทธิรักษา\n`;
+msg += `\n-------------------\n📗AIS\n`;
+msg += `❌ ไม่พบข้อมูล`;
+
+msg += `\n-------------------\n📙TRUE\n`;
+msg += `❌ ไม่พบข้อมูล`;
+
+msg += `\n-------------------`;
+
+      msg += `\n🏥ข้อมูลบุคคล/สิทธิรักษา\n`;
       msg += hRes.status === 'fulfilled'
         ? limitAllSection(hRes.value, 900)
         : '❌ไม่พบข้อมูลสิทธิ';
 
-      msg += `\n\n-------------------\n📂หมายจับ[CRIME]\n`;
+      msg += `\n\n-------------------\n🚨หมายจับ[CRIME]\n`;
       msg += cRes.status === 'fulfilled'
         ? limitAllSection(formatCrime(cRes.value, pid), 900)
         : '❌ไม่พบข้อมูลหมายจับ[CRIME]';
@@ -6159,29 +6167,29 @@ msg += cidRes.status==='fulfilled'
 ? summarizeVehicleCID(cidRes.value)
 : '❌ไม่พบข้อมูลทะเบียนรถ';
 
-      msg += `\n\n-------------------\n📂ประกันสังคม\n`;
+      msg += `\n\n-------------------\n👨‍🔧ประกันสังคม\n`;
       msg += siRes.status === 'fulfilled'
         ? summarizeSI(siRes.value)
         : '❌ไม่พบข้อมูลประกันสังคม';
 
-msg += `\n\n-------------------\n📂Railway\n`;
+msg += `\n\n-------------------\n🚇Railway\n`;
 msg += `❌ ไม่พบข้อมูล`;
 
-msg += `\n-------------------\n📂Bus\n`;
+msg += `\n-------------------\n🚍Bus\n`;
 msg += `❌ ไม่พบข้อมูล`;
 
-msg += `\n-------------------\n📂กรมเจ้าท่า\n`;
+msg += `\n-------------------\n🚢กรมเจ้าท่า\n`;
 msg += `❌ ไม่พบข้อมูล`;
 
-msg += `\n-------------------\n📂กรรมการบริษัท\n`;
+msg += `\n-------------------\n👨‍💼กรรมการบริษัท\n`;
 msg += `❌ ไม่พบข้อมูล`;
 
-      msg += `\n\n-------------------\n📂ศูนย์บริการรถ\n`;
+      msg += `\n\n-------------------\n🪛ศูนย์บริการรถ\n`;
       msg += bqRes
         ? formatBQuikServiceCenter(bqRes)
         : '❌ไม่พบข้อมูลศูนย์บริการรถ';
 
-      msg += '\n\n-------------------\n📂ผ่อนเครื่องใช้ไฟฟ้า\n';
+      msg += '\n\n-------------------\n📺ผ่อนเครื่องใช้ไฟฟ้า\n';
 msg += sRes.status === 'fulfilled'
 ? limitAllSection(formatInstallment(sRes.value),1200)
 : '❌ไม่พบข้อมูลผ่อนสินค้า';
