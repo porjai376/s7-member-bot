@@ -4332,6 +4332,59 @@ text:`❌ ยกเลิก ${phone} ใช้ d# แล้ว`
 
 }
 
+if(text === 'ดูสมาชิกดีแทค'){
+
+if(!isAdmin(userId)){
+return reply(event.replyToken,{
+type:'text',
+text:'❌ สำหรับแอดมินเท่านั้น'
+});
+}
+
+db.dtacPermissions =
+db.dtacPermissions || {};
+
+const phones =
+Object.keys(db.dtacPermissions);
+
+if(!phones.length){
+
+return reply(event.replyToken,{
+type:'text',
+text:'❌ ยังไม่มีสมาชิกได้รับสิทธิ์ DTAC'
+});
+
+}
+
+let msg=
+'📂สมาชิกที่มีสิทธิ์ DTAC\n';
+msg+='-  -  -  -  -  -  -\n';
+
+phones.forEach((phone,index)=>{
+
+const found=
+findMemberByPhone(db,phone);
+
+const name=
+found?.member?.fullname ||
+found?.member?.name ||
+'ไม่ทราบชื่อ';
+
+msg+=
+`├● ${index+1}. ${name}\n`+
+`└● ${phone}\n\n`;
+
+});
+
+msg+='-  -  -  -  -  -  -';
+
+return reply(event.replyToken,{
+type:'text',
+text:msg
+});
+
+}
+
 if(/^อนุมัติประกันสังคม#/.test(text)){
 
 if(!isAdmin(userId)){
