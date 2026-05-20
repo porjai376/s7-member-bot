@@ -6599,7 +6599,7 @@ function formatPlateOcr(data) {
 async function handleImage(event) {
   const userId = event.source.userId;
   const db = loadDB();
-  const member = db.members[userId];
+  const member = db.members?.[userId];
   const topup = db.topups?.[userId];
 
   const isRegistering =
