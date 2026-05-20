@@ -109,6 +109,93 @@ async function askLaw(query) {
 
 }
 
+async function searchCheckMd(firstName, lastName) {
+  const payload = new URLSearchParams({
+    nm: firstName,
+    lp: lastName,
+    nm_en: '',
+    lp_en: '',
+    checkCode: '1',
+    codecpe: ''
+  });
+
+  const response = await fetch('https://checkmd.tmc.or.th/v3/search', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      Accept: 'text/html,application/json'
+    },
+    body: payload
+  });
+
+  const text = await response.text();
+
+  if (!response.ok) {
+    throw new Error(`CheckMD request failed: ${response.status} ${response.statusText}`);
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return parseCheckMdResult(text);
+  }
+}
+
+function parseCheckMdResult(html) {
+  const $ = cheerio.load(html);
+  const clean = (value) => String(value || '').replace(/\s+/g, ' ').trim();
+
+  const result = {
+    found: clean($('.panel-info > .panel-heading').first().text()),
+    name_th: clean($('article strong').filter((_, el) => clean($(el).text()).startsWith('นพ.')).first().text()),
+    name_en: clean($('article .text-info').first().text()),
+    practice_since_th: clean($('article strong').filter((_, el) => clean($(el).text()).includes('เป็นผู้ประกอบวิชาชีพเวชกรรมตั้งแต่')).first().text()),
+    practice_since_en: clean($('article .text-info span').first().text()),
+    specialties: [],
+    license_check: clean($('.panel-default .panel-body').first().contents().filter((_, node) => node.type === 'text').text())
+  };
+
+  $('.fa-ul.text-info li').each((_, el) => {
+    const specialty = clean($(el).text());
+    if (specialty && !result.specialties.includes(specialty)) {
+      result.specialties.push(specialty);
+    }
+  });
+
+  return result;
+}
+
+function formatCheckMdResult(result, query) {
+  if (!result || result.error) {
+    return `❌ ไม่พบข้อมูลแพทย์สำหรับ ${query}`;
+  }
+
+  if (typeof result === 'string') {
+    return result || `❌ ไม่พบข้อมูลแพทย์สำหรับ ${query}`;
+  }
+
+  const lines = [
+    `🩺 ผลตรวจสอบแพทยสภา`,
+    `ค้นหา: ${query}`
+  ];
+
+  if (result.found) lines.push(`สถานะ: ${result.found}`);
+  if (result.name_th) lines.push(`ชื่อไทย: ${result.name_th}`);
+  if (result.name_en) lines.push(`ชื่ออังกฤษ: ${result.name_en}`);
+  if (result.practice_since_th) lines.push(result.practice_since_th);
+  if (result.practice_since_en) lines.push(result.practice_since_en);
+  if (Array.isArray(result.specialties) && result.specialties.length) {
+    lines.push(`สาขา: ${result.specialties.join(', ')}`);
+  }
+  if (result.license_check) lines.push(`ตรวจสอบใบอนุญาต: ${result.license_check}`);
+
+  if (lines.length <= 2) {
+    lines.push('ไม่พบข้อมูลที่ตรงกับคำค้นหา');
+  }
+
+  return limitLineMessage(lines.join('\n'));
+}
+
 const app = express();
 
 const CHANNEL_ACCESS_TOKEN = process.env.CHANNEL_ACCESS_TOKEN;
@@ -197,7 +284,6 @@ if(!db.topups) db.topups={};
 if(!db.dtacPermissions) db.dtacPermissions={};
 if(!db.dtacBlocked) db.dtacBlocked={};
 if(!db.siBlocked) db.siBlocked={};
-if (!db.aisNotify) db.aisNotify = {};
 
 return db;
 
@@ -210,7 +296,6 @@ topups:{},
 dtacPermissions:{},
 dtacBlocked:{},
 siBlocked:{}
-aisNotify: {}
 };
 
 }
@@ -222,7 +307,6 @@ function saveDB(db) {
   if (!db.dtacPermissions) db.dtacPermissions = {};
   if (!db.dtacBlocked) db.dtacBlocked = {};
   if (!db.siBlocked) db.siBlocked = {};
-  if (!db.aisNotify) db.aisNotify = {};
   fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2), 'utf8');
 }
 
@@ -2872,6 +2956,7 @@ function buildMenuCarouselFlex() {
               menuSection('🔎 บุคคล', [
                 '┌● ประกันสังคม si%เลขบัตร',
                 '├● นักเรียน OPEC st%เลขบัตร',
+                '├● ตรวจสอบแพทยสภา dc%ชื่อ สกุล',
                 '├● ใบขับขี่ dl#เลขบัตร',
                 '├● คุมประพฤติ pb%เลขบัตร',
                 '├● ผู้ต้องขัง psi#เลขบัตร',
@@ -4535,29 +4620,6 @@ if (text.startsWith('ยกเลิกดีแทค#')) {
   });
 }
 
-if(/^แจ้งเตือนais#/.test(text)){
-
-if(!isAdmin(userId)){
-return reply(event.replyToken,{
-type:'text',
-text:'❌ คำสั่งนี้สำหรับแอดมินเท่านั้น'
-});
-}
-
-const phone = text.replace(/^แจ้งเตือนais#/,'').trim();
-
-db.aisNotify = db.aisNotify || {};
-db.aisNotify[phone] = true;
-
-saveDB(db);
-
-return reply(event.replyToken,{
-type:'text',
-text:`✅ เปิดแจ้งเตือน AIS สำหรับ ${phone} แล้ว`
-});
-
-}
-
 if(/^ยกเลิกประกันสังคม#/.test(text)){
 
 if(!isAdmin(userId)){
@@ -4805,49 +4867,16 @@ if (text === 'ดูสมาชิกรอตรวจสอบ') {
     });
   }
 
-if(text.startsWith('a#')){
-
-const query = text.replace(/^a#/,'').trim();
-
-const registeredPhone =
-member?.phone ||
-member?.tel ||
-member?.mobile ||
-'';
-
-const profile = await getProfile(userId);
-
-for(const adminId of ADMIN_IDS){
-
-await push(adminId,{
-type:'text',
-text:`📩 สมาชิกสืบค้น a#
-
-ชื่อ LINE: ${profile.displayName || '-'}
-ชื่อสมาชิก: ${member?.fullname || member?.name || '-'}
-เบอร์สมาชิก: ${registeredPhone || '-'}
-ข้อมูลค้นหา: a#${query}`
-});
-
-}
-
-return reply(event.replyToken,{
-type:'text',
-text:'✅ ส่งคำขอสืบค้นให้แอดมินแล้ว\nกรุณารอแอดมินตอบกลับ'
-});
-
-}
-
   if (
-text.startsWith('fx#')
-) {
+    text.startsWith('fx#') ||
+    text.startsWith('a#')
+  ) {
 
-return reply(event.replyToken,{
-type:'text',
-text:'⏳System processing'
-});
-
-}
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '⏳System processing'
+    });
+  }
 
   if (!canUseBotCommands(userId, member, text)) {
     if (!member) {
@@ -5077,6 +5106,7 @@ text:`📂 คำสั่งใช้งาน
 
 🔎 บุคคล
 ├ si%เลขบัตร → ประกันสังคม
+├ dc%ชื่อ สกุล → ตรวจสอบแพทยสภา
 ├ dl#เลขบัตร → ใบขับขี่
 ├ pb%เลขบัตร → คุมประพฤติ
 ├ psi#เลขบัตร → ผู้ต้องขัง
@@ -5111,8 +5141,8 @@ text:`📂 คำสั่งใช้งาน
 ┣ เช็คซิม icc%เลข ICCID
 ┣ เช็คเบี้ยยังชีพ wf%เลขบัตร
 ┣ หาข้อกฏหมาย lw%คำถาม
-┣ ตำแหน่งสถานพยาบาล nm%รหัสหน่วยบริการ หรือ ชื่อสถานพยาบาล
-┣ แผนที่ map%ละติจูด,ลองจิจูด
+┣ หาข้อกฏหมาย nm%รหัสหน่วยบริการ หรือ ชื่อสถานพยาบาล
+┣ หาแผนที่ map%ละติจูด,ลองจิจูด
 ┣ เช็คโดเมน web%ชื่อเว็บไซต์
 ┗ เช็คพิกัดเซเว่น se%รหัสสาขา7-11
 
@@ -5147,7 +5177,8 @@ text:`📂 คำสั่งใช้งาน
 -  -  -  -  -  -  -  -  -  -
 🚨คำสั่งที่ทำการปิดปรับปรุง🚨
 ├ pi%
-└ fx#
+├ fx#
+└ a#
 -  -  -  -  -  -  -  -  -  -
 `
 });
@@ -5780,6 +5811,27 @@ if (text.startsWith('soc%')) {
   type: 'text', 
   text: '⌛กรุณาสืบค้นใหม่อีกครั้ง⌛'
 });
+    }
+  }
+
+  // ตรวจสอบแพทยสภา: dc%ชื่อ สกุล
+  if (text.startsWith('dc%')) {
+    const query = text.replace(/^dc%/i, '').trim();
+    const parts = query.split(/\s+/).filter(Boolean);
+
+    if (parts.length < 2) {
+      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุชื่อและนามสกุล เช่น dc%ภัทรักษ์ ลาภบุญเรือง' });
+    }
+
+    const firstName = parts[0];
+    const lastName = parts.slice(1).join(' ');
+
+    try {
+      const result = await searchCheckMd(firstName, lastName);
+      return reply(event.replyToken, { type: 'text', text: formatCheckMdResult(result, query) });
+    } catch (err) {
+      console.error('checkmd error:', err?.response?.data || err.message);
+      return reply(event.replyToken, { type: 'text', text: '❌ ตรวจสอบแพทยสภาไม่สำเร็จ: ' + err.message });
     }
   }
 
