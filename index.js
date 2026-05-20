@@ -6597,11 +6597,16 @@ async function handleImage(event) {
   const db = loadDB();
   const member = db.members[userId];
   const topup = db.topups?.[userId];
-  
+
+  const isRegistering =
+member &&
+member.status === 'waiting_card';
+
 if(
 topup &&
 topup.status === 'waiting_slip' &&
-!plateOcrSessions[userId]
+!plateOcrSessions[userId] &&
+!isRegistering
 ){
 
 try{
