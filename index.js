@@ -6166,15 +6166,22 @@ msg += cidRes.status==='fulfilled'
         ? formatBQuikServiceCenter(bqRes)
         : '❌ไม่พบข้อมูลศูนย์บริการรถ';
 
-      msg += `\n\n-------------------\n📂ผ่อนเครื่องใช้ไฟฟ้า\n`;
-      msg += sRes.status === 'fulfilled'
-        ? limitAllSection(formatInstallment(sRes.value), 1200)
-        : '❌ไม่พบข้อมูลผ่อนสินค้า';
+      msg += '\n\n-------------------\n📂ผ่อนเครื่องใช้ไฟฟ้า\n';
+msg += sRes.status === 'fulfilled'
+? limitAllSection(formatInstallment(sRes.value),1200)
+: '❌ไม่พบข้อมูลผ่อนสินค้า';
 
-      return reply(event.replyToken, {
-        type: 'text',
-        text: limitLineMessage(msg)
-      });
+msg += `
+-------------------
+⚠️คำเตือน
+┌●บางรายการมีจำนวนมากจึงแสดงได้บางส่วน
+└●หากต้องการละเอียด ให้เช็คแยกคำสั่ง
+`;
+
+return reply(event.replyToken,{
+type:'text',
+text:limitLineMessage(msg)
+});
 
     } catch (err) {
       console.error('all lookup error:', err?.response?.data || err.message);
