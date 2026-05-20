@@ -5300,23 +5300,19 @@ member?.tel ||
 member?.mobile ||
 '';
 
-const canUseDtac =
-isAdmin(userId) ||
-db.dtacPermissions?.[registeredPhone] === true;
+const isBlocked =
+db.dtacBlocked?.[registeredPhone] === true;
 
-if(!canUseDtac){
-
+if(isBlocked){
 return reply(event.replyToken,{
 type:'text',
-text:`⛔ยังไม่มีสิทธิ์ใช้งานคำสั่ง DTAC⛔
+text:`⛔สิทธิ์สืบค้นคำสั่ง DTAC ถูกยกเลิกแล้ว⛔
 
-📂ต้องการใช้งานติดต่อ:admin📂
-📳แจ้งเบอร์โทรที่สมัครกับ:admin
+📂ต้องการใช้งานติดต่อ admin📂
 Contact Admin:
 https://line.me/ti/p/mVmD-ncfvU
 ------------`
 });
-
 }
 
 const phone = text.replace(/^d#/, '').trim();
