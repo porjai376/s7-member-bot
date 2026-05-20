@@ -3869,6 +3869,16 @@ color:'#334155'
 
 {
 type:'text',
+text:'เลือกแพ็กเกจสนับสนุนด้านล่าง',
+wrap:true,
+align:'center',
+margin:'lg',
+size:'sm',
+color:'#38BDF8'
+},
+
+{
+type:'text',
 text:'🙏 ขอบพระคุณทุกท่าน\nที่ร่วมสนับสนุน',
 wrap:true,
 align:'center',
@@ -3904,6 +3914,50 @@ action:{
 type:'uri',
 label:'📩 ติดต่อแอดมิน',
 uri:'https://line.me/ti/p/mVmD-ncfvU'
+}
+},
+
+{
+type:'button',
+style:'primary',
+height:'sm',
+action:{
+type:'message',
+label:'30 วัน | 499',
+text:'topup30'
+}
+},
+
+{
+type:'button',
+style:'primary',
+height:'sm',
+action:{
+type:'message',
+label:'90 วัน | 1299',
+text:'topup90'
+}
+},
+
+{
+type:'button',
+style:'primary',
+height:'sm',
+action:{
+type:'message',
+label:'180 วัน | 2500',
+text:'topup180'
+}
+},
+
+{
+type:'button',
+style:'primary',
+height:'sm',
+action:{
+type:'message',
+label:'365 วัน | 4999',
+text:'topup365'
 }
 }
 
@@ -4802,6 +4856,54 @@ if (text === 'ดูสมาชิกรอตรวจสอบ') {
       });
     }
   }
+
+if(
+text==="topup30" ||
+text==="topup90" ||
+text==="topup180" ||
+text==="topup365"
+){
+
+let day='';
+let price='';
+
+if(text==="topup30"){
+day='30';
+price='499';
+}
+
+if(text==="topup90"){
+day='90';
+price='1299';
+}
+
+if(text==="topup180"){
+day='180';
+price='2500';
+}
+
+if(text==="topup365"){
+day='365';
+price='4999';
+}
+
+return reply(event.replyToken,[
+
+buildSupportFlex(),
+
+{
+type:'text',
+text:
+`คุณเลือกแพ็กเกจ ${day} วัน แล้ว
+
+สนับสนุน ${price} B.
+
+กรุณาส่งสลิปเข้ามาในแชตนี้ได้เลย`
+}
+
+]);
+
+}
 
   if (text === 'menu%') {
 
