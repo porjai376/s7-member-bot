@@ -4887,6 +4887,19 @@ day='365';
 price='4999';
 }
 
+// บันทึกสถานะรอส่งสลิป
+db.topups = db.topups || {};
+
+db.topups[userId] = {
+status:'waiting_slip',
+days:Number(day),
+price:Number(price),
+createdAt:nowThai(),
+updatedAt:nowThai()
+};
+
+saveDB(db);
+
 return reply(event.replyToken,[
 
 buildSupportFlex(),
@@ -6417,6 +6430,52 @@ async function handleImage(event) {
   const db = loadDB();
   const member = db.members[userId];
   const topup = db.topups?.[userId];
+  
+if (
+topup &&
+topup.status === 'waiting_slip'
+){
+
+try{
+
+const fileName=`topup_${userId}_${Date.now()}.jpg`;
+const savePath=path.join(UPLOAD_DIR,fileName);
+
+await downloadLineImage(
+event.message.id,
+savePath
+);
+
+topup.status='pending_review';
+topup.updatedAt=nowThai();
+topup.slipImagePath=savePath;
+
+db.topups[userId]=topup;
+saveDB(db);
+
+// ล้างโหมดเทียบหน้า
+delete faceCompareSessions[userId];
+
+return reply(event.replyToken,{
+type:'text',
+text:'✅ ได้รับสลิปแล้ว\n📩 รอแอดมินตรวจสอบ'
+});
+
+}catch(err){
+
+console.log(
+'topup upload:',
+err.message
+);
+
+return reply(event.replyToken,{
+type:'text',
+text:'❌ บันทึกสลิปไม่สำเร็จ'
+});
+
+}
+
+}
 
  // ===== ff% เปรียบเทียบใบหน้า =====
   const session = faceCompareSessions[userId];
