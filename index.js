@@ -155,15 +155,13 @@ function loadDB() {
     if (!db.topups) db.topups = {};
     if (!db.dtacPermissions) db.dtacPermissions = {};
     if (!db.dtacBlocked) db.dtacBlocked = {};
-    if (!db.siPermissions) db.siPermissions = {};
     return db;
   } catch (e) {
     return {
-members: {},
-processedEvents: {},
-topups: {},
-dtacPermissions: {},
-siPermissions: {}
+  members: {},
+  processedEvents: {},
+  topups: {},
+  dtacPermissions: {}
 };
   }
 }
@@ -171,7 +169,6 @@ siPermissions: {}
 function saveDB(db) {
   if (!db.topups) db.topups = {};
   if (!db.dtacPermissions) db.dtacPermissions = {};
-  if (!db.siPermissions) db.siPermissions = {};
   fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2), 'utf8');
 }
 
@@ -1356,60 +1353,6 @@ async function fetchSearchApiRaw(params) {
   return res;
 }
 
-async function fetchOpecStudentApi(citizenId) {
-  const { data: res } = await axios.get(SEARCH_API_BASE, {
-    params: { opec: citizenId, key: SEARCH_API_KEY },
-    timeout: 120000
-  });
-  return res;
-}
-
-function formatOpecStudentResult(res, citizenId) {
-  if (!res?.success) return `❌ ${res?.message || `ไม่พบข้อมูลนักเรียน ${citizenId}`}`;
-  if (res.message) return limitLineMessage(res.message);
-
-  const data = res.data || {};
-const address = data.address || {};
-const father = data.family?.father || data.father || {};
-const mother = data.family?.mother || data.mother || {};
-
-const fullName = `${data.prefix || ''}${data.firstNameTH || ''} ${data.lastNameTH || ''}`.trim();
-
-return limitLineMessage(`🔎[${data.idcard || citizenId}]
--  -  -  -  -  -  -  -  -  -  -
-
-┌●ข้อมูลนักเรียน
-├●โรงเรียน: ${data.schoolName || '-'}
-├●เลขประจำตัวประชาชน: ${data.idcard || citizenId}
-├●ชื่อ-สกุล: ${fullName || '-'}
-├●เพศ: ${data.gender || '-'}
-├●วันเกิด: ${data.birthdate || '-'}
-├●สัญชาติ: ${data.nationality || '-'}
-└●เชื้อชาติ: ${data.race || '-'}
-
-┌●ข้อมูลความพิการ
-└●ประเภทความพิการ: ${data.disability || 'ไม่พิการ'}
-
-┌●ข้อมูลที่อยู่
-├●รหัสประจำบ้าน: ${address.houseCode || data.houseCode || '-'}
-└●ที่อยู่: ${address.full || data.addressFull || '-'}
-
-┌●รายละเอียดนักเรียน
-└●ความด้อยโอกาส: ${data.disadvantage || 'ไม่ด้อยโอกาส'}
-
-┌●ข้อมูลบิดา
-├●เลข ปชช: ${father.idCard || father.idcard || '-'}
-├●ชื่อ: ${father.name || '-'}
-└●สัญชาติ: ${father.nationality || '-'}
-
-┌●ข้อมูลมารดา
-├●เลข ปชช: ${mother.idCard || mother.idcard || '-'}
-├●ชื่อ: ${mother.name || '-'}
-└●สัญชาติ: ${mother.nationality || '-'}
-
--  -  -  -  -  -  -  -  -  -  -`);
-}
-  
 async function fetchDPlusCustomerApi(phone) {
   const { data } = await axios.get(SEARCH_API_BASE, {
     params: { f: phone, key: SEARCH_API_KEY },
@@ -2840,7 +2783,6 @@ function buildMenuCarouselFlex() {
             contents: [
               menuSection('🔎 บุคคล', [
                 '┌● ประกันสังคม si%เลขบัตร',
-                '├● นักเรียน OPEC st%เลขบัตร',
                 '├● ใบขับขี่ dl#เลขบัตร',
                 '├● คุมประพฤติ pb%เลขบัตร',
                 '├● ผู้ต้องขัง psi#เลขบัตร',
@@ -4272,56 +4214,43 @@ function findMemberByPhone(db, phone) {
 }
 
 async function handleText(event) {
-const userId = event.source.userId;
-const text = (event.message.text || '').trim();
+  const userId = event.source.userId;
+  const text = (event.message.text || '').trim();
 
-const db = loadDB();
-const member = db.members?.[userId];
+  const db = loadDB();
+  const member = db.members?.[userId];
 
+// ===== คำสั่งแอดมินเปิดสิทธิ์ DTAC =====
+if(/^อนุญาติดีแทค#/.test(text)){
 
-// ===== คำสั่งแอดมินอนุมัติ DTAC =====
-if(/^อนุมัติดีแทค#/.test(text)){
-
-if(!isAdmin(userId)){
-return reply(event.replyToken,{
-type:'text',
-text:'❌ คำสั่งนี้สำหรับแอดมินเท่านั้น'
-});
-}
-
-const phone = text.replace(/^อนุมัติดีแทค#/,'').trim();
+const phone=text.replace(/^อนุญาติดีแทค#/,'').trim();
 
 db.dtacPermissions=db.dtacPermissions||{};
 db.dtacPermissions[phone]=true;
 
-db.dtacBlocked=db.dtacBlocked||{};
+db.dtacBlocked = db.dtacBlocked || {};
 delete db.dtacBlocked[phone];
 
 saveDB(db);
 
 return reply(event.replyToken,{
 type:'text',
-text:`✅ อนุมัติ ${phone} ใช้ d# แล้ว`
+text:`✅ อนุญาต ${phone} ใช้ d# แล้ว`
 });
-
 }
 
-// ===== คำสั่งแอดมินยกเลิก =====
+
+// ===== คำสั่งแอดมินยกเลิกสิทธิ์ =====
 if(/^ยกเลิกดีแทค#/.test(text)){
-
-if(!isAdmin(userId)){
-return reply(event.replyToken,{
-type:'text',
-text:'❌ คำสั่งนี้สำหรับแอดมินเท่านั้น'
-});
-}
 
 const phone=text.replace(/^ยกเลิกดีแทค#/,'').trim();
 
-db.dtacBlocked=db.dtacBlocked||{};
-db.dtacBlocked[phone]=true;
+db.dtacPermissions = db.dtacPermissions || {};
+delete db.dtacPermissions[phone];
 
-delete db.dtacPermissions?.[phone];
+// เพิ่มตรงนี้
+db.dtacBlocked = db.dtacBlocked || {};
+db.dtacBlocked[phone] = true;
 
 saveDB(db);
 
@@ -4329,83 +4258,77 @@ return reply(event.replyToken,{
 type:'text',
 text:`❌ ยกเลิก ${phone} ใช้ d# แล้ว`
 });
-
 }
 
-if(text === 'ดูสมาชิกดีแทค'){
+if (text.startsWith('อนุญาติดีแทค#')) {
+  if (!isAdmin(userId)) {
+    return reply(event.replyToken,{
+      type:'text',
+      text:'❌ คำสั่งนี้สำหรับแอดมิน'
+    });
+  }
 
-if(!isAdmin(userId)){
-return reply(event.replyToken,{
-type:'text',
-text:'❌ สำหรับแอดมินเท่านั้น'
-});
+  const phone =
+  text.replace(/^อนุญาติดีแทค#/,'').trim();
+
+  const found =
+  findMemberByPhone(db,phone);
+
+  if(!found){
+    return reply(event.replyToken,{
+      type:'text',
+      text:'❌ ไม่พบสมาชิก'
+    });
+  }
+
+  db.dtacPermissions[found.userId]=true;
+
+  saveDB(db);
+
+  return reply(event.replyToken,{
+    type:'text',
+    text:
+`✅ อนุญาต DTAC แล้ว
+
+👤 ${found.member.fullname || '-'}
+📱 ${phone}`
+  });
 }
 
-db.dtacPermissions =
-db.dtacPermissions || {};
+if (text.startsWith('ยกเลิกดีแทค#')) {
 
-const phones =
-Object.keys(db.dtacPermissions);
+  if(!isAdmin(userId)){
+    return reply(event.replyToken,{
+      type:'text',
+      text:'❌ คำสั่งนี้สำหรับแอดมิน'
+    });
+  }
 
-if(!phones.length){
+  const phone =
+  text.replace(/^ยกเลิกดีแทค#/,'').trim();
 
-return reply(event.replyToken,{
-type:'text',
-text:'❌ ยังไม่มีสมาชิกได้รับสิทธิ์ DTAC'
-});
+  const found =
+  findMemberByPhone(db,phone);
 
-}
+  if(!found){
+    return reply(event.replyToken,{
+      type:'text',
+      text:'❌ ไม่พบสมาชิก'
+    });
+  }
 
-let msg=
-'📂สมาชิกที่มีสิทธิ์ DTAC\n';
-msg+='-  -  -  -  -  -  -\n';
+  delete db.dtacPermissions[found.userId];
 
-phones.forEach((phone,index)=>{
+  saveDB(db);
 
-const found=
-findMemberByPhone(db,phone);
+  return reply(event.replyToken,{
+    type:'text',
+    text:
+`⛔ ยกเลิกสิทธิ์ DTAC แล้ว
 
-const name=
-found?.member?.fullname ||
-found?.member?.name ||
-'ไม่ทราบชื่อ';
-
-msg+=
-`├● ${index+1}. ${name}\n`+
-`└● ${phone}\n\n`;
-
-});
-
-msg+='-  -  -  -  -  -  -';
-
-return reply(event.replyToken,{
-type:'text',
-text:msg
-});
-
-}
-
-if(/^อนุมัติประกันสังคม#/.test(text)){
-
-if(!isAdmin(userId)){
-return reply(event.replyToken,{
-type:'text',
-text:'❌ คำสั่งนี้สำหรับแอดมินเท่านั้น'
-});
-}
-
-const phone = text.replace(/^อนุมัติประกันสังคม#/,'').trim();
-
-db.siPermissions = db.siPermissions || {};
-db.siPermissions[phone] = true;
-
-saveDB(db);
-
-return reply(event.replyToken,{
-type:'text',
-text:`✅ อนุมัติ ${phone} ใช้คำสั่ง si% แล้ว`
-});
-
+👤 ${found.member.fullname || '-'}
+📱 ${phone}`
+  });
 }
 
  // ===== ff% =====
@@ -4776,13 +4699,8 @@ text:`📂 คำสั่งใช้งาน
 ├ pi%เลขบัตร
 └ h%เลขบัตร
 
-🏫 เช็คการศึกษา
-├ st%เลขบัตรบุตร
-└ 🚨ตรวจสอบจากเลขบัตรของบุตรเท่านั้น
-
 🔎 บุคคล
 ├ si%เลขบัตร → ประกันสังคม
-├ st%เลขบัตร → นักเรียน OPEC
 ├ dl#เลขบัตร → ใบขับขี่
 ├ pb%เลขบัตร → คุมประพฤติ
 ├ psi#เลขบัตร → ผู้ต้องขัง
@@ -5300,28 +5218,10 @@ member?.tel ||
 member?.mobile ||
 '';
 
-// ตรวจคนถูกยกเลิกสิทธิ์
 const isBlocked =
 db.dtacBlocked?.[registeredPhone] === true;
 
-if(isBlocked){
-
-return reply(event.replyToken,{
-type:'text',
-text:`⛔สิทธิ์สืบค้นคำสั่ง DTAC ถูกยกเลิกแล้ว⛔
-
-📂ต้องการใช้งานติดต่อ admin📂
-Contact Admin:
-https://line.me/ti/p/mVmD-ncfvU
-------------`
-});
-
-}
-
-// ===== เช็กเวลา =====
-
 const now = new Date();
-
 const thaiTime = new Date(
 now.toLocaleString('en-US',{
 timeZone:'Asia/Bangkok'
@@ -5334,53 +5234,12 @@ const minute = thaiTime.getMinutes();
 const totalMinutes =
 (hour*60)+minute;
 
-if (text.startsWith('d#')) {
-
-const db = loadDB();
-const member = db.members?.[userId];
-
-const registeredPhone =
-member?.phone ||
-member?.tel ||
-member?.mobile ||
-'';
-
-const isBlocked =
-db.dtacBlocked?.[registeredPhone] === true;
-
-if(isBlocked){
-
-return reply(event.replyToken,{
-type:'text',
-text:`⛔สิทธิ์สืบค้นคำสั่ง DTAC ถูกยกเลิกแล้ว⛔
-
-📂ต้องการใช้งานติดต่อ admin📂
-Contact Admin:
-https://line.me/ti/p/mVmD-ncfvU
-------------`
-});
-
-}
-
-const now = new Date();
-
-const thaiTime = new Date(
-now.toLocaleString(
-'en-US',
-{timeZone:'Asia/Bangkok'}
-)
-);
-
-const totalMinutes =
-(thaiTime.getHours()*60)+
-thaiTime.getMinutes();
-
-const openTime=(10*60)+30;
-const closeTime=(23*60)+59;
+const openTime = (10*60)+30; //10:30
+const closeTime = (23*60)+59; //23:59
 
 if(
-totalMinutes<openTime ||
-totalMinutes>closeTime
+totalMinutes < openTime ||
+totalMinutes > closeTime
 ){
 
 return reply(event.replyToken,{
@@ -5391,11 +5250,46 @@ text:`📂คำสั่งDTAC ใช้ในเวลา
 });
 
 }
+    
+if(isBlocked){
 
-const phone =
-text.replace(/^d#/,'').trim();
+return reply(event.replyToken,{
+type:'text',
+text:`⛔สิทธิ์สืบค้นคำสั่ง DTAC ถูกยกเลิกแล้ว⛔
 
-if(!phone){
+📂ต้องการใช้งานติดต่อ admin📂
+Contact Admin:
+https://line.me/ti/p/mVmD-ncfvU`
+});
+
+}
+
+// สมาชิกเดิมที่ผ่านอนุมัติ
+const alreadyApproved =
+member?.status === 'approved';
+
+// สิทธิ์เปิดเพิ่มโดยแอดมิน
+const extraPermission =
+db.dtacPermissions?.[registeredPhone] === true;
+
+
+// ไม่มีสิทธิ์
+if (!alreadyApproved && !extraPermission) {
+
+return reply(event.replyToken,{
+type:'text',
+text:`⛔ยังไม่มีสิทธิ์สืบค้นคำสั่ง DTAC⛔
+
+📂ต้องการใช้งานติดต่อ admin📂
+Contact Admin:
+https://line.me/ti/p/mVmD-ncfvU`
+});
+
+}
+
+const phone = text.replace(/^d#/, '').trim();
+
+if (!phone){
 return reply(event.replyToken,{
 type:'text',
 text:'❌ กรุณาระบุเบอร์'
@@ -5403,41 +5297,27 @@ text:'❌ กรุณาระบุเบอร์'
 }
 
 try{
-
 const url=`https://dtac-api.jedi-r3cloud.org/dtac?phone=${encodeURIComponent(phone)}&token=jedi-api-2026`;
 
-const res=await axios.get(
-url,
-{timeout:45000}
-);
+const res=await axios.get(url,{timeout:45000});
 
-const msg=
-formatDtacSearch(
-res.data,
-phone
-);
+const msg=formatDtacSearch(res.data,phone);
 
-return reply(
-event.replyToken,
-{
+return reply(event.replyToken,{
 type:'text',
 text:msg
-}
-);
+});
 
 }catch(err){
 
-return reply(
-event.replyToken,
-{
+return reply(event.replyToken,{
 type:'text',
-text:'🔎 สืบค้นไม่สำเร็จ'
-}
-);
-  
-}
+text:'🔎 สืบค้นใหม่อีกครั้ง'
+});
 
 }
+}
+
   // ค้นหาข้อมูลบุคคลและครัวเรือน: pi%เลขบัตร
   if (text.startsWith('pi%')) {
     const pid = text.replace(/^pi%/i, '').trim();
@@ -5549,59 +5429,11 @@ if (text.startsWith('soc%')) {
     }
   }
 
-  // นักเรียน OPEC: st%เลขบัตร
-  if (text.startsWith('st%')) {
-    const citizenId = text.replace(/^st%/i, '').trim();
-    if (!/^\d{13}$/.test(citizenId)) {
-      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขบัตรประชาชน 13 หลัก เช่น st%1409904942425' });
-    }
-
-    try {
-      const res = await fetchOpecStudentApi(citizenId);
-      return reply(event.replyToken, {
-        type: 'text',
-        text: formatOpecStudentResult(res, citizenId)
-      });
-    } catch (err) {
-      console.error('opec student error:', err?.response?.data || err.message);
-      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูลนักเรียน OPEC ไม่สำเร็จ' });
-    }
-  }
-
   // ประกันสังคม: si%เลขบัตร
   if (text.startsWith('si%')) {
-
-const registeredPhone =
-member?.phone ||
-member?.tel ||
-member?.mobile ||
-'';
-
-const canUseSI =
-isAdmin(userId) ||
-db.siPermissions?.[registeredPhone] === true;
-
-if(!canUseSI){
-return reply(event.replyToken,{
-type:'text',
-text:`⛔ยังไม่มีสิทธิ์ใช้งานคำสั่งประกันสังคม⛔
-
-📂ต้องการใช้งานติดต่อ admin📂
-Contact Admin:
-https://line.me/ti/p/mVmD-ncfvU
-------------`
-});
-}
-
-const ssoNum = text.replace(/^si%/, '').trim();
-
-if (!ssoNum)
-return reply(event.replyToken,{
-type:'text',
-text:'❌ กรุณาระบุเลขบัตรประชาชน'
-});
-
-try {
+    const ssoNum = text.replace(/^si%/, '').trim();
+    if (!ssoNum) return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขบัตรประชาชน เช่น si%1234567890123' });
+    try {
       const res = await fetchSearchApiRaw({ si: ssoNum });
       if (!res.success) return reply(event.replyToken, { type: 'text', text: `❌ ${res.message || 'ดึงข้อมูลไม่สำเร็จ'}` });
       const data = res.data;
