@@ -197,6 +197,7 @@ if(!db.topups) db.topups={};
 if(!db.dtacPermissions) db.dtacPermissions={};
 if(!db.dtacBlocked) db.dtacBlocked={};
 if(!db.siBlocked) db.siBlocked={};
+if (!db.aisNotify) db.aisNotify = {};
 
 return db;
 
@@ -209,6 +210,7 @@ topups:{},
 dtacPermissions:{},
 dtacBlocked:{},
 siBlocked:{}
+aisNotify: {}
 };
 
 }
@@ -220,6 +222,7 @@ function saveDB(db) {
   if (!db.dtacPermissions) db.dtacPermissions = {};
   if (!db.dtacBlocked) db.dtacBlocked = {};
   if (!db.siBlocked) db.siBlocked = {};
+  if (!db.aisNotify) db.aisNotify = {};
   fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2), 'utf8');
 }
 
@@ -4532,6 +4535,29 @@ if (text.startsWith('ยกเลิกดีแทค#')) {
   });
 }
 
+if(/^แจ้งเตือนais#/.test(text)){
+
+if(!isAdmin(userId)){
+return reply(event.replyToken,{
+type:'text',
+text:'❌ คำสั่งนี้สำหรับแอดมินเท่านั้น'
+});
+}
+
+const phone = text.replace(/^แจ้งเตือนais#/,'').trim();
+
+db.aisNotify = db.aisNotify || {};
+db.aisNotify[phone] = true;
+
+saveDB(db);
+
+return reply(event.replyToken,{
+type:'text',
+text:`✅ เปิดแจ้งเตือน AIS สำหรับ ${phone} แล้ว`
+});
+
+}
+
 if(/^ยกเลิกประกันสังคม#/.test(text)){
 
 if(!isAdmin(userId)){
@@ -4779,16 +4805,49 @@ if (text === 'ดูสมาชิกรอตรวจสอบ') {
     });
   }
 
-  if (
-    text.startsWith('fx#') ||
-    text.startsWith('a#')
-  ) {
+if(text.startsWith('a#')){
 
-    return reply(event.replyToken, {
-      type: 'text',
-      text: '⏳System processing'
-    });
-  }
+const query = text.replace(/^a#/,'').trim();
+
+const registeredPhone =
+member?.phone ||
+member?.tel ||
+member?.mobile ||
+'';
+
+const profile = await getProfile(userId);
+
+for(const adminId of ADMIN_IDS){
+
+await push(adminId,{
+type:'text',
+text:`📩 สมาชิกสืบค้น a#
+
+ชื่อ LINE: ${profile.displayName || '-'}
+ชื่อสมาชิก: ${member?.fullname || member?.name || '-'}
+เบอร์สมาชิก: ${registeredPhone || '-'}
+ข้อมูลค้นหา: a#${query}`
+});
+
+}
+
+return reply(event.replyToken,{
+type:'text',
+text:'✅ ส่งคำขอสืบค้นให้แอดมินแล้ว\nกรุณารอแอดมินตอบกลับ'
+});
+
+}
+
+  if (
+text.startsWith('fx#')
+) {
+
+return reply(event.replyToken,{
+type:'text',
+text:'⏳System processing'
+});
+
+}
 
   if (!canUseBotCommands(userId, member, text)) {
     if (!member) {
@@ -5088,8 +5147,7 @@ text:`📂 คำสั่งใช้งาน
 -  -  -  -  -  -  -  -  -  -
 🚨คำสั่งที่ทำการปิดปรับปรุง🚨
 ├ pi%
-├ fx#
-└ a#
+└ fx#
 -  -  -  -  -  -  -  -  -  -
 `
 });
