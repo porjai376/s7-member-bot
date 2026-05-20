@@ -4,12 +4,51 @@ const line = require('@line/bot-sdk');
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
+const cheerio = require('cheerio');
 const FormData = require('form-data');
 const https = require('https');
 const crypto = require('crypto');
 const IAPP_API_KEY = 'iapp_live_ccd35e461ddb1ba1f44096afde50cff5118c2013eb30491047d7a5cd69dcc443';
 const faceCompareSessions = {};
 const plateOcrSessions = {};
+
+async function searchHospital(keyword) {
+  const url = `https://cpp.nhso.go.th/search/?q=${encodeURIComponent(keyword)}`;
+
+  const res = await axios.get(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0',
+      'Accept-Language': 'th,en;q=0.9'
+    }
+  });
+
+  const $ = cheerio.load(res.data);
+
+  const name = $('.gt-result-search-info-name').first().text().trim();
+  const phone = $('.gt-gray-text').filter((i, el) =>
+    $(el).text().includes('เบอร์โทรศัพท์')
+  ).first().text().replace('เบอร์โทรศัพท์ :', '').trim();
+
+  const website = $('.gt-website-url').first().text().trim();
+
+  const address = $('.gt-gray-text').filter((i, el) =>
+    $(el).text().includes('ที่อยู่')
+  ).first().text().replace(/\s+/g, ' ').trim();
+
+  if (!name) {
+    return '❌ ไม่พบข้อมูลสถานพยาบาล';
+  }
+
+  return `🏥 ข้อมูลสถานพยาบาล
+-  -  -  -  -  -  -
+
+${name}
+
+☎️ เบอร์โทรศัพท์: ${phone || '-'}
+🌐 เว็บไซต์: ${website || '-'}
+
+📍 ${address || '-'}`;
+}
 
 async function fetchHlrLookup(msisdn) {
   const key = 'fcd01b61e422';
@@ -4916,6 +4955,24 @@ text:
 
 ]);
 
+}
+
+if (text.startsWith('nm%')) {
+  const keyword = text.replace('nm%', '').trim();
+
+  if (!keyword) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: 'กรุณาพิมพ์ nm%ตามด้วยรหัส หรือชื่อหน่วยบริการ'
+    });
+  }
+
+  const result = await searchHospital(keyword);
+
+  return reply(event.replyToken, {
+    type: 'text',
+    text: result
+  });
 }
 
   if (text === 'menu%') {
