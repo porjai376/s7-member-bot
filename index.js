@@ -5300,16 +5300,6 @@ member?.tel ||
 member?.mobile ||
 '';
 
-const db = loadDB();
-const member = db.members?.[userId];
-
-const registeredPhone =
-member?.phone ||
-member?.tel ||
-member?.mobile ||
-'';
-
-
 // ตรวจคนถูกยกเลิกสิทธิ์
 const isBlocked =
 db.dtacBlocked?.[registeredPhone] === true;
@@ -5327,7 +5317,6 @@ https://line.me/ti/p/mVmD-ncfvU
 });
 
 }
-
 
 // ===== เช็กเวลา =====
 
