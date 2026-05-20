@@ -8,6 +8,7 @@ const cheerio = require('cheerio');
 const FormData = require('form-data');
 const https = require('https');
 const crypto = require('crypto');
+const { searchCheckMd } = require('./checkmd_search');
 const IAPP_API_KEY = 'iapp_live_ccd35e461ddb1ba1f44096afde50cff5118c2013eb30491047d7a5cd69dcc443';
 const faceCompareSessions = {};
 const plateOcrSessions = {};
@@ -107,6 +108,37 @@ async function askLaw(query) {
       return null;
    }
 
+}
+
+function formatCheckMdResult(result, query) {
+  if (!result || result.error) {
+    return `❌ ไม่พบข้อมูลแพทย์สำหรับ ${query}`;
+  }
+
+  if (typeof result === 'string') {
+    return result || `❌ ไม่พบข้อมูลแพทย์สำหรับ ${query}`;
+  }
+
+  const lines = [
+    `🩺 ผลตรวจสอบแพทยสภา`,
+    `ค้นหา: ${query}`
+  ];
+
+  if (result.found) lines.push(`สถานะ: ${result.found}`);
+  if (result.name_th) lines.push(`ชื่อไทย: ${result.name_th}`);
+  if (result.name_en) lines.push(`ชื่ออังกฤษ: ${result.name_en}`);
+  if (result.practice_since_th) lines.push(result.practice_since_th);
+  if (result.practice_since_en) lines.push(result.practice_since_en);
+  if (Array.isArray(result.specialties) && result.specialties.length) {
+    lines.push(`สาขา: ${result.specialties.join(', ')}`);
+  }
+  if (result.license_check) lines.push(`ตรวจสอบใบอนุญาต: ${result.license_check}`);
+
+  if (lines.length <= 2) {
+    lines.push('ไม่พบข้อมูลที่ตรงกับคำค้นหา');
+  }
+
+  return limitLineMessage(lines.join('\n'));
 }
 
 const app = express();
@@ -2869,6 +2901,7 @@ function buildMenuCarouselFlex() {
               menuSection('🔎 บุคคล', [
                 '┌● ประกันสังคม si%เลขบัตร',
                 '├● นักเรียน OPEC st%เลขบัตร',
+                '├● ตรวจสอบแพทย์สภา dc%ชื่อสกุล',
                 '├● ใบขับขี่ dl#เลขบัตร',
                 '├● คุมประพฤติ pb%เลขบัตร',
                 '├● ผู้ต้องขัง psi#เลขบัตร',
@@ -5018,6 +5051,7 @@ text:`📂 คำสั่งใช้งาน
 
 🔎 บุคคล
 ├ si%เลขบัตร → ประกันสังคม
+├ dc%ชื่อ สกุล → ตรวจสอบแพทยสภา
 ├ dl#เลขบัตร → ใบขับขี่
 ├ pb%เลขบัตร → คุมประพฤติ
 ├ psi#เลขบัตร → ผู้ต้องขัง
@@ -5052,8 +5086,8 @@ text:`📂 คำสั่งใช้งาน
 ┣ เช็คซิม icc%เลข ICCID
 ┣ เช็คเบี้ยยังชีพ wf%เลขบัตร
 ┣ หาข้อกฏหมาย lw%คำถาม
-┣ ตำแหน่งสถานพยาบาล nm%รหัสหน่วยบริการ หรือ ชื่อสถานพยาบาล
-┣ แผนที่ map%ละติจูด,ลองจิจูด
+┣ ข้อมูลสถานพยาบาล nm%รหัสหน่วยบริการ หรือ ชื่อสถานพยาบาล
+┣ หาแผนที่ map%ละติจูด,ลองจิจูด
 ┣ เช็คโดเมน web%ชื่อเว็บไซต์
 ┗ เช็คพิกัดเซเว่น se%รหัสสาขา7-11
 
@@ -5722,6 +5756,27 @@ if (text.startsWith('soc%')) {
   type: 'text', 
   text: '⌛กรุณาสืบค้นใหม่อีกครั้ง⌛'
 });
+    }
+  }
+
+  // ตรวจสอบแพทยสภา: dc%ชื่อ สกุล
+  if (text.startsWith('dc%')) {
+    const query = text.replace(/^dc%/i, '').trim();
+    const parts = query.split(/\s+/).filter(Boolean);
+
+    if (parts.length < 2) {
+      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุชื่อและนามสกุล เช่น dc%ภัทรักษ์ ลาภบุญเรือง' });
+    }
+
+    const firstName = parts[0];
+    const lastName = parts.slice(1).join(' ');
+
+    try {
+      const result = await searchCheckMd(firstName, lastName);
+      return reply(event.replyToken, { type: 'text', text: formatCheckMdResult(result, query) });
+    } catch (err) {
+      console.error('checkmd error:', err?.response?.data || err.message);
+      return reply(event.replyToken, { type: 'text', text: '❌ ตรวจสอบแพทยสภาไม่สำเร็จ: ' + err.message });
     }
   }
 
