@@ -12,24 +12,6 @@ const IAPP_API_KEY = 'iapp_live_ccd35e461ddb1ba1f44096afde50cff5118c2013eb304910
 const faceCompareSessions = {};
 const plateOcrSessions = {};
 
-async function fetchDBDCompany(juristicId){
-const { data } = await axios.get(
-`https://datawarehouse.dbd.go.th/api/v1/company-profiles/info/5/${juristicId}`,
-{
-headers:{
-accept:'application/json',
-authorization:`Bearer ${process.env.DBD_TOKEN}`,
-'content-type':'application/json',
-referer:`https://datawarehouse.dbd.go.th/company/profile/5${juristicId}`,
-'user-agent':'Mozilla/5.0'
-},
-timeout:30000
-}
-);
-
-return data;
-}
-
 async function searchHospital(keyword) {
   const url = `https://cpp.nhso.go.th/search/?q=${encodeURIComponent(keyword)}`;
 
@@ -5002,35 +4984,6 @@ if (text === 'ดูสมาชิกรอตรวจสอบ') {
     }
   }
 
-if(text.startsWith('dbd#')){
-
-const juristicId = text.replace(/^dbd#/,'').trim();
-
-if(!/^\d{13}$/.test(juristicId)){
-return reply(event.replyToken,{
-type:'text',
-text:'❌ กรุณาระบุเลขนิติบุคคล 13 หลัก เช่น dbd#0405566005761'
-});
-}
-
-try{
-const data = await fetchDBDCompany(juristicId);
-
-return reply(event.replyToken,{
-type:'text',
-text:JSON.stringify(data,null,2).slice(0,4500)
-});
-
-}catch(err){
-console.error('dbd error:',err?.response?.data || err.message);
-return reply(event.replyToken,{
-type:'text',
-text:'❌ ดึงข้อมูล DBD ไม่สำเร็จ'
-});
-}
-
-}
-
 if(
 text==="topup30" ||
 text==="topup90" ||
@@ -5153,7 +5106,7 @@ text:`📂 คำสั่งใช้งาน
 
 🔎 บุคคล
 ├ si%เลขบัตร → ประกันสังคม
-├ dc%ชื่อ สกุล → ตรวจสอบแพทย์
+├ dc%ชื่อ สกุล → ตรวจสอบแพทยสภา
 ├ dl#เลขบัตร → ใบขับขี่
 ├ pb%เลขบัตร → คุมประพฤติ
 ├ psi#เลขบัตร → ผู้ต้องขัง
@@ -5188,7 +5141,7 @@ text:`📂 คำสั่งใช้งาน
 ┣ เช็คซิม icc%เลข ICCID
 ┣ เช็คเบี้ยยังชีพ wf%เลขบัตร
 ┣ หาข้อกฏหมาย lw%คำถาม
-┣ ข้อมูลสถานพยาบาล nm%รหัสหน่วยบริการ หรือ ชื่อสถานพยาบาล
+┣ ข้อมูลสถานพยาบาลnm%รหัสหน่วยบริการ หรือ ชื่อสถานพยาบาล
 ┣ หาแผนที่ map%ละติจูด,ลองจิจูด
 ┣ เช็คโดเมน web%ชื่อเว็บไซต์
 ┗ เช็คพิกัดเซเว่น se%รหัสสาขา7-11
