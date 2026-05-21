@@ -734,18 +734,20 @@ function buildCallerInfoFlex(number, location, details) {
   let logoUrl = null;
 
   if (/AIS/i.test(details)) {
-    carrier = 'AIS';
-    color = '#16A34A';
-    logoUrl = `${BASE_URL}/uploads/ais.png`;
-  } else if (/DTAC/i.test(details)) {
-    carrier = 'DTAC';
-    color = '#2563EB';
-    logoUrl = `${BASE_URL}/uploads/dtac.png`;
-  } else if (/TRUE/i.test(details)) {
-    carrier = 'TRUE';
-    color = '#DC2626';
-    logoUrl = `${BASE_URL}/uploads/true.png`;
-  }
+carrier = 'AIS';
+color = '#16A34A';
+logoUrl = 'https://cdn.phototourl.com/free/2026-05-21-b31499f0-524b-40e0-a258-035914346614.png';
+
+} else if (/DTAC/i.test(details)) {
+carrier = 'DTAC';
+color = '#2563EB';
+logoUrl = 'https://cdn.phototourl.com/free/2026-05-21-9046b96b-f100-41b1-832d-637306a7c763.png';
+
+} else if (/TRUE/i.test(details)) {
+carrier = 'TRUE';
+color = '#DC2626';
+logoUrl = 'https://cdn.phototourl.com/free/2026-05-21-fa0e66e0-61be-4595-92f7-bec6bae9e8bb.png';
+}
 
   const headerContents = [
     {
