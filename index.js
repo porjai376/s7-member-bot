@@ -4492,6 +4492,121 @@ msg += `
 return msg.trim();
 }
 
+function fieldText(label,value){
+return {
+type:'box',
+layout:'baseline',
+spacing:'sm',
+contents:[
+{
+type:'text',
+text:`${label}:`,
+size:'sm',
+color:'#6B7280',
+flex:3
+},
+{
+type:'text',
+text:String(value || '-'),
+size:'sm',
+color:'#111827',
+wrap:true,
+flex:5
+}
+]
+};
+}
+
+function buildCrimeFlex(result, citizenId){
+
+const rows =
+Array.isArray(result?.data) ? result.data :
+Array.isArray(result?.data?.data) ? result.data.data :
+Array.isArray(result?.content) ? result.content :
+[];
+
+if(!rows.length){
+return {
+type:'text',
+text:'❌ ไม่พบข้อมูลหมายจับ'
+};
+}
+
+const bubbles = rows.slice(0,10).map((item,index)=>({
+type:'bubble',
+size:'mega',
+header:{
+type:'box',
+layout:'vertical',
+backgroundColor:'#7F1D1D',
+paddingAll:'16px',
+contents:[
+{
+type:'text',
+text:`📂 หมายจับ [CRIME] ${index+1}`,
+weight:'bold',
+size:'lg',
+color:'#FFFFFF'
+},
+{
+type:'text',
+text:item.status || item.warrantStatus || 'ตรวจพบข้อมูล',
+size:'sm',
+color:'#FECACA',
+margin:'sm'
+}
+]
+},
+body:{
+type:'box',
+layout:'vertical',
+spacing:'sm',
+contents:[
+{
+type:'text',
+text:item.name || item.fullname || '-',
+weight:'bold',
+size:'md',
+wrap:true,
+color:'#111827'
+},
+{
+type:'separator',
+margin:'md'
+},
+fieldText('เลขคดี', item.caseNo || item.case_no || '-'),
+fieldText('เลขบัตร', item.pid || item.citizenId || citizenId || '-'),
+fieldText('ข้อหา', item.charge || item.accusation || '-'),
+fieldText('เจ้าของคดี', item.owner || item.officer || '-'),
+fieldText('เบอร์ติดต่อ', item.phone || item.tel || '-'),
+fieldText('สถานะหมาย', item.status || item.warrantStatus || '-')
+]
+},
+footer:{
+type:'box',
+layout:'vertical',
+contents:[
+{
+type:'text',
+text:`รายการ ${index+1} จาก ${rows.length}`,
+size:'xs',
+align:'center',
+color:'#6B7280'
+}
+]
+}
+}));
+
+return {
+type:'flex',
+altText:`พบข้อมูลหมายจับ ${rows.length} รายการ`,
+contents:{
+type:'carousel',
+contents:bubbles
+}
+};
+}
+
 async function handleText(event) {
   const userId = event.source.userId;
   const text = (event.message.text || '').trim();
@@ -5368,12 +5483,10 @@ if (text === 'face%') {
       console.log(JSON.stringify(result, null, 2));
       console.log('===== CRIME FULL RESPONSE END =====');
 
-      const msg = formatCrime(result, nationId);
-
-      return reply(event.replyToken, {
-        type: 'text',
-        text: msg
-      });
+      return reply(
+event.replyToken,
+buildCrimeFlex(result, nationId)
+);
     } catch (err) {
       console.error('crime error:', err?.response?.data || err.message);
 
