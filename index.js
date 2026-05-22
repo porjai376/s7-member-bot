@@ -4564,7 +4564,7 @@ spacing:'sm',
 contents:[
 {
 type:'text',
-text:item.name || item.fullname || '-',
+text:item.name || item.fullname || item.fullName || item.personName || item.titleName || '-',
 weight:'bold',
 size:'md',
 wrap:true,
@@ -4574,12 +4574,12 @@ color:'#111827'
 type:'separator',
 margin:'md'
 },
-fieldText('เลขคดี', item.caseNo || item.case_no || '-'),
-fieldText('เลขบัตร', item.pid || item.citizenId || citizenId || '-'),
-fieldText('ข้อหา', item.charge || item.accusation || '-'),
-fieldText('เจ้าของคดี', item.owner || item.officer || '-'),
-fieldText('เบอร์ติดต่อ', item.phone || item.tel || '-'),
-fieldText('สถานะหมาย', item.status || item.warrantStatus || '-')
+fieldText('เลขคดี', item.caseNo || item.case_no || item.case_number || item.case_id || item.crimeCaseNo || '-'),
+fieldText('เลขบัตร', item.pid || item.citizenId || item.citizen_id || item.idcard || item.idCard || citizenId || '-'),
+fieldText('ข้อหา', item.charge || item.accusation || item.chargeName || item.caseDetail || item.offense || '-'),
+fieldText('เจ้าของคดี', item.owner || item.officer || item.policeName || item.investigator || '-'),
+fieldText('เบอร์ติดต่อ', item.phone || item.tel || item.mobile || item.contact || '-'),
+fieldText('สถานะหมาย', item.status || item.warrantStatus || item.statusName || item.warrant_status || '-')
 ]
 },
 footer:{
