@@ -4517,6 +4517,26 @@ flex:5
 };
 }
 
+function parseCrimeText(raw){
+const s = String(raw || '');
+
+function pick(label){
+const m = s.match(new RegExp(label + '\\s*:\\s*([^\\n]+)', 'i'));
+return m ? m[1].trim() : '-';
+}
+
+return {
+warrant: pick('WARRENT'),
+caseNo: pick('CRIMES'),
+charge: pick('CHARGE'),
+id: pick('ID'),
+name: pick('FULLNAME'),
+police: pick('POLICE'),
+tel: pick('TELL'),
+status: pick('STATUS')
+};
+}
+
 function buildCrimeFlex(result, citizenId){
 
 const rows =
@@ -4532,7 +4552,10 @@ text:'❌ ไม่พบข้อมูลหมายจับ'
 };
 }
 
-const bubbles = rows.slice(0,10).map((item,index)=>({
+const bubbles = rows.slice(0,10).map((raw,index)=>{
+const item = parseCrimeText(raw);
+
+return {
 type:'bubble',
 size:'mega',
 header:{
@@ -4564,7 +4587,7 @@ spacing:'sm',
 contents:[
 {
 type:'text',
-text:item.name || item.fullname || item.fullName || item.personName || item.titleName || '-',
+text:item.name || '-',
 weight:'bold',
 size:'md',
 wrap:true,
@@ -4574,12 +4597,13 @@ color:'#111827'
 type:'separator',
 margin:'md'
 },
-fieldText('เลขคดี', item.caseNo || item.case_no || item.case_number || item.case_id || item.crimeCaseNo || '-'),
-fieldText('เลขบัตร', item.pid || item.citizenId || item.citizen_id || item.idcard || item.idCard || citizenId || '-'),
-fieldText('ข้อหา', item.charge || item.accusation || item.chargeName || item.caseDetail || item.offense || '-'),
-fieldText('เจ้าของคดี', item.owner || item.officer || item.policeName || item.investigator || '-'),
-fieldText('เบอร์ติดต่อ', item.phone || item.tel || item.mobile || item.contact || '-'),
-fieldText('สถานะหมาย', item.status || item.warrantStatus || item.statusName || item.warrant_status || '-')
+fieldText('เลขหมายจับ', item.warrant || '-'),
+fieldText('เลขคดี', item.caseNo || '-'),
+fieldText('เลขบัตร', item.id || citizenId || '-'),
+fieldText('ข้อหา', item.charge || '-'),
+fieldText('เจ้าของคดี', item.police || '-'),
+fieldText('เบอร์ติดต่อ', item.tel || '-'),
+fieldText('สถานะหมาย', item.status || '-')
 ]
 },
 footer:{
@@ -4595,7 +4619,8 @@ color:'#6B7280'
 }
 ]
 }
-}));
+};
+});
 
 return {
 type:'flex',
