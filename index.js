@@ -4639,18 +4639,27 @@ async function handleText(event) {
   const db = loadDB();
   const member = db.members?.[userId];
 
-  if(
+  if (
 text === '#สนับสนุน' ||
 text === 'สนับสนุน' ||
 text === '#donate'
-){
+) {
 
-return reply(
-event.replyToken,
-buildSupportFlex()
-);
+return reply(event.replyToken, {
+type:'text',
+text:
+`📂 ช่องทางสนับสนุน
 
-}
+🏦 ธนาคาร : กสิกร
+💳 เลขบัญชี : 2238457753
+👤 ชื่อบัญชี : ทัตเทพ
+
+━━━━━━━━━━━━━━
+
+หลังโอนแล้ว
+📸 ส่งสลิปเพื่อยืนยัน`
+});
+  }
 
 if(/^อนุญาติดีแทค#/.test(text)){
 
