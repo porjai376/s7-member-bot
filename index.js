@@ -1488,11 +1488,33 @@ async function fetchPEAApiFull(params) {
 }
 
 async function fetchSearchApiRaw(params) {
-  const { data: res } = await axios.get(SEARCH_API_BASE, {
-    params: { ...params, key: SEARCH_API_KEY },
-    timeout: 30000
-  });
-  return res;
+
+try {
+
+await new Promise(r => setTimeout(r, 3000));
+
+const { data: res } = await axios.get(SEARCH_API_BASE, {
+params: {
+...params,
+key: SEARCH_API_KEY
+},
+timeout: 45000,
+headers:{
+'User-Agent':'Mozilla/5.0'
+}
+});
+
+return res;
+
+} catch(err){
+
+console.log(
+'SEARCH API ERROR:',
+err?.response?.data || err.message
+);
+
+throw err;
+}
 }
 
 async function fetchOpecStudentApi(citizenId) {
