@@ -175,7 +175,7 @@ function formatCheckMdResult(result, query) {
   }
 
   const lines = [
-    `🩺 ผลตรวจสอบแพทยสภา`,
+    `🩺 ผลตรวจสอบแพทย์`,
     `ค้นหา: ${query}`
   ];
 
@@ -3723,7 +3723,7 @@ function buildContactAdminFlex() {
       action: {
         type: 'uri',
         label: '👤 ติดต่อ ADMIN',
-        uri: 'https://line.me/R/ti/p/@063kejcp'
+        uri: 'https://line.me/ti/p/mVmD-ncfvU'
             }
           }
         ]
@@ -4042,7 +4042,7 @@ color:'#EAB308',
 action:{
 type:'uri',
 label:'📩 ติดต่อแอดมิน',
-uri:'https://line.me/R/ti/p/@063kejcp'
+uri:'https://line.me/ti/p/mVmD-ncfvU'
 }
 },
 
