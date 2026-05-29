@@ -1050,12 +1050,13 @@ return limitLineMessage(msg);
 
 async function fetchTVGCCApi(query) {
 
-for (let i = 0; i < 2; i++) {
+console.log('TVGCC QUERY:', query);
+console.log('TVGCC URL:', TVGCC_API_BASE);
 
 try {
 const { data } = await axios.get(TVGCC_API_BASE, {
 params: { tv: query },
-timeout: 45000,
+timeout: 15000,
 headers: {
 'User-Agent': 'Mozilla/5.0'
 }
@@ -1064,13 +1065,8 @@ headers: {
 return data;
 
 } catch (err) {
-console.log(`TVGCC RETRY ${i + 1}:`, err.message);
-
-if (i === 1) throw err;
-
-await new Promise(r => setTimeout(r, 5000));
-}
-
+console.log('TVGCC ERROR:', err?.response?.data || err.message);
+throw err;
 }
 
 }
@@ -5108,7 +5104,9 @@ if (text === 'ดูสมาชิกรอตรวจสอบ') {
       const isTimeout = err.code === 'ECONNABORTED' || /timeout|exceeded/i.test(String(err.message || ''));
       return reply(event.replyToken, {
         type: 'text',
-        text: isTimeout ? '🔎กรูณาสืบค้นใหม่อีกรอบ' : `❌[${phone}] ไม่พบข้อมูลเบอร์รายเดือน`
+        text: isTimeout
+? '⚠️ ระบบ TRUE ตอบช้า กรุณาลองใหม่ภายหลัง'
+: `❌[${phone}]\nไม่พบข้อมูลเบอร์รายเดืือน`
       });
     }
   }
