@@ -1049,11 +1049,30 @@ return limitLineMessage(msg);
 }
 
 async function fetchTVGCCApi(query) {
-  const { data } = await axios.get(TVGCC_API_BASE, {
-    params: { tv: query },
-    timeout: 120000
-  });
-  return data;
+
+for (let i = 0; i < 2; i++) {
+
+try {
+const { data } = await axios.get(TVGCC_API_BASE, {
+params: { tv: query },
+timeout: 45000,
+headers: {
+'User-Agent': 'Mozilla/5.0'
+}
+});
+
+return data;
+
+} catch (err) {
+console.log(`TVGCC RETRY ${i + 1}:`, err.message);
+
+if (i === 1) throw err;
+
+await new Promise(r => setTimeout(r, 5000));
+}
+
+}
+
 }
 
 async function fetchISMApi(citizenId) {
