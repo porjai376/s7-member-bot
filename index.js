@@ -2034,13 +2034,16 @@ async function searchIMEI(imei) {
     });
     const data = response.data;
     if (!data || !data.result || !data.result.imei) {
-      return `📳NANABOT
-📱 ข้อมูลอุปกรณ์ (Device Info)
+      return `📱 Device Information
+-  -  -  -  -  -  -  -  -  -
 
-⛔ไม่พบข้อมูลรายการ หรือ ตัวเลขไม่ถูกต้อง
-📎หมายเหตุ
-🆔IMEI ต้องมีตัวเลข 15 หลัก
-🔄หาก IMEI จาก CDR ตัวสุดท้ายเป็น 0 แล้วค้นไม่พบ ให้เปลี่ยนเป็น 1-9`;
+❌ ไม่พบข้อมูลรายการ หรือ ตัวเลขไม่ถูกต้อง
+
+📎 หมายเหตุ
+📲 IMEI ต้องมีตัวเลข 15 หลัก
+🔄 หาก IMEI จาก CDR ตัวสุดท้ายเป็น 0 แล้วค้นไม่พบ ให้เปลี่ยนเป็น 1-9
+-  -  -  -  -  -  -  -  -  -
+🚨 ใช้เพื่อการสืบสวนและติดตามผู้กระทำความผิดตามอำนาจหน้าที่เท่านั้น`;9`;
     }
 
     let dateStr = '-';
@@ -2049,26 +2052,32 @@ async function searchIMEI(imei) {
       dateStr = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')} ${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')} (UTC+02:00)`;
     }
 
-    return `📳NANABOT
-📱ข้อมูลอุปกรณ์ (Device Info)
-📅วันที่บันทึกข้อมูล: ${dateStr}
-🔢IMEI 1: ${data.result.imei || '-'}
-🔢IMEI 2: ${data.imei2 || 'ไม่ระบุ'}
-🔖Serial Number (SN): ${data.sn || 'ไม่ระบุ'}
-📞หมายเลขโทรศัพท์: ${data.phone_number || 'ไม่ระบุ'}
----
-🖥 รายละเอียดอุปกรณ์
-🏷️ยี่ห้อ (Brand): ${data.result.brand_name || '-'}
-📌รุ่น (Model): ${data.result.model || '-'}
----`;
-  } catch (e) {
-    return `⚡ THUNDER Report ⚡
-📱 ข้อมูลอุปกรณ์ (Device Info)
+    return `📱 Device Information
+-  -  -  -  -  -  -  -  -  -
 
-⛔ไม่พบข้อมูลรายการ หรือ ตัวเลขไม่ถูกต้อง
-📎หมายเหตุ
-🆔IMEI ต้องมีตัวเลข 15 หลัก
-🔄หาก IMEI จาก CDR ตัวสุดท้ายเป็น 0 แล้วค้นไม่พบ ให้เปลี่ยนเป็น 1-9`;
+📅 วันที่บันทึก : ${dateStr}
+
+📲 IMEI 1 : ${data.result.imei || 'ไม่พบข้อมูล'}
+📲 IMEI 2 : ${data.imei2 || 'ไม่พบข้อมูล'}
+🔖 Serial Number : ${data.sn || data.serial_number || 'ไม่พบข้อมูล'}
+📞 หมายเลขโทรศัพท์ : ${data.phone_number || 'ไม่พบข้อมูล'}
+
+📳 ข้อมูลอุปกรณ์
+🏷️ ยี่ห้อ (Brand) : ${data.result.brand_name || 'ไม่พบข้อมูล'}
+📌 รุ่น (Model) : ${data.result.model || 'ไม่พบข้อมูล'}
+-  -  -  -  -  -  -  -  -  -
+🚨 ใช้เพื่อการสืบสวนและติดตามผู้กระทำความผิดตามอำนาจหน้าที่เท่านั้น`;
+  } catch (e) {
+    return `📱 Device Information
+-  -  -  -  -  -  -  -  -  -
+
+❌ ไม่พบข้อมูลรายการ หรือ ตัวเลขไม่ถูกต้อง
+
+📎 หมายเหตุ
+📲 IMEI ต้องมีตัวเลข 15 หลัก
+🔄 หาก IMEI จาก CDR ตัวสุดท้ายเป็น 0 แล้วค้นไม่พบ ให้เปลี่ยนเป็น 1-9
+-  -  -  -  -  -  -  -  -  -
+🚨 ใช้เพื่อการสืบสวนและติดตามผู้กระทำความผิดตามอำนาจหน้าที่เท่านั้น`;
   }
 }
 
