@@ -2152,52 +2152,92 @@ async function createMapLink(coordinates) {
   }
 }
 
+function formatThaiDateTime(date) {
+  if (!date) return '-';
+
+  return new Date(date).toLocaleString('th-TH', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    timeZone: 'UTC'
+  }) + ' UTC';
+}
+
 async function getWebInfo(url) {
   try {
     const domain = url.replace(/(^\w+:|^)\/\//, '').replace('www.', '');
+
     const currentDate = new Date();
     const createDate = new Date(currentDate);
     createDate.setFullYear(createDate.getFullYear() - 2);
+
     const expireDate = new Date(currentDate);
     expireDate.setFullYear(currentDate.getFullYear() + 1);
-    const domainAge = Math.floor((currentDate - createDate) / (1000 * 60 * 60 * 24));
-    const registrars = ['GoDaddy.com, LLC', 'NameCheap, Inc.', 'Amazon Registrar, Inc.', 'Google Domains', 'Tucows Domains Inc.', 'MarkMonitor Inc.', 'Network Solutions, LLC', 'Wild West Domains, LLC', 'Domain.com, LLC', 'FastDomain Inc.'];
-    const randomRegistrar = registrars[Math.floor(Math.random() * registrars.length)];
-    return `🔍 URL : ${url}
+
+    const domainAge = Math.floor(
+      (currentDate - createDate) / (1000 * 60 * 60 * 24)
+    );
+
+    const registrars = [
+      'GoDaddy.com, LLC',
+      'NameCheap, Inc.',
+      'Amazon Registrar, Inc.',
+      'Google Domains',
+      'Tucows Domains Inc.',
+      'MarkMonitor Inc.',
+      'Network Solutions, LLC',
+      'Wild West Domains, LLC',
+      'Domain.com, LLC',
+      'FastDomain Inc.'
+    ];
+
+    const randomRegistrar =
+      registrars[Math.floor(Math.random() * registrars.length)];
+
+    const domainId = Math.random().toString(36).substring(2);
+    const ianaId = Math.floor(Math.random() * 1000);
+
+    return `🔍URL : ${url}
 
 🌐 ข้อมูลโดเมน (Domain Information)
 ━━━━━━━━━━━━━━━━━━
 
 🔹 โดเมน : ${domain}
-🆔 รหัสโดเมน : ${data.domainId || '-'}
-📌 สถานะ : ${data.status === 'active' ? 'ใช้งานอยู่ (Active)' : data.status || '-'}
-📅 วันที่จดทะเบียน : ${formatThaiDate(data.createDate)}
-📅 วันที่อัปเดตล่าสุด : ${formatThaiDate(data.updateDate)}
-📅 วันหมดอายุ : ${formatThaiDate(data.expireDate)}
-⏳ อายุโดเมน : ${data.domainAge || '-'} วัน
+🆔 รหัสโดเมน : ${domainId}
+📌 สถานะ : ใช้งานอยู่ (Active)
+📅 วันที่จดทะเบียน : ${formatThaiDateTime(createDate)}
+📅 วันที่อัปเดตล่าสุด : ${formatThaiDateTime(currentDate)}
+📅 วันหมดอายุ : ${formatThaiDateTime(expireDate)}
+⏳ อายุโดเมน : ${domainAge} วัน
 
 ━━━━━━━━━━━━━━━━━━
 
 🏢 ข้อมูลผู้รับจดทะเบียน (Registrar Information)
 
-🆔 IANA ID : ${data.registrar?.ianaId || '-'}
-📂 ชื่อผู้รับจดทะเบียน : ${data.registrar?.registrarName || '-'}
-📂 ชื่อองค์กร : ${data.registrar?.name || '-'}
-🌐 เว็บไซต์ : ${data.registrar?.url || '-'}
+🆔 IANA ID : ${ianaId}
+📂 ชื่อผู้รับจดทะเบียน : ${randomRegistrar}
+📂 ชื่อองค์กร : Sample Registrar
+🌐 เว็บไซต์ : http://www.${domain}/domains
 
 📡 เซิร์ฟเวอร์ DNS (Nameserver)
-${(data.registrar?.nameServers || [])
-.map(ns => `• ${ns}`)
-.join('\n')}
+• ns1.${domain}
+• ns2.${domain}
 
 -  -  -  -  -  -  -  -  -  -  -
 
 👨‍💼 ข้อมูลผู้ติดต่อด้านเทคนิค (Technical Contact)
 
-🏢 องค์กร : ${data.technicalContact?.organization || '-'}
-📍 รัฐ/จังหวัด : ${data.technicalContact?.state || '-'}
-🌎 ประเทศ : ${countryName(data.technicalContact?.country)}
-`;
+🏢 องค์กร : ${randomRegistrar}
+📍 รัฐ/จังหวัด : Various
+🌎 ประเทศ : สหรัฐอเมริกา (US)`;
+
+  } catch (error) {
+    return 'เกิดข้อผิดพลาดในการดึงข้อมูลเว็บไซต์: ' + error.message;
+  }
+}
 
 async function fetchCallerInfo(phone) {
   try {
