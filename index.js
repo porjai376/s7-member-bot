@@ -2163,35 +2163,41 @@ async function getWebInfo(url) {
     const domainAge = Math.floor((currentDate - createDate) / (1000 * 60 * 60 * 24));
     const registrars = ['GoDaddy.com, LLC', 'NameCheap, Inc.', 'Amazon Registrar, Inc.', 'Google Domains', 'Tucows Domains Inc.', 'MarkMonitor Inc.', 'Network Solutions, LLC', 'Wild West Domains, LLC', 'Domain.com, LLC', 'FastDomain Inc.'];
     const randomRegistrar = registrars[Math.floor(Math.random() * registrars.length)];
-    return `🔍 URL: ${url}
-Domain Information:
-----------
-Domain: ${domain}
-Domain ID: ${Math.random().toString(36).substring(2)}
-Status: active
-📅 Create Date: ${createDate.toISOString()}
-📅 Update Date: ${currentDate.toISOString()}
-📅 Expire Date: ${expireDate.toISOString()}
-Domain Age: ${domainAge} days
+    return `🔍 URL : ${url}
 
-Registrar Information:
-IANA ID: ${Math.floor(Math.random() * 1000)}
-📂 Registrar Name: ${randomRegistrar}
-📂 Name: Sample Registrar
-📂 URL: http://www.${domain}/domains
-📂 Nameservers:
-ns1.${domain}
-ns2.${domain}
-----------
+🌐 ข้อมูลโดเมน (Domain Information)
+━━━━━━━━━━━━━━━━━━
 
-Technical Contact:
-Organization: ${randomRegistrar}
-State: Various
-Country: US`;
-  } catch (error) {
-    return 'เกิดข้อผิดพลาดในการดึงข้อมูลเว็บไซต์: ' + error.message;
-  }
-}
+🔹 โดเมน : ${domain}
+🆔 รหัสโดเมน : ${data.domainId || '-'}
+📌 สถานะ : ${data.status === 'active' ? 'ใช้งานอยู่ (Active)' : data.status || '-'}
+📅 วันที่จดทะเบียน : ${formatThaiDate(data.createDate)}
+📅 วันที่อัปเดตล่าสุด : ${formatThaiDate(data.updateDate)}
+📅 วันหมดอายุ : ${formatThaiDate(data.expireDate)}
+⏳ อายุโดเมน : ${data.domainAge || '-'} วัน
+
+━━━━━━━━━━━━━━━━━━
+
+🏢 ข้อมูลผู้รับจดทะเบียน (Registrar Information)
+
+🆔 IANA ID : ${data.registrar?.ianaId || '-'}
+📂 ชื่อผู้รับจดทะเบียน : ${data.registrar?.registrarName || '-'}
+📂 ชื่อองค์กร : ${data.registrar?.name || '-'}
+🌐 เว็บไซต์ : ${data.registrar?.url || '-'}
+
+📡 เซิร์ฟเวอร์ DNS (Nameserver)
+${(data.registrar?.nameServers || [])
+.map(ns => `• ${ns}`)
+.join('\n')}
+
+-  -  -  -  -  -  -  -  -  -  -
+
+👨‍💼 ข้อมูลผู้ติดต่อด้านเทคนิค (Technical Contact)
+
+🏢 องค์กร : ${data.technicalContact?.organization || '-'}
+📍 รัฐ/จังหวัด : ${data.technicalContact?.state || '-'}
+🌎 ประเทศ : ${countryName(data.technicalContact?.country)}
+`;
 
 async function fetchCallerInfo(phone) {
   try {
@@ -6123,7 +6129,7 @@ https://line.me/ti/p/mVmD-ncfvU
           result += `├● ศาล: ${warrant.courtCodeText || '-'}\n`;
           result += `├● สถานะ: ${warrant.arrestStatus || '-'}\n`;
           result += `├● ข้อหา: ${warrant.charge || '-'}\n`;
-          result += `├● ผู้ร้อง: ${warrant.plaintiff || '-'}\n`;
+          result += `├● ผู้เสัยหาย: ${warrant.plaintiff || '-'}\n`;
           result += `├● ผู้พิพากษา: ${warrant.judgeName || '-'}\n`;
           result += `├● ออกหมาย: ${warrant.woaDate ? new Date(warrant.woaDate).toLocaleDateString('th-TH') : '-'}\n`;
           result += `├● เริ่มต้น: ${warrant.woaStartDate ? new Date(warrant.woaStartDate).toLocaleDateString('th-TH') : '-'}\n`;
