@@ -1994,15 +1994,32 @@ async function trackFlashExpress(trackingId) {
 
 async function getIpInfo(ip) {
   try {
-    const response = await axios.get(`https://ipinfo.io/${ip}/json`, { timeout: 20000 });
+    const response = await axios.get(
+      `https://ipinfo.io/${ip}/json`,
+      { timeout: 20000 }
+    );
+
     const data = response.data;
-    if (!data || !data.loc) return 'No information found for the given IP.';
+
+    if (!data || !data.loc) {
+      return 'No information found for the given IP.';
+    }
+
+    const mapUrl = `https://www.google.com/maps?q=${data.loc}`;
+
     return `IP Information for ${ip}:
+
 Country: ${data.country}
 Region: ${data.region}
 City: ${data.city}
 Location: ${data.loc}
-Organization: ${data.org}`;
+Organization: ${data.org}
+Map: ${mapUrl}
+
+--------
+⚠️ พิกัดจาก IP ไม่ใช่พิกัดของเป้าหมาย
+ให้นำ IP ไปขอกับผู้ให้บริการเพื่อทำการสืบสวนต่อไป`;
+    
   } catch (error) {
     return 'Failed to fetch IP information.';
   }
