@@ -209,6 +209,7 @@ const ADMIN_IDS = (process.env.LINE_ADMIN_USER_IDS || '')
   .filter(Boolean);
 
 const INSTALLMENT_API_URL =
+  process.env.INSTALLMENT_API ||
   'http://scsinfo.pieare.com/securestock/api/installmentprint/inspection/inspect';
 
 const httpsAgent = new https.Agent({
