@@ -4340,29 +4340,6 @@ if (event.type === 'follow') {
   return null;
 }
 
-function formatDistanceResult(startLat, startLng, endLat, endLng, distance) {
-return `📍 ข้อมูลพิกัดเชิงเส้นตรง
--  -  -  -  -  -  -  -  -  -
-
-🟢 พิกัดต้นทาง
-📌 ${startLat}, ${startLng}
-
-🔴 พิกัดปลายทาง
-📌 ${endLat}, ${endLng}
-
-📏 ระยะทางเส้นตรง (Straight Line Distance)
-➡️ ${distance} กิโลเมตร
-
-🛰️ สรุปการเคลื่อนที่
-ต้นทาง → ${startLat}, ${startLng}
-ปลายทาง → ${endLat}, ${endLng}
-ระยะห่างเชิงเส้นตรง → ${distance} กม.
-
--  -  -  -  -  -  -  -  -  -
-
-📌 หมายเหตุ: ระยะทางดังกล่าวเป็นระยะทางเส้นตรงจากพิกัดถึงพิกัด (Air Distance) ไม่ใช่ระยะทางตามเส้นทางถนนจริง`;
-}
-
 function buildPendingMembersFlex(db) {
   const pending = Object.entries(db.members || {})
     .filter(([uid, m]) => m.status === 'pending')
@@ -4748,12 +4725,69 @@ contents:bubbles
 };
 }
 
+function formatDistanceResult(startLat, startLng, endLat, endLng, distance) {
+return `📍 ข้อมูลพิกัดเชิงเส้นตรง
+-  -  -  -  -  -  -  -  -  -
+
+🟢 พิกัดต้นทาง
+📌 ${startLat}, ${startLng}
+
+🔴 พิกัดปลายทาง
+📌 ${endLat}, ${endLng}
+
+📏 ระยะทางเส้นตรง (Straight Line Distance)
+➡️ ${distance} กิโลเมตร
+
+🛰️ สรุปการเคลื่อนที่
+ต้นทาง → ${startLat}, ${startLng}
+ปลายทาง → ${endLat}, ${endLng}
+ระยะห่างเชิงเส้นตรง → ${distance} กม.
+
+-  -  -  -  -  -  -  -  -  -
+
+📌 หมายเหตุ: ระยะทางดังกล่าวเป็นระยะทางเส้นตรงจากพิกัดถึงพิกัด (Air Distance) ไม่ใช่ระยะทางตามเส้นทางถนนจริง`;
+}
+
 async function handleText(event) {
   const userId = event.source.userId;
   const text = (event.message.text || '').trim();
 
   const db = loadDB();
   const member = db.members?.[userId];
+
+if (/^dis%/i.test(text)) {
+  const raw = text.replace(/^dis%/i, '').trim();
+  const parts = raw.split('/');
+
+  if (parts.length !== 2) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ รูปแบบไม่ถูกต้อง\nตัวอย่าง:\ndis%16.462991566703394,102.64543023829752/16.174215621798133,102.72808867876172'
+    });
+  }
+
+  const start = parts[0].split(',').map(v => v.trim());
+  const end = parts[1].split(',').map(v => v.trim());
+
+  const startLat = Number(start[0]);
+  const startLng = Number(start[1]);
+  const endLat = Number(end[0]);
+  const endLng = Number(end[1]);
+
+  if ([startLat, startLng, endLat, endLng].some(Number.isNaN)) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ พิกัดไม่ถูกต้อง\nรูปแบบ: dis%lat,lng/lat,lng'
+    });
+  }
+
+  const distance = calcDistanceKm(startLat, startLng, endLat, endLng).toFixed(2);
+
+  return reply(event.replyToken, {
+    type: 'text',
+    text: formatDistanceResult(startLat, startLng, endLat, endLng, distance)
+  });
+}
 
   if (
 text === '#สนับสนุน' ||
