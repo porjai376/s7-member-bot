@@ -1057,7 +1057,7 @@ console.log('TVGCC URL:', TVGCC_API_BASE);
 try {
 const { data } = await axios.get(TVGCC_API_BASE, {
 params: { tv: query },
-timeout: 15000,
+timeout: 45000,
 headers: {
 'User-Agent': 'Mozilla/5.0'
 }
