@@ -2112,13 +2112,21 @@ async function searchICCID(iccidNumber) {
     if (!data || !data.iccidDetails) return '❌ ไม่พบข้อมูล ICCID หรือรูปแบบไม่ถูกต้อง';
 
     const iccid = data.iccidDetails;
-    const imsi = data.imsiDetails;
-    let result = `💳ข้อมูลซิมการ์ด (ICCID)
+const imsi = data.imsiDetails;
+
+const issuerIdentifier = iccid.issuerIdentifier || '-';
+
+let issuerName = '';
+if (issuerIdentifier === '03') issuerName = ' AIS';
+else if (issuerIdentifier === '04') issuerName = ' Truemove';
+else if (issuerIdentifier === '05') issuerName = ' DTAC';
+
+let result = `💳ข้อมูลซิมการ์ด (ICCID)
 ✅สถานะ ICCID: ${iccid.isValid ? 'ถูกต้อง (Valid)' : 'ไม่ถูกต้อง (Invalid)'}
 🆔ICCID: ${iccid.iccid || '-'}
 🌐MII: ${iccid.mii || '-'}
 📍รหัสประเทศ (Country Code): ${iccid.countryCode || '-'}
-🏢รหัสผู้ให้บริการ (Issuer Identifier): ${iccid.issuerIdentifier || '-'}
+🏢รหัสผู้ให้บริการ (Issuer Identifier): ${issuerIdentifier}${issuerName}
 🔢Account ID: ${iccid.accountId || '-'}
 ✔️Checksum: ${iccid.checksum || '-'}
 🏢ผู้ให้บริการ: ${iccid.operator === 'Unknown' ? 'ไม่ทราบ (Unknown)' : iccid.operator || 'ไม่ทราบ'}
@@ -5861,7 +5869,7 @@ const phone=text.replace(/^d#/,'').trim();
 if(!phone){
 return reply(event.replyToken,{
 type:'text',
-text:'❌ กรุณาระบุเบอร์โทรศัพท์ หรือเลขบัตร 13 หลัก เช่น d#0993606353'
+text:'❌ กรุณาระบุเบอร์ 10 หลัก หรือ เลขบัตร 13 หลัก'
 });
 }
 
