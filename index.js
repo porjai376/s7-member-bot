@@ -4340,6 +4340,29 @@ if (event.type === 'follow') {
   return null;
 }
 
+function formatDistanceResult(startLat, startLng, endLat, endLng, distance) {
+return `📍 ข้อมูลพิกัดเชิงเส้นตรง
+-  -  -  -  -  -  -  -  -  -
+
+🟢 พิกัดต้นทาง
+📌 ${startLat}, ${startLng}
+
+🔴 พิกัดปลายทาง
+📌 ${endLat}, ${endLng}
+
+📏 ระยะทางเส้นตรง (Straight Line Distance)
+➡️ ${distance} กิโลเมตร
+
+🛰️ สรุปการเคลื่อนที่
+ต้นทาง → ${startLat}, ${startLng}
+ปลายทาง → ${endLat}, ${endLng}
+ระยะห่างเชิงเส้นตรง → ${distance} กม.
+
+-  -  -  -  -  -  -  -  -  -
+
+📌 หมายเหตุ: ระยะทางดังกล่าวเป็นระยะทางเส้นตรงจากพิกัดถึงพิกัด (Air Distance) ไม่ใช่ระยะทางตามเส้นทางถนนจริง`;
+}
+
 function buildPendingMembersFlex(db) {
   const pending = Object.entries(db.members || {})
     .filter(([uid, m]) => m.status === 'pending')
@@ -4983,6 +5006,60 @@ answer = answer.replace(
       type:'text',
       text:`\n-  -  -  -  -  -  -\n${res.response[0].text}`
    });
+
+if (text.startsWith('dis%')) {
+const raw = text.replace(/^dis%/i, '').trim();
+
+const parts = raw.split('/');
+if (parts.length !== 2) {
+return reply(event.replyToken, {
+type: 'text',
+text: '❌ รูปแบบไม่ถูกต้อง\nตัวอย่าง:\ndis%16.462991566703394,102.64543023829752/16.174215621798133,102.72808867876172'
+});
+}
+
+const start = parts[0].split(',').map(v => v.trim());
+const end = parts[1].split(',').map(v => v.trim());
+
+if (start.length !== 2 || end.length !== 2) {
+return reply(event.replyToken, {
+type: 'text',
+text: '❌ กรุณาระบุพิกัดให้ครบ\nรูปแบบ: dis%lat,lng/lat,lng'
+});
+}
+
+const startLat = start[0];
+const startLng = start[1];
+const endLat = end[0];
+const endLng = end[1];
+
+try {
+const apiUrl =
+`https://www.giraffai.com/api/v1/getdistance?start_lat=${encodeURIComponent(startLat)}&start_lng=${encodeURIComponent(startLng)}&end_lat=${encodeURIComponent(endLat)}&end_lng=${encodeURIComponent(endLng)}&unit=kilometers`;
+
+const res = await axios.get(apiUrl, {
+timeout: 20000,
+headers: {
+'User-Agent': 'Mozilla/5.0'
+}
+});
+
+const distance = Number(res.data.distance).toFixed(2);
+
+return reply(event.replyToken, {
+type: 'text',
+text: formatDistanceResult(startLat, startLng, endLat, endLng, distance)
+});
+
+} catch (err) {
+console.error('distance lookup error:', err?.response?.data || err.message);
+
+return reply(event.replyToken, {
+type: 'text',
+text: '❌ คำนวณระยะทางไม่สำเร็จ กรุณาลองใหม่อีกครั้ง'
+});
+}
+}
 
 if (event.type === 'message' && event.message.type === 'image') {
   const userId = event.source.userId;
