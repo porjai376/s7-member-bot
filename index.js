@@ -5886,29 +5886,6 @@ https://line.me/ti/p/mVmD-ncfvU
 });
 }
 
-const now=new Date();
-const thaiTime=new Date(
-now.toLocaleString('en-US',{
-timeZone:'Asia/Bangkok'
-})
-);
-
-const totalMinutes=
-thaiTime.getHours()*60+
-thaiTime.getMinutes();
-
-const openTime=10*60+30;
-const closeTime=23*60+59;
-
-if(totalMinutes<openTime || totalMinutes>closeTime){
-return reply(event.replyToken,{
-type:'text',
-text:`📂คำสั่งDTAC ใช้ในเวลา
-⏰10:30 น.-23:59 น.
------------`
-});
-}
-
 try{
 
 const url=`https://dtac-api.jedi-r3cloud.org/dtac?phone=${encodeURIComponent(phone)}&token=jedi-api-2026`;
