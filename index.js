@@ -4741,6 +4741,8 @@ function calcDistanceKm(lat1, lon1, lat2, lon2) {
 }
 
 function formatDistanceResult(startLat, startLng, endLat, endLng, distance) {
+const mapUrl = `https://www.google.com/maps/dir/${startLat},${startLng}/${endLat},${endLng}`;
+
 return `📍 ข้อมูลพิกัดเชิงเส้นตรง
 -  -  -  -  -  -  -  -  -  -
 
@@ -4757,6 +4759,9 @@ return `📍 ข้อมูลพิกัดเชิงเส้นตรง
 ต้นทาง → ${startLat}, ${startLng}
 ปลายทาง → ${endLat}, ${endLng}
 ระยะห่างเชิงเส้นตรง → ${distance} กม.
+
+🗺️ Google Maps
+${mapUrl}
 
 -  -  -  -  -  -  -  -  -  -
 
