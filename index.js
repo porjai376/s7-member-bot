@@ -5440,6 +5440,73 @@ ${mapUrl}
 📌 หมายเหตุ: ระยะทางดังกล่าวเป็นระยะทางเส้นตรงจากพิกัดถึงพิกัด (Air Distance) ไม่ใช่ระยะทางตามเส้นทางถนนจริง`;
 }
 
+function formatPiPidResult(data){
+
+if(!data || data.ok !== true){
+return '❌ไม่พบข้อมูล';
+}
+
+return `╭ 👤 ข้อมูลบุคคล
+├ 👤 ชื่อ-สกุล: ${data.name || '-'}
+├ 🆔 เลขประจำตัวประชาชน: ${data.pid || '-'}
+├ 👩 เพศ: ${data.sex || '-'}
+╰ 🎂 วันเกิด: ${formatThaiDateOnlyText(data.dob)}
+
+╭ 🏠 ที่อยู่ตามทะเบียนราษฎร
+╰ 📍 ${data.address || '-'}
+
+╭ 🏥 สิทธิการรักษา
+├ 🏥 หน่วยบริการประจำ: ${data.hospital || '-'}
+╰ 💳 สิทธิ: ${data.right || '-'}
+
+╭ 👨‍👩‍👧 ข้อมูลบิดา-มารดา
+├ 👨 บิดา: ${data.father_id || '-'}
+╰ 👩 มารดา: ${data.mother_id || '-'}`;
+}
+
+function formatPiNameResult(data){
+
+if(!data || data.ok !== true || !Array.isArray(data.results) || !data.results.length){
+return '❌ไม่พบข้อมูล';
+}
+
+let msg = `🔎 ผลการค้นหาบุคคล
+📊 พบข้อมูลทั้งหมด ${data.count || data.results.length} รายการ
+-  -  -  -  -  -  -  -  -  -`;
+
+data.results.forEach((item,index)=>{
+
+msg += `
+
+╭ 📂 รายการที่ ${index+1}
+├ 👤 ชื่อ-สกุล: ${item.name || '-'}
+├ 🆔 เลขบัตร: ${item.pid || '-'}
+├ 🎂 วันเกิด: ${formatThaiDateOnlyText(item.dob)}
+├ 📍 จังหวัด: ${item.province || '-'}
+╰ 💳 สิทธิ: ${item.right || '-'}`;
+
+});
+
+return msg;
+}
+
+function formatThaiDateOnlyText(dateStr){
+
+if(!dateStr) return '-';
+
+const months = [
+'มกราคม','กุมภาพันธ์','มีนาคม','เมษายน',
+'พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม',
+'กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'
+];
+
+const d = new Date(dateStr);
+
+if(isNaN(d.getTime())) return dateStr;
+
+return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()+543}`;
+}
+
 async function handleText(event) {
   const userId = event.source.userId;
   const text = (event.message.text || '').trim();
@@ -6779,24 +6846,95 @@ text:'🔎 สืบค้นใหม่อีกครั้ง'
 
 }
 
-  // ค้นหาข้อมูลบุคคลและครัวเรือน: pi%เลขบัตร
-  if (text.startsWith('pi%')) {
-    const pid = text.replace(/^pi%/i, '').trim();
-    if (!/^\d{13}$/.test(pid)) {
-      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขบัตรประชาชน 13 หลัก เช่น pi%3730300664549' });
-    }
+// ค้นหาข้อมูลบุคคลและครัวเรือน: pi%เลขบัตร หรือ pi%ชื่อ นามสกุล
+if (text.startsWith('pi%')) {
 
-    try {
-      const data = await fetchPiLookup(pid);
-      return reply(event.replyToken, { type: 'text', text: formatPiLookup(data, pid) });
-    } catch (err) {
-      console.error('pi lookup error:', err?.response?.data || err.message);
-     return reply(event.replyToken, { 
-  type: 'text', 
-  text: '⌛Fixing the system⌛'
+const keyword = text.replace(/^pi%/i, '').trim();
+
+if (!keyword) {
+return reply(event.replyToken,{
+type:'text',
+text:'❌ กรุณาระบุเลขบัตรประชาชน หรือ ชื่อ-นามสกุล'
 });
-    }
-  }
+}
+
+try {
+
+let data;
+
+if (/^\d{13}$/.test(keyword)) {
+
+data = await fetchPiLookup(keyword);
+
+return reply(event.replyToken,{
+type:'text',
+text: formatPiLookup(data, keyword)
+});
+
+} else {
+
+const parts = keyword.split(/\s+/).filter(Boolean);
+
+if (parts.length < 2) {
+return reply(event.replyToken,{
+type:'text',
+text:'❌ ตัวอย่างการค้นหา\npi%ยุพิน บุญโกบุตร'
+});
+}
+
+const firstname = parts[0];
+const lastname = parts.slice(1).join(' ');
+
+const url =
+`http://45.141.27.159:5050/api?key=cib1&firstname=${encodeURIComponent(firstname)}&lastname=${encodeURIComponent(lastname)}`;
+
+const res = await axios.get(url,{
+timeout:30000
+});
+
+data = res.data;
+
+if (!data.ok || !Array.isArray(data.results) || !data.results.length) {
+return reply(event.replyToken,{
+type:'text',
+text:'❌ไม่พบข้อมูล'
+});
+}
+
+let msg =
+`🔎 ผลการค้นหาบุคคล\n📊 พบ ${data.results.length} รายการ\n`;
+
+data.results.forEach((item,index)=>{
+
+msg += `
+
+╭ 📂 รายการที่ ${index+1}
+├ 👤 ชื่อ-สกุล: ${item.name || '-'}
+├ 🆔 เลขบัตร: ${item.pid || '-'}
+├ 🎂 วันเกิด: ${item.dob || '-'}
+├ 📍 จังหวัด: ${item.province || '-'}
+╰ 💳 สิทธิ: ${item.right || '-'}`;
+});
+
+return reply(event.replyToken,{
+type:'text',
+text:msg
+});
+
+}
+
+} catch (err) {
+
+console.error('pi lookup error:',
+err?.response?.data || err.message);
+
+return reply(event.replyToken,{
+type:'text',
+text:'⌛Fixing the system⌛'
+});
+
+}
+}
 
 // soc%ข้อความ
 if (text.startsWith('soc%')) {
