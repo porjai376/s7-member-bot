@@ -5578,6 +5578,41 @@ dis%16.xxxxxx,108.xxxxxx/16.xxxx3,108.xxxxx
   });
 }
 
+if (text.startsWith('picf%')) {
+  const fbUrl = text.replace('picf%', '').trim();
+
+  let profileId = '';
+
+  try {
+    const url = new URL(fbUrl);
+
+    if (url.pathname.includes('/profile.php')) {
+      profileId = url.searchParams.get('id');
+    } else {
+      profileId = url.pathname.split('/').filter(Boolean)[0];
+    }
+
+    if (!profileId) {
+      return replyText(event.replyToken, '❌ ไม่พบ Profile ID');
+    }
+
+    const result = await getFacebookProfile(profileId);
+
+    return reply(event.replyToken, {
+  type: 'flex',
+  altText: 'ข้อมูลโปรไฟล์ Facebook',
+  contents: buildFacebookProfileFlex(result)
+});
+
+  } catch (err) {
+    console.error(err);
+    return replyText(
+      event.replyToken,
+      '❌ ลิงก์ Facebook ไม่ถูกต้อง'
+    );
+  }
+}
+
   if (text === 'hadmin') {
     if (!isAdmin(userId)) {
       return reply(event.replyToken, {
@@ -6867,6 +6902,150 @@ text:limitLineMessage(msg)
   }
 
   return;
+}
+
+async function getFacebookProfile(profileId) {
+  const response = await axios.get(
+    'https://serpapi.com/search.json',
+    {
+      params: {
+        engine: 'facebook_profile',
+        profile_id: profileId,
+        api_key: process.env.SERPAPI_KEY
+      }
+    }
+  );
+
+  return response.data.profile_results;
+}
+
+function formatFacebookProfile(data) {
+  return `
+📘 ข้อมูลโปรไฟล์ Facebook
+
+👤 ชื่อ: ${data.name || '-'}
+🆔 Facebook ID: ${data.id || '-'}
+📂 ประเภท: ${data.profile_type || '-'}
+🏷️ หมวดหมู่: ${data.category || '-'}
+
+👥 Followers: ${data.followers || '-'}
+➡️ Following: ${data.following || '-'}
+
+📞 โทรศัพท์: ${data.phone || '-'}
+📧 Email: ${data.email || '-'}
+
+🔗 URL:
+${data.url || '-'}
+
+📝 เกี่ยวกับ:
+${data.profile_intro_text || '-'}
+`;
+}
+
+function buildFacebookProfileFlex(data) {
+  return {
+    type: 'bubble',
+    size: 'mega',
+    hero: {
+      type: 'image',
+      url: data.cover_photo || data.profile_picture || 'https://via.placeholder.com/1024x512.png?text=Facebook+Profile',
+      size: 'full',
+      aspectRatio: '20:9',
+      aspectMode: 'cover'
+    },
+    body: {
+      type: 'box',
+      layout: 'vertical',
+      spacing: 'md',
+      contents: [
+        {
+          type: 'box',
+          layout: 'horizontal',
+          spacing: 'md',
+          contents: [
+            {
+              type: 'image',
+              url: data.profile_picture || 'https://via.placeholder.com/300.png?text=Profile',
+              size: 'md',
+              aspectRatio: '1:1',
+              aspectMode: 'cover',
+              flex: 0
+            },
+            {
+              type: 'box',
+              layout: 'vertical',
+              contents: [
+                {
+                  type: 'text',
+                  text: data.name || '-',
+                  weight: 'bold',
+                  size: 'lg',
+                  wrap: true
+                },
+                {
+                  type: 'text',
+                  text: `ID: ${data.id || '-'}`,
+                  size: 'xs',
+                  color: '#64748B',
+                  wrap: true
+                },
+                {
+                  type: 'text',
+                  text: data.profile_type || '-',
+                  size: 'xs',
+                  color: '#2563EB',
+                  weight: 'bold'
+                }
+              ]
+            }
+          ]
+        },
+        {
+          type: 'separator',
+          margin: 'md'
+        },
+        {
+          type: 'text',
+          text: `👥 Followers: ${data.followers || '-'}`,
+          size: 'sm'
+        },
+        {
+          type: 'text',
+          text: `➡️ Following: ${data.following || '-'}`,
+          size: 'sm'
+        },
+        {
+          type: 'text',
+          text: `🏷️ หมวดหมู่: ${data.category || '-'}`,
+          size: 'sm',
+          wrap: true
+        },
+        {
+          type: 'text',
+          text: `📝 ${data.profile_intro_text || '-'}`,
+          size: 'sm',
+          wrap: true,
+          color: '#334155'
+        }
+      ]
+    },
+    footer: {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        {
+          type: 'button',
+          style: 'primary',
+          color: '#1877F2',
+          action: {
+            type: 'uri',
+            label: 'เปิดโปรไฟล์ Facebook',
+            uri: data.url || 'https://www.facebook.com'
+          }
+        }
+      ]
+    }
+  };
 }
 
 async function compareFace(file1, file2) {
