@@ -6420,7 +6420,14 @@ dis%16.xxxxxx,108.xxxxxx/16.xxxx3,108.xxxxx
 }
 
 if (text.startsWith('picf%')) {
-  const fbUrl = text.replace('picf%', '').trim();
+  const fbUrl = text.replace(/^picf%/i, '').trim();
+
+  if (!fbUrl) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ กรุณาระบุลิงก์ Facebook\nตัวอย่าง: picf%https://www.facebook.com/zuck'
+    });
+  }
 
   let profileId = '';
 
@@ -6434,23 +6441,33 @@ if (text.startsWith('picf%')) {
     }
 
     if (!profileId) {
-      return replyText(event.replyToken, '❌ ไม่พบ Profile ID');
+      return reply(event.replyToken, {
+        type: 'text',
+        text: '❌ ไม่พบ Profile ID'
+      });
     }
 
     const result = await getFacebookProfile(profileId);
 
+    if (!result || typeof result !== 'object') {
+      return reply(event.replyToken, {
+        type: 'text',
+        text: '❌ ไม่พบข้อมูล Facebook'
+      });
+    }
+
     return reply(event.replyToken, {
-  type: 'flex',
-  altText: 'ข้อมูลโปรไฟล์ Facebook',
-  contents: buildFacebookProfileFlex(result)
-});
+      type: 'flex',
+      altText: 'ข้อมูลโปรไฟล์ Facebook',
+      contents: buildFacebookProfileFlex(result)
+    });
 
   } catch (err) {
-    console.error(err);
-    return replyText(
-      event.replyToken,
-      '❌ ลิงก์ Facebook ไม่ถูกต้อง'
-    );
+    console.error('picf error:', err?.response?.data || err.message);
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ ลิงก์ Facebook ไม่ถูกต้อง หรือไม่พบข้อมูล'
+    });
   }
 }
 
@@ -7864,6 +7881,7 @@ ${data.profile_intro_text || '-'}
 }
 
 function buildFacebookProfileFlex(data) {
+    data = data || {};
   return {
     type: 'bubble',
     size: 'mega',
