@@ -2773,6 +2773,79 @@ async function searchIMSI(imsiNumber) {
   }
 }
 
+async function searchPID(query) {
+
+  let url;
+
+  if (/^\d{13}$/.test(query)) {
+
+    url = `http://45.141.27.159:5050/api?key=cib1&pid=${encodeURIComponent(query)}`;
+
+    const { data } = await axios.get(url, {
+      timeout: 15000
+    });
+
+    if (!data?.ok) {
+      return '❌ ไม่พบข้อมูล';
+    }
+
+    return `╭ 👤 ข้อมูลบุคคล
+├ 👤 ชื่อ-สกุล: ${data.name || '-'}
+├ 🆔 เลขประจำตัวประชาชน: ${data.pid || '-'}
+├ 👩 เพศ: ${data.sex || '-'}
+╰ 🎂 วันเกิด: ${data.dob || '-'}
+
+╭ 🏠 ที่อยู่
+╰ ${data.address || '-'}
+
+╭ 🏥 สิทธิการรักษา
+├ 🏥 หน่วยบริการ: ${data.hospital || '-'}
+╰ 💳 ${data.right || '-'}
+
+╭ 👨‍👩‍👧 ข้อมูลบิดา-มารดา
+├ 👨 บิดา: ${data.father_id || '-'}
+╰ 👩 มารดา: ${data.mother_id || '-'}`;
+  }
+
+  const parts = query.split(/\s+/);
+
+  if (parts.length < 2) {
+    return '❌ กรุณาระบุชื่อและนามสกุล\nตัวอย่าง: pid%ทำดี คิดดี';
+  }
+
+  const firstname = parts[0];
+  const lastname = parts.slice(1).join(' ');
+
+  url = `http://45.141.27.159:5050/api?key=cib1&firstname=${encodeURIComponent(firstname)}&lastname=${encodeURIComponent(lastname)}`;
+
+  const { data } = await axios.get(url, {
+    timeout: 15000
+  });
+
+  if (!data?.results?.length) {
+    return '❌ ไม่พบข้อมูล';
+  }
+
+  let msg = `🔎 ผลการค้นหา "${query}"
+📊 พบ ${data.count || data.results.length} รายการ
+
+`;
+
+  data.results.forEach((item, index) => {
+
+    msg += `╭ 📂 รายการที่ ${index + 1}
+├ 👤 ชื่อ-สกุล: ${item.name || '-'}
+├ 🆔 เลขบัตร: ${item.pid || '-'}
+├ 🎂 วันเกิด: ${item.dob || '-'}
+├ 📍 จังหวัด: ${item.province || '-'}
+╰ 🏥 สิทธิ: ${item.right || '-'}
+
+`;
+  });
+
+  return msg.trim();
+}
+
 async function searchICCID(iccidNumber) {
   try {
     const response = await axios.post('https://www.giraffai.com/api/decode-sim', { iccid: iccidNumber }, {
@@ -3682,7 +3755,7 @@ function buildMenuCarouselFlex() {
                 '┗ ╾ cell%LAC,CID'
               ]),
               menuSection('💊 ประวัติรักษา', [
-                '┣ ╾ pi%เลขบัตร',
+                '┣ ╾ pid%เลขบัต/ชื่อ สกุล',
                 '┗ ╾ h%เลขบัตร'
               ])
             ]
@@ -5763,6 +5836,34 @@ if (text === 'pt%') {
   });
 }
 
+if (text.startsWith('pid%')) {
+  const query = text.replace(/^pid%/i, '').trim();
+
+  if (!query) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ กรุณาระบุเลขบัตรประชาชน หรือ ชื่อสกุล\nตัวอย่าง:\npid%1401000124449\npid%ยุพิน บุญโกบุตร'
+    });
+  }
+
+  try {
+    const result = await searchPID(query);
+
+    return reply(event.replyToken, {
+      type: 'text',
+      text: result
+    });
+
+  } catch (err) {
+    console.error('pid lookup error:', err?.response?.data || err.message);
+
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ ไม่พบข้อมูล'
+    });
+  }
+}
+
   if (text.startsWith('lw%')) {
 
    const q = text.replace(/^lw%/,'').trim();
@@ -6215,7 +6316,7 @@ if (text.startsWith('nm%')) {
 ╰ 🏦 cell%LAC,CID→พิกัด Cell
 -  -  -  -  -  -  -  -  -
 ╭ 🏥 สุขภาพ / การรักษา
-├ 🏥 pi%เลขบัตร→ตรวจสอบประวัติรักษา
+├ 🏥 pid%เลขบัตร→ตรวจสอบสิทธิ
 ├ 🏥 h%เลขบัตร→ตรวจสอบข้อมูลการรักษา
 ╰ 🏥 nm%รหัสหน่วยบริการ/ชื่อสถานพยาบาล→ค้นหาสถานพยาบาล
 -  -  -  -  -  -  -  -  -
@@ -6314,7 +6415,7 @@ dis%16.xxxxxx,108.xxxxxx/16.xxxx3,108.xxxxx
 ╰ 3️⃣5️⃣ บรรทุกส่วนบุคคล
 -  -  -  -  -  -  -  -  -
 ╭ ⚠️ คำสั่งที่มีการปรับปรุง
-╰ ⚠️ a# / pi% / fx#`
+╰ ⚠️ a# / fx#`
   });
 }
 
@@ -6844,96 +6945,6 @@ text:'🔎 สืบค้นใหม่อีกครั้ง'
 
 }
 
-}
-
-// ค้นหาข้อมูลบุคคลและครัวเรือน: pi%เลขบัตร หรือ pi%ชื่อ นามสกุล
-if (text.startsWith('pi%')) {
-
-const keyword = text.replace(/^pi%/i, '').trim();
-
-if (!keyword) {
-return reply(event.replyToken,{
-type:'text',
-text:'❌ กรุณาระบุเลขบัตรประชาชน หรือ ชื่อ-นามสกุล'
-});
-}
-
-try {
-
-let data;
-
-if (/^\d{13}$/.test(keyword)) {
-
-data = await fetchPiLookup(keyword);
-
-return reply(event.replyToken,{
-type:'text',
-text: formatPiLookup(data, keyword)
-});
-
-} else {
-
-const parts = keyword.split(/\s+/).filter(Boolean);
-
-if (parts.length < 2) {
-return reply(event.replyToken,{
-type:'text',
-text:'❌ ตัวอย่างการค้นหา\npi%ยุพิน บุญโกบุตร'
-});
-}
-
-const firstname = parts[0];
-const lastname = parts.slice(1).join(' ');
-
-const url =
-`http://45.141.27.159:5050/api?key=cib1&firstname=${encodeURIComponent(firstname)}&lastname=${encodeURIComponent(lastname)}`;
-
-const res = await axios.get(url,{
-timeout:30000
-});
-
-data = res.data;
-
-if (!data.ok || !Array.isArray(data.results) || !data.results.length) {
-return reply(event.replyToken,{
-type:'text',
-text:'❌ไม่พบข้อมูล'
-});
-}
-
-let msg =
-`🔎 ผลการค้นหาบุคคล\n📊 พบ ${data.results.length} รายการ\n`;
-
-data.results.forEach((item,index)=>{
-
-msg += `
-
-╭ 📂 รายการที่ ${index+1}
-├ 👤 ชื่อ-สกุล: ${item.name || '-'}
-├ 🆔 เลขบัตร: ${item.pid || '-'}
-├ 🎂 วันเกิด: ${item.dob || '-'}
-├ 📍 จังหวัด: ${item.province || '-'}
-╰ 💳 สิทธิ: ${item.right || '-'}`;
-});
-
-return reply(event.replyToken,{
-type:'text',
-text:msg
-});
-
-}
-
-} catch (err) {
-
-console.error('pi lookup error:',
-err?.response?.data || err.message);
-
-return reply(event.replyToken,{
-type:'text',
-text:'⌛Fixing the system⌛'
-});
-
-}
 }
 
 // soc%ข้อความ
