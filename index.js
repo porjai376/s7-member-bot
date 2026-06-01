@@ -925,6 +925,7 @@ async function showPhishingLoggerVisitors(id) {
 visits.forEach((visit, idx) => {
   msg += `╭ 📂 ลำดับ ${idx + 1}\n`;
   msg += `├ IP: ${visit.ip || '-'}\n`;
+  msg += `├ เวลาเข้าชม: ${formatPhishingVisitTime(visit)}\n`;
   msg += `├ ประเทศ: ${visit.country || '-'}\n`;
   msg += `├ เครือข่าย: ${visit.isp || '-'}\n`;
 
@@ -940,6 +941,39 @@ visits.forEach((visit, idx) => {
   } catch (err) {
     return '❌ Failed to get visitor data: ' + (err.response?.data?.message || err.message);
   }
+}
+
+function formatPhishingVisitTime(visit) {
+  const raw = visit?.created_at ||
+    visit?.creation_date ||
+    visit?.date ||
+    visit?.datetime ||
+    visit?.time ||
+    visit?.timestamp ||
+    visit?.visit_time ||
+    visit?.first_seen ||
+    visit?.last_seen ||
+    '';
+  if (!raw) return '-';
+
+  const numeric = typeof raw === 'number' || /^\d{10,13}$/.test(String(raw));
+  const date = numeric
+    ? new Date(String(raw).length === 10 ? Number(raw) * 1000 : Number(raw))
+    : new Date(raw);
+
+  if (!Number.isNaN(date.getTime())) {
+    return date.toLocaleString('th-TH', {
+      timeZone: 'Asia/Bangkok',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+  }
+
+  return String(raw);
 }
 
 function limitAllSection(text, max = 1000) {
@@ -1593,6 +1627,66 @@ async function fetchSearchApiRaw(params) {
   return res;
 }
 
+async function fetchNhsoRightApi(citizenId) {
+  const { data: res } = await axios.get(SEARCH_API_BASE, {
+    params: { nh: citizenId, key: SEARCH_API_KEY },
+    timeout: 120000
+  });
+  return res;
+}
+
+function formatNhsoRightApiResult(res, citizenId) {
+  if (!res?.success) {
+    return `❌ ${res?.message || `ไม่พบข้อมูลสิทธิสำหรับเลขบัตร ${citizenId}`}`;
+  }
+
+  const data = res.data || {};
+  const personal = data.personal || {};
+  const historyRows = Array.isArray(data.historyRows) ? data.historyRows : [];
+  const currentRight = data.currentRight || {};
+  const value = (...items) => items.find(item => item !== undefined && item !== null && String(item).trim() !== '') || '-';
+  const hasValue = item => item !== undefined && item !== null && String(item).trim() !== '' && String(item).trim() !== '-';
+
+  const lines = [
+    `╭ ชื่อ-สกุล: ${value(personal.fullName)}`,
+    `├ เพศ: ${value(personal.gender)}`,
+    `├ เดือนปีเกิด: ${value(personal.birthMonth)}`,
+    `╰ สถานภาพ: ${value(personal.statusDola)}`,
+    '',
+    '╭ 💳 สิทธิการรักษาปัจจุบัน',
+    `├ สิทธิหลัก: ${value(currentRight.mainInscl)}`,
+    `├ ประเภทสิทธิย่อย: ${value(currentRight.subInscl)}`,
+    `├ รหัสบัตรประกันสุขภาพ: ${value(currentRight.cardId)}`,
+    `├ จังหวัดที่ลงทะเบียนรักษา: ${value(currentRight.ucProvince)}`,
+    `├ หน่วยบริการปฐมภูมิ: ${value(currentRight.hsub)}`,
+    `├ หน่วยบริการประจำ: ${value(currentRight.hmainOp)}`,
+    `╰ หน่วยบริการรับส่งต่อ: ${value(currentRight.hmain)}`,
+    '',
+    `📜 ประวัติการเปลี่ยนสิทธิ์ (${historyRows.length} รายการ)`
+  ];
+
+  const pushHistoryLine = (block, label, item, prefix = '├') => {
+    if (hasValue(item)) block.push(`${prefix} ${label}: ${item}`);
+  };
+
+  historyRows.forEach((row, index) => {
+    const block = ['', `╭ 📂 รายการที่ ${index + 1}`];
+    pushHistoryLine(block, 'วันที่เปลี่ยนแปลง', row.changedAt);
+    pushHistoryLine(block, 'จังหวัด', row.province);
+    pushHistoryLine(block, 'สิทธิ', row.rightName);
+    pushHistoryLine(block, 'ประเภท', row.subRight);
+    pushHistoryLine(block, 'เลขบัตรสิทธิ', row.cardId);
+    pushHistoryLine(block, 'เริ่มใช้สิทธิ', row.startDate);
+    pushHistoryLine(block, 'หมดอายุ', row.expireDate);
+    pushHistoryLine(block, 'หน่วยบริการหลัก', row.hospMain);
+    pushHistoryLine(block, 'หน่วยบริการปฐมภูมิ', row.hospSub);
+    block.push(`╰ สถานะ: ${value(row.status)}`);
+    lines.push(...block);
+  });
+
+  return limitLineMessage(lines.join('\n'));
+}
+
 async function fetchOpecStudentApi(citizenId) {
   const { data: res } = await axios.get(SEARCH_API_BASE, {
     params: { opec: citizenId, key: SEARCH_API_KEY },
@@ -1648,6 +1742,68 @@ function stripHtml(value) {
     .trim();
 }
 
+function parseDataForThaiCompanyHtml(html, fallbackId = '', fallback = {}) {
+  const $ = cheerio.load(html || '');
+  const clean = value => stripHtml(value).replace(/\s+/g, ' ').trim();
+  const normalize = value => clean(value).replace(/\s+/g, '');
+  const getValueByLabel = (...labels) => {
+    const normalizedLabels = labels.map(normalize).filter(Boolean);
+    let value = '';
+    $('td').each((_, el) => {
+      if (value) return;
+      const label = normalize($(el).clone().children().remove().end().text() || $(el).text());
+      if (!normalizedLabels.some(item => label === item || label.includes(item))) return;
+      const next = $(el).next();
+      value = clean(next.html() || next.text());
+    });
+    return value;
+  };
+
+  let address = '';
+  let mapLink = '';
+  $('td').each((_, el) => {
+    const label = normalize($(el).clone().children().remove().end().text() || $(el).text());
+    if (!label.includes('ที่ตั้ง') || address) return;
+    const next = $(el).next();
+    const a = next.find('a.noselect, a[href*="maps/search"], a').first();
+    address = clean(a.length ? a.text() : next.text());
+    mapLink = a.attr('href') || next.find('a[href*="maps"]').first().attr('href') || '';
+  });
+
+  const websites = [];
+  $('td').each((_, el) => {
+    const label = normalize($(el).clone().children().remove().end().text() || $(el).text());
+    if (!label.includes('เว็บไซต์')) return;
+    $(el).next().find('a').each((__, a) => {
+      const text = clean($(a).text());
+      if (text && !websites.includes(text)) websites.push(text);
+    });
+  });
+
+  const business = getValueByLabel('ประกอบธุรกิจ')
+    .replace(/ค้นหาผู้ประกอบการธุรกิจเดียวกัน/g, '')
+    .replace(/\s*หมวดธุรกิจ\s*[:：]?\s*/i, '\nหมวดธุรกิจ: ')
+    .replace(/\s*ธุรกิจที่ส่งงบการเงินล่าสุด\s*/i, '\nธุรกิจที่ส่งงบการเงินล่าสุด: ')
+    .trim();
+
+  return {
+    jp_no: getValueByLabel('เลขทะเบียน') || fallback.jp_no || fallbackId,
+    jp_tname: clean($('h2').first().text()) || fallback.jp_tname || fallback.full_tname || '',
+    full_tname: fallback.full_tname || clean($('h2').first().text()) || '',
+    name_en: clean($('h3').first().text()) || fallback.name_en || '',
+    obj_name_keyin: fallback.obj_name_keyin || '',
+    detail: {
+      business,
+      status: getValueByLabel('สถานะ'),
+      regDate: getValueByLabel('วันที่จดทะเบียน'),
+      capital: getValueByLabel('ทุนจดทะเบียน'),
+      address,
+      mapLink,
+      websites
+    }
+  };
+}
+
 async function fetchDataForThaiCompany(searchText) {
   try {
     const form = new URLSearchParams();
@@ -1655,21 +1811,52 @@ async function fetchDataForThaiCompany(searchText) {
     form.append('data[searchtext]', searchText);
 
     const apiRes = await axios.post('https://www.dataforthai.com/api/company', form.toString(), {
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        Accept: 'application/json, text/javascript, */*; q=0.01',
+        Origin: 'https://www.dataforthai.com',
+        Referer: 'https://www.dataforthai.com/',
+        'X-Requested-With': 'XMLHttpRequest',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36'
+      },
       timeout: 15000
     });
 
-    if (!apiRes.data || !Array.isArray(apiRes.data.data) || apiRes.data.data.length === 0) {
+    const rows = Array.isArray(apiRes.data?.data)
+      ? apiRes.data.data
+      : Array.isArray(apiRes.data?.result)
+        ? apiRes.data.result
+        : Array.isArray(apiRes.data)
+          ? apiRes.data
+          : [];
+
+    if (!rows.length && !/^\d{13}$/.test(String(searchText).trim())) {
       return { ok: false, message: 'ไม่พบผลจาก DataForThai' };
     }
 
-    const first = apiRes.data.data[0];
-    const jpNo = first.jp_no || '';
+    const first = rows[0] || {};
+    const firstText = typeof first === 'string' ? first : JSON.stringify(first);
+    const jpNo = first.jp_no ||
+      first.jpNo ||
+      first.jp_no_text ||
+      first.juristic_id ||
+      first.register_no ||
+      String(searchText).match(/\d{13}/)?.[0] ||
+      String(firstText).match(/\d{13}/)?.[0] ||
+      '';
+
+    if (!jpNo) return { ok: false, message: 'ไม่พบเลขทะเบียนจาก DataForThai' };
+
     let detailHtml = '';
 
     try {
       const detailRes = await axios.get(`https://www.dataforthai.com/company/${jpNo}/`, {
-        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+        headers: {
+          Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'th,en;q=0.9',
+          Referer: 'https://www.dataforthai.com/',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36'
+        },
         timeout: 15000
       });
       detailHtml = detailRes.data;
@@ -1677,46 +1864,40 @@ async function fetchDataForThaiCompany(searchText) {
       detailHtml = '';
     }
 
-    const detail = {
-      business: '',
-      status: '',
-      regDate: '',
-      capital: '',
-      address: ''
-    };
-
-    if (detailHtml) {
-      const $ = cheerio.load(detailHtml);
-      const getNextTd = (label) => {
-        const normalized = label.replace(/\s+/g, '');
-        const td = $('td').filter((_, el) => $(el).text().trim().replace(/\s+/g, '') === normalized);
-        if (td.length) return td.first().next().text().trim().replace(/\s+/g, ' ');
-        const td2 = $('td').filter((_, el) => $(el).text().trim().includes(label));
-        if (td2.length) return td2.first().next().text().trim().replace(/\s+/g, ' ');
-        return '';
-      };
-
-      detail.business = getNextTd('ธุรกิจ') || getNextTd('ประเภทธุรกิจ') || '';
-      detail.status = getNextTd('สถานะ') || '';
-      detail.regDate = getNextTd('จดทะเบียน') || getNextTd('วันที่จดทะเบียน') || '';
-      detail.capital = getNextTd('ทุนจดทะเบียน') || '';
-      detail.address = getNextTd('ที่ตั้ง') || $('a[href*="maps"]').first().text().trim() || '';
-      detail.address = detail.address.replace(/สถิติการค้นหา[\s\S]*/g, '').trim();
-      detail.business = detail.business.replace(/\s{2,}/g, ' ').replace(/หมวดธุรกิจ[:：]?\s*/i, '\nหมวดธุรกิจ: ').trim();
-    }
+    const summary = detailHtml
+      ? parseDataForThaiCompanyHtml(detailHtml, jpNo, first)
+      : {
+          jp_no: jpNo,
+          jp_tname: first.jp_tname || first.full_tname || '',
+          obj_name_keyin: first.obj_name_keyin || '',
+          full_tname: first.full_tname || '',
+          detail: { business: '', status: '', regDate: '', capital: '', address: '', mapLink: '', websites: [] }
+        };
 
     return {
       ok: true,
-      summary: {
-        jp_no: jpNo,
-        jp_tname: first.jp_tname || first.full_tname || '',
-        obj_name_keyin: first.obj_name_keyin || '',
-        full_tname: first.full_tname || '',
-        detail
-      }
+      summary
     };
-  } catch {
-    return { ok: false, message: 'เกิดข้อผิดพลาดขณะค้นหาจาก DataForThai' };
+  } catch (error) {
+    const directId = String(searchText || '').match(/\d{13}/)?.[0] || '';
+    if (directId) {
+      try {
+        const detailRes = await axios.get(`https://www.dataforthai.com/company/${directId}/`, {
+          headers: {
+            Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'th,en;q=0.9',
+            Referer: 'https://www.dataforthai.com/',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36'
+          },
+          timeout: 15000
+        });
+        return {
+          ok: true,
+          summary: parseDataForThaiCompanyHtml(detailRes.data, directId, { jp_no: directId })
+        };
+      } catch {}
+    }
+    return { ok: false, message: 'เกิดข้อผิดพลาดขณะค้นหาจาก DataForThai: ' + (error.response?.status || error.message) };
   }
 }
 
@@ -1734,6 +1915,7 @@ function formatDataForThaiSummary(summary) {
   let msg = '🔎 ข้อมูลบริษัทจาก DataForThai\n━━━━━━━━━━━━━━━━━━\n';
   msg += `🆔 ทะเบียน (JP No): ${summary.jp_no || '-'}\n`;
   msg += `🏢 ชื่อกิจการ: ${summary.jp_tname || summary.full_tname || '-'}\n`;
+  if (summary.name_en) msg += `🌐 ชื่ออังกฤษ: ${summary.name_en}\n`;
   if (summary.obj_name_keyin) msg += `📝 ชื่อที่ป้อน: ${summary.obj_name_keyin}\n`;
   msg += '\n📄 รายละเอียดบริษัท\n';
   msg += `• สถานะ: ${summary.detail.status || '-'}\n`;
@@ -1742,6 +1924,10 @@ function formatDataForThaiSummary(summary) {
   msg += `• จดทะเบียน: ${summary.detail.regDate || '-'}\n`;
   msg += `• ทุนจดทะเบียน: ${summary.detail.capital || '-'}\n`;
   if (summary.detail.address) msg += `• ที่ตั้ง: ${summary.detail.address}\n`;
+  if (summary.detail.mapLink) msg += `• แผนที่: ${summary.detail.mapLink}\n`;
+  if (Array.isArray(summary.detail.websites) && summary.detail.websites.length) {
+    msg += `• เว็บไซต์: ${summary.detail.websites.join(', ')}\n`;
+  }
   return msg.trim();
 }
 
@@ -1824,51 +2010,24 @@ async function searchBOTLicense(keyword) {
 
 async function searchCompanyDataforthai(id) {
   try {
-    const { data: html } = await axios.get(`https://www.dataforthai.com/company/${id}`, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-        'Accept-Language': 'th,en;q=0.9'
-      },
-      timeout: 15000
-    });
-
-    const $ = cheerio.load(html);
-    const nameTH = $('h2').first().text().trim();
-    const nameEN = $('h3').first().text().trim();
-    const nextText = (...labels) => {
-      let value = '';
-      $('td').each((_, el) => {
-        const label = $(el).text();
-        if (!value && labels.some(item => label.includes(item))) {
-          value = $(el).next().text().trim().replace(/\s+/g, ' ');
-        }
-      });
-      return value;
-    };
-
-    let address = '';
-    let mapLink = '';
-    $('td').each((_, el) => {
-      if (!$(el).text().includes('ที่ตั้ง')) return;
-      const next = $(el).next();
-      const a = next.find('a');
-      address = (a.length ? a.text() : next.text()).trim().replace(/\s+/g, ' ');
-      mapLink = a.attr('href') || '';
-    });
-
-    if (!nameTH && !nameEN) return `❌ ไม่พบข้อมูลบริษัทสำหรับเลขทะเบียนนี้ (${id})`;
+    const dft = await fetchDataForThaiCompany(id);
+    if (!dft.ok) return `❌ ${dft.message || `ไม่พบข้อมูลบริษัทสำหรับเลขทะเบียนนี้ (${id})`}`;
+    const summary = dft.summary || {};
+    const detail = summary.detail || {};
+    if (!summary.jp_tname && !summary.full_tname && !summary.name_en) return `❌ ไม่พบข้อมูลบริษัทสำหรับเลขทะเบียนนี้ (${id})`;
 
     return `🏢 ข้อมูลบริษัท
 ====================
-📌 ชื่อบริษัท: ${nameTH || '-'}
-🌐 (EN): ${nameEN || '-'}
-🆔 เลขทะเบียน: ${nextText('ทะเบียน', 'เลขทะเบียน') || id}
-📋 ประเภทธุรกิจ: ${nextText('ประกอบธุรกิจ', 'ประเภทธุรกิจ', 'ธุรกิจ') || '-'}
-📅 วันที่จดทะเบียน: ${nextText('วันที่จดทะเบียน', 'จดทะเบียน') || '-'}
-💰 ทุนจดทะเบียน: ${nextText('ทุนจดทะเบียน') || '-'}
-📍 ที่ตั้ง: ${address || '-'}
-${mapLink ? `🗺️ แผนที่: ${mapLink}` : ''}
-📊 สถานะ: ${nextText('สถานะ') || '-'}
+📌 ชื่อบริษัท: ${summary.jp_tname || summary.full_tname || '-'}
+🌐 (EN): ${summary.name_en || '-'}
+🆔 เลขทะเบียน: ${summary.jp_no || id}
+📋 ประเภทธุรกิจ: ${detail.business || '-'}
+📅 วันที่จดทะเบียน: ${detail.regDate || '-'}
+💰 ทุนจดทะเบียน: ${detail.capital || '-'}
+📍 ที่ตั้ง: ${detail.address || '-'}
+${detail.mapLink ? `🗺️ แผนที่: ${detail.mapLink}` : ''}
+${Array.isArray(detail.websites) && detail.websites.length ? `🌐 เว็บไซต์: ${detail.websites.join(', ')}` : ''}
+📊 สถานะ: ${detail.status || '-'}
 ====================`;
   } catch (e) {
     return `❌ เกิดข้อผิดพลาดในการค้นหา DataForThai: ${e.message}`;
@@ -2041,7 +2200,9 @@ async function searchTISI(licenseId) {
         Origin: 'https://appdb.tisi.go.th',
         Referer: 'https://appdb.tisi.go.th/',
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36'
-      }
+      },
+      httpsAgent,
+      timeout: 30000
     });
 
     const $ = cheerio.load(response.data);
@@ -6086,7 +6247,7 @@ dis%16.xxxxxx,108.xxxxxx/16.xxxx3,108.xxxxx
 ╰ 3️⃣5️⃣ บรรทุกส่วนบุคคล
 -  -  -  -  -  -  -  -  -
 ╭ ⚠️ คำสั่งที่มีการปรับปรุง
-╰ ⚠️ a# / pi% / h% / fx#`
+╰ ⚠️ a# / pi% / fx#`
   });
 }
 
@@ -7000,11 +7161,17 @@ https://line.me/ti/p/mVmD-ncfvU
 
   if (text.startsWith('h%')) {
     const pidToSearch = text.replace(/^h%/, '').trim();
-    if (!pidToSearch) {
+    if (!/^\d{13}$/.test(pidToSearch)) {
       return reply(event.replyToken, { type: 'text', text: '❌กรุณาระบุเลขบัตรประชาชน เช่น h%1234567890123' });
     }
-    const result = await searchJediHp(pidToSearch);
-    return reply(event.replyToken, { type: 'text', text: result });
+    try {
+      const res = await fetchNhsoRightApi(pidToSearch);
+      const result = formatNhsoRightApiResult(res, pidToSearch);
+      return reply(event.replyToken, { type: 'text', text: result });
+    } catch (err) {
+      console.error('h% NHSO error:', err?.response?.data || err.message);
+      return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูลสิทธิ NHSO ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง' });
+    }
   }
 
   if (text.startsWith('tic%')) {
