@@ -5524,6 +5524,7 @@ if (text.startsWith('nm%')) {
 ╭ 🌐 เครื่องมือ / ข้อมูลอื่นๆ
 ├ 🎣 phis%URL→เพิ่ม Phishing
 ├ 🎣 chphis%ID→ตรวจ Phishing
+├ 🌐 picf%url→ตรวจ ดึงภาพ Profile facebook
 ├ 🌐 soc%Username/ชื่อโซเชี่ยล/หรือข้อความอื่นๆ→ค้นหาโซเชี่ยล
 ├ 🌐 ip%เลข IP→ตรวจเครือข่าย IP
 ├ 🌐 imei%เลข IMEI→ตรวจ IMEI
