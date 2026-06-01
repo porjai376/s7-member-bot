@@ -6420,7 +6420,7 @@ dis%16.xxxxxx,108.xxxxxx/16.xxxx3,108.xxxxx
 }
 
 if (text.startsWith('picf%')) {
-  const fbUrl = text.replace('picf%', '').trim();
+  const fbUrl = text.replace(/^picf%/i, '').trim();
 
   let profileId = '';
 
@@ -6434,23 +6434,33 @@ if (text.startsWith('picf%')) {
     }
 
     if (!profileId) {
-      return replyText(event.replyToken, '❌ ไม่พบ Profile ID');
+      return reply(event.replyToken, {
+        type: 'text',
+        text: '❌ ไม่พบ Profile ID'
+      });
     }
 
     const result = await getFacebookProfile(profileId);
 
+    if (!result) {
+      return reply(event.replyToken, {
+        type: 'text',
+        text: '❌ ไม่พบข้อมูล Facebook'
+      });
+    }
+
     return reply(event.replyToken, {
-  type: 'flex',
-  altText: 'ข้อมูลโปรไฟล์ Facebook',
-  contents: buildFacebookProfileFlex(result)
-});
+      type: 'flex',
+      altText: 'ข้อมูลโปรไฟล์ Facebook',
+      contents: buildFacebookProfileFlex(result)
+    });
 
   } catch (err) {
     console.error(err);
-    return replyText(
-      event.replyToken,
-      '❌ ลิงก์ Facebook ไม่ถูกต้อง'
-    );
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ ลิงก์ Facebook ไม่ถูกต้อง'
+    });
   }
 }
 
@@ -7864,12 +7874,13 @@ ${data.profile_intro_text || '-'}
 }
 
 function buildFacebookProfileFlex(data) {
+    data = data || {};
   return {
     type: 'bubble',
     size: 'mega',
     hero: {
       type: 'image',
-      url: data.cover_photo || data.profile_picture || 'https://via.placeholder.com/1024x512.png?text=Facebook+Profile',
+      url: data?.cover_photo || data?.profile_picture || 'https://via.placeholder.com/1024x512.png?text=Facebook+Profile'
       size: 'full',
       aspectRatio: '20:9',
       aspectMode: 'cover'
@@ -7886,7 +7897,7 @@ function buildFacebookProfileFlex(data) {
           contents: [
             {
               type: 'image',
-              url: data.profile_picture || 'https://via.placeholder.com/300.png?text=Profile',
+              url: data?.profile_picture || 'https://via.placeholder.com/300.png?text=Profile',
               size: 'md',
               aspectRatio: '1:1',
               aspectMode: 'cover',
@@ -7898,21 +7909,21 @@ function buildFacebookProfileFlex(data) {
               contents: [
                 {
                   type: 'text',
-                  text: data.name || '-',
+                  text: data?.name || '-',
                   weight: 'bold',
                   size: 'lg',
                   wrap: true
                 },
                 {
                   type: 'text',
-                  text: `ID: ${data.id || '-'}`,
+                  text: `ID: ${data?.id || '-'}`,
                   size: 'xs',
                   color: '#64748B',
                   wrap: true
                 },
                 {
                   type: 'text',
-                  text: data.profile_type || '-',
+                  text: data?.profile_type || '-',
                   size: 'xs',
                   color: '#2563EB',
                   weight: 'bold'
