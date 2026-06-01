@@ -2810,7 +2810,7 @@ async function searchPID(query) {
   const parts = query.split(/\s+/);
 
   if (parts.length < 2) {
-    return '❌ กรุณาระบุชื่อและนามสกุล\nตัวอย่าง: pid%ทำดี คิดดี';
+    return '❌ กรุณาระบุชื่อ สกุล หรือ เลขบัตร 13 หลัก\nตัวอย่าง: pid%ทำดี คิดดี หรือ pid%11xxxxxxxxxxx';
   }
 
   const firstname = parts[0];
