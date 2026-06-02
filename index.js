@@ -918,6 +918,9 @@ async function showPhishingLoggerVisitors(id) {
     });
 
     const visits = response.data?.result || [];
+
+console.log('VISIT DATA =>');
+console.log(JSON.stringify(visits[0], null, 2));
     if (!visits.length) return '🔍 ยังไม่มีคนกดลิงก์หรือถูกกรองหมดแล้ว';
 
     let msg = '🎣 Phishing\n\n';
