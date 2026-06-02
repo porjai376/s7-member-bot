@@ -4106,12 +4106,26 @@ function buildMemberStatusFlex(member, statusText) {
         layout: 'vertical',
         spacing: 'md',
         contents: [
-          infoLine('ชื่อ', member.fullname || '-'),
-          infoLine('สถานะ', statusText),
-          infoLine('อนุมัติ', member.approvedAt || '-'),
-          infoLine('อายุการใช้งาน', `${member.approvedDays || 0} วัน`),
-          infoLine('หมดอายุ', member.expireAt ? formatThaiDate(member.expireAt) : '-'),
-          infoLine('วันลงทะเบียน', member.updatedAt || member.registeredAt || '-')
+          infoLine('👤 ชื่อ', member.fullname || '-'),
+infoLine('📌 สถานะ', statusText),
+infoLine(
+  '📝 วันที่อนุมัติ',
+  member.approvedAt ? formatThaiDate(member.approvedAt) : '-'
+),
+infoLine(
+  '⏳ อายุการใช้งาน',
+  `${member.approvedDays || 0} วัน`
+),
+infoLine(
+  '⚠️ วันหมดอายุ',
+  member.expireAt ? formatThaiDate(member.expireAt) : '-'
+),
+infoLine(
+  '📅 วันลงทะเบียน',
+  member.updatedAt || member.registeredAt
+    ? formatThaiDate(member.updatedAt || member.registeredAt)
+    : '-'
+)
         ]
       },
       footer: {
