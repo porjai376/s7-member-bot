@@ -3583,15 +3583,16 @@ function infoLine(label, value) {
         text: label,
         size: 'sm',
         color: '#6B7280',
-        flex: 3
+        flex: 5,
+        wrap: true
       },
       {
         type: 'text',
         text: String(value || '-'),
         size: 'sm',
         color: '#111827',
-        wrap: true,
-        flex: 7
+        flex: 6,
+        wrap: true
       }
     ]
   };
@@ -4074,7 +4075,7 @@ function buildAdminMenuFlex() {
 function buildMemberStatusFlex(member, statusText) {
   return {
     type: 'flex',
-    altText: 'สิทธิืวันใช้งาน',
+    altText: 'สิทธิ์วันใช้งาน',
     contents: {
       type: 'bubble',
       size: 'mega',
@@ -4107,25 +4108,37 @@ function buildMemberStatusFlex(member, statusText) {
         spacing: 'md',
         contents: [
           infoLine('👤 ชื่อ', member.fullname || '-'),
-infoLine('📌 สถานะ', statusText),
-infoLine(
-  '📝 วันที่อนุมัติ',
-  member.approvedAt ? formatThaiDate(member.approvedAt) : '-'
-),
-infoLine(
-  '⏳ อายุการใช้งาน',
-  `${member.approvedDays || 0} วัน`
-),
-infoLine(
-  '⚠️ วันหมดอายุ',
-  member.expireAt ? formatThaiDate(member.expireAt) : '-'
-),
-infoLine(
-  '📅 วันลงทะเบียน',
-  member.updatedAt || member.registeredAt
-    ? formatThaiDate(member.updatedAt || member.registeredAt)
-    : '-'
-)
+
+          infoLine(
+            '📌 สถานะ',
+            statusText || '-'
+          ),
+
+          infoLine(
+            '📝 วันที่อนุมัติ',
+            member.approvedAt
+              ? formatThaiDate(member.approvedAt)
+              : '-'
+          ),
+
+          infoLine(
+            '⏳ อายุการใช้งาน',
+            `${member.approvedDays || 0} วัน`
+          ),
+
+          infoLine(
+            '⚠️ วันหมดอายุ',
+            member.expireAt
+              ? formatThaiDate(member.expireAt)
+              : '-'
+          ),
+
+          infoLine(
+            '📅 วันลงทะเบียน',
+            member.updatedAt || member.registeredAt
+              ? formatThaiDate(member.updatedAt || member.registeredAt)
+              : '-'
+          )
         ]
       },
       footer: {
