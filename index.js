@@ -5644,58 +5644,77 @@ margin: 'md'
 };
 }
 
-function packageBubble(days, price, desc) {
-  return {
-    type: 'bubble',
-    size: 'kilo',
-    hero: {
-      type: 'image',
-      url: 'https://impressive-copper-bvl5o5dr.edgeone.app/1086268.jpg',
-      size: 'full',
-      aspectRatio: '20:13',
-      aspectMode: 'cover'
-    },
-    body: {
-      type: 'box',
-      layout: 'vertical',
-      contents: [
-        { type: 'text', text: 'สนับสนุนเซิร์ฟเวอร์', weight: 'bold', size: 'md', wrap: true },
-        { type: 'text', text: days, weight: 'bold', size: 'xxl', color: '#06C755', margin: 'md' },
-        { type: 'text', text: price, weight: 'bold', size: 'xl', margin: 'sm' },
-        { type: 'text', text: desc, size: 'sm', color: '#888888', wrap: true, margin: 'md' },
-        { type: 'separator', margin: 'lg' },
-        { type: 'text', text: 'หลังโอนแล้ว ส่งสลิปเพื่อยืนยัน', size: 'xs', color: '#666666', wrap: true, margin: 'lg' },
-        { type: 'text', text: 'ชื่อผู้สนับสนุนต้องตรงกับผู้สมัครเท่านั้น', size: 'xxs', color: '#FF5555', wrap: true, margin: 'sm' }
-      ]
-    },
-    footer: {
-      type: 'box',
-      layout: 'vertical',
-      spacing: 'sm',
-      contents: [
-        {
-          type: 'button',
-          style: 'primary',
-          height: 'sm',
-          action: {
-            type: 'uri',
-            label: '📸 ส่งสลิป',
-            uri: 'https://line.me/ti/p/mVmD-ncfvU'
-          }
-        },
-        {
-          type: 'button',
-          style: 'secondary',
-          height: 'sm',
-          action: {
-            type: 'uri',
-            label: '📂 ช่องทาง',
-            uri: 'https://impressive-copper-bvl5o5dr.edgeone.app/1086268.jpg'
-          }
-        }
-      ]
-    }
-  };
+function packageBubble(days, price) {
+return {
+type: 'bubble',
+size: 'mega',
+hero: {
+type: 'image',
+url: 'https://impressive-copper-bvl5o5dr.edgeone.app/1086268.jpg',
+size: 'full',
+aspectRatio: '1:1',
+aspectMode: 'fit'
+},
+body: {
+type: 'box',
+layout: 'vertical',
+contents: [
+{
+type: 'text',
+text: 'สนับสนุนเซิร์ฟเวอร์',
+weight: 'bold',
+size: 'lg',
+align: 'center'
+},
+{
+type: 'text',
+text: days,
+weight: 'bold',
+size: '3xl',
+color: '#06C755',
+align: 'center',
+margin: 'lg'
+},
+{
+type: 'text',
+text: price,
+weight: 'bold',
+size: 'xxl',
+align: 'center',
+margin: 'md'
+},
+{
+type: 'separator',
+margin: 'xl'
+},
+{
+type: 'text',
+text: 'ชื่อผู้สนับสนุนต้องตรงกับผู้สมัครเท่านั้น',
+size: 'xs',
+color: '#FF5555',
+wrap: true,
+align: 'center',
+margin: 'lg'
+}
+]
+},
+footer: {
+type: 'box',
+layout: 'vertical',
+contents: [
+{
+type: 'button',
+style: 'primary',
+height: 'md',
+action: {
+type: 'uri',
+label: '📸 แจ้งสลิปสนับสนุน',
+uri: 'https://line.me/ti/p/mVmD-ncfvU'
+}
+}
+]
+}
+};
 }
 
 async function handleText(event) {
@@ -5750,11 +5769,11 @@ if (/^dis%/i.test(text)) {
     contents: {
       type: 'carousel',
       contents: [
-        packageBubble('30 วัน', '499 บาท', 'เหมาะสำหรับทดลองใช้งาน'),
-        packageBubble('90 วัน', '1299 บาท', 'คุ้มกว่ารายเดือน'),
-        packageBubble('180 วัน', '2500 บาท', 'แพ็กเกจยอดนิยม'),
-        packageBubble('365 วัน', '4999 บาท', 'คุ้มที่สุดระยะยาว')
-      ]
+  packageBubble('30 วัน', '499 บาท'),
+  packageBubble('90 วัน', '1299 บาท'),
+  packageBubble('180 วัน', '2500 บาท'),
+  packageBubble('365 วัน', '4999 บาท')
+]
     }
   });
 }
