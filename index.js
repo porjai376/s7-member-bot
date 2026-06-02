@@ -5768,6 +5768,15 @@ async function handleText(event) {
   const db = loadDB();
   const member = db.members?.[userId];
 
+if (text.startsWith('ดูสมาชิกทั้งหมด')) {
+  const page = Number(text.split(/\s+/)[1]) || 1;
+
+  return reply(event.replyToken, {
+    type: 'text',
+    text: buildMembersAllText(db, page)
+  });
+}
+
 if (/^dis%/i.test(text)) {
   const raw = text.replace(/^dis%/i, '').trim();
   const parts = raw.split('/');
