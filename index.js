@@ -5581,42 +5581,67 @@ return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()+543}`;
 }
 
 function createCCTVFlex(cameraTime, realTime, diff) {
-  return {
-    type: 'flex',
-    altText: 'ผลการคำนวณเวลา CCTV',
-    contents: {
-      type: 'bubble',
-      body: {
-        type: 'box',
-        layout: 'vertical',
-        spacing: 'md',
-        contents: [
-          {
-            type: 'text',
-            text: '🎥 การคำนวณความต่างของเวลา CCTV',
-            weight: 'bold',
-            size: 'lg'
-          },
-          {
-            type: 'separator'
-          },
-          {
-            type: 'text',
-            text: `⏰ เวลาในกล้อง : ${cameraTime}`
-          },
-          {
-            type: 'text',
-            text: `⌚ เวลาจริง : ${realTime}`
-          },
-          {
-            type: 'text',
-            text: `🕒 เวลาต่างกัน : ${diff}`,
-            weight: 'bold'
-          }
-        ]
-      }
-    }
-  };
+return {
+type: 'flex',
+altText: 'ผลการคำนวณเวลา CCTV',
+contents: {
+type: 'bubble',
+body: {
+type: 'box',
+layout: 'vertical',
+spacing: 'md',
+contents: [
+{
+type: 'text',
+text: '🎥 การคำนวณความต่างของเวลา CCTV',
+weight: 'bold',
+size: 'lg',
+wrap: true
+},
+{
+type: 'separator',
+margin: 'md'
+},
+{
+type: 'text',
+text: `⏰ เวลาในกล้อง : ${cameraTime}`,
+wrap: true
+},
+{
+type: 'text',
+text: `⌚ เวลาจริง : ${realTime}`,
+wrap: true
+},
+{
+type: 'text',
+text: '🕒 เวลาต่างกัน',
+weight: 'bold',
+margin: 'md'
+},
+{
+type: 'text',
+text: diff,
+wrap: true,
+weight: 'bold',
+color: '#0066CC',
+size: 'md'
+},
+{
+type: 'separator',
+margin: 'lg'
+},
+{
+type: 'text',
+text: '⚠️ หากเวลาข้ามวัน ให้สลับใช้ เวลาจริง,เวลากล้อง',
+size: 'xs',
+wrap: true,
+color: '#FF6B00',
+margin: 'md'
+}
+]
+}
+}
+};
 }
 
 async function handleText(event) {
