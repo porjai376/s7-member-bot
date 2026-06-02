@@ -2165,34 +2165,26 @@ ${carList}`;
 
 function calculateCCTVTimeDiff(cameraTime, realTime) {
   const timePattern = /^([01]?\d|2[0-3]):([0-5]\d):([0-5]\d)$/;
-
   if (!timePattern.test(cameraTime) || !timePattern.test(realTime)) {
-    return { error: 'รูปแบบเวลาไม่ถูกต้อง' };
+    return 'รูปแบบเวลาไม่ถูกต้อง กรุณาใช้รูปแบบ HH:MM:SS';
   }
 
-  const [camH, camM, camS] = cameraTime.split(':').map(Number);
-  const [realH, realM, realS] = realTime.split(':').map(Number);
+  const [camHours, camMinutes, camSeconds] = cameraTime.split(':').map(Number);
+  const [realHours, realMinutes, realSeconds] = realTime.split(':').map(Number);
+  let diffSeconds = (camHours * 3600 + camMinutes * 60 + camSeconds) - (realHours * 3600 + realMinutes * 60 + realSeconds);
+  if (diffSeconds < 0) diffSeconds += 24 * 3600;
 
-  const camTotal = camH * 3600 + camM * 60 + camS;
-  const realTotal = realH * 3600 + realM * 60 + realS;
+  const hours = Math.floor(diffSeconds / 3600);
+  diffSeconds %= 3600;
+  const minutes = Math.floor(diffSeconds / 60);
+  const seconds = diffSeconds % 60;
 
-  let offset = camTotal - realTotal;
-
-  const cameraFast = offset > 0;
-
-  const absOffset = Math.abs(offset);
-
-  const hours = Math.floor(absOffset / 3600);
-  const minutes = Math.floor((absOffset % 3600) / 60);
-  const seconds = absOffset % 60;
-
-  return {
-    cameraTime,
-    realTime,
-    diff: `${hours} ชั่วโมง ${minutes} นาที ${seconds} วินาที`,
-    direction: cameraFast ? 'เร็วกว่า' : 'ช้ากว่า',
-    correction: cameraFast ? 'ลบ' : 'บวก'
-  };
+  return `🎥 การคำนวณความต่างของเวลา CCTV
+====================
+⏰ เวลาในกล้อง: ${cameraTime}
+⌚ เวลาจริง: ${realTime}
+🕒 เวลาต่างกัน: ${hours} ชั่วโมง ${minutes} นาที ${seconds} วินาที
+====================`;
 }
 
 async function searchTISI(licenseId) {
@@ -5588,78 +5580,68 @@ if(isNaN(d.getTime())) return dateStr;
 return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()+543}`;
 }
 
-function createCCTVFlex(result) {
-  return {
-    type: 'flex',
-    altText: 'ผลการคำนวณเวลา CCTV',
-    contents: {
-      type: 'bubble',
-      body: {
-        type: 'box',
-        layout: 'vertical',
-        spacing: 'md',
-        contents: [
-          {
-            type: 'text',
-            text: '🎥 การคำนวณความต่างของเวลา CCTV',
-            weight: 'bold',
-            size: 'lg',
-            wrap: true
-          },
-          {
-            type: 'separator'
-          },
-          {
-            type: 'text',
-            text: `⏰ เวลาในกล้อง : ${result.cameraTime}`,
-            wrap: true
-          },
-          {
-            type: 'text',
-            text: `⌚ เวลาจริง : ${result.realTime}`,
-            wrap: true
-          },
-          {
-            type: 'separator',
-            margin: 'md'
-          },
-          {
-            type: 'text',
-            text: '🕒 เวลาต่างกัน',
-            weight: 'bold'
-          },
-          {
-            type: 'text',
-            text: result.diff,
-            wrap: true
-          },
-          {
-            type: 'text',
-            text: `📌 กล้อง${result.direction}เวลาจริง`,
-            weight: 'bold',
-            wrap: true,
-            margin: 'md'
-          },
-          {
-            type: 'text',
-            text: `🔄 ต้อง${result.correction}เวลา ${result.diff}`,
-            wrap: true
-          },
-          {
-            type: 'separator',
-            margin: 'md'
-          },
-          {
-            type: 'text',
-            text: '⚠️ หากเวลาข้ามวัน ให้สลับใช้ เวลาจริง,เวลากล้อง',
-            size: 'xs',
-            color: '#FF6B00',
-            wrap: true
-          }
-        ]
-      }
-    }
-  };
+function createCCTVFlex(cameraTime, realTime, diff) {
+return {
+type: 'flex',
+altText: 'ผลการคำนวณเวลา CCTV',
+contents: {
+type: 'bubble',
+body: {
+type: 'box',
+layout: 'vertical',
+spacing: 'md',
+contents: [
+{
+type: 'text',
+text: '🎥 การคำนวณความต่างของเวลา CCTV',
+weight: 'bold',
+size: 'lg',
+wrap: true
+},
+{
+type: 'separator',
+margin: 'md'
+},
+{
+type: 'text',
+text: `⏰ เวลาในกล้อง : ${cameraTime}`,
+wrap: true
+},
+{
+type: 'text',
+text: `⌚ เวลาจริง : ${realTime}`,
+wrap: true
+},
+{
+type: 'text',
+text: '🕒 เวลาต่างกัน',
+weight: 'bold',
+margin: 'md'
+},
+{
+type: 'text',
+text: diff,
+wrap: true,
+weight: 'bold',
+color: '#0066CC',
+size: 'md'
+},
+{
+type: 'separator',
+margin: 'lg'
+},
+{
+type: 'text',
+text: '⚠️ หากเวลาข้ามวัน ให้สลับใช้ เวลาจริง,เวลากล้อง',
+size: 'xs',
+wrap: true,
+color: '#FF6B00',
+margin: 'md'
+}
+]
+}
+}
+};
 }
 
 async function handleText(event) {
@@ -7664,12 +7646,12 @@ text: newText
     });
   }
 
-  const result = calculateCCTVTimeDiff(times[0], times[1]);
+  const diff = calculateCCTVTimeDiff(times[0], times[1]);
 
-return reply(
-  event.replyToken,
-  createCCTVFlex(result)
-);
+  return reply(
+    event.replyToken,
+    createCCTVFlex(times[0], times[1], diff)
+  );
 }
 
   if (text.startsWith('tisi%')) {
