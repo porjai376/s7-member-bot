@@ -5644,6 +5644,60 @@ margin: 'md'
 };
 }
 
+function packageBubble(days, price, desc) {
+  return {
+    type: 'bubble',
+    size: 'kilo',
+    hero: {
+      type: 'image',
+      url: 'https://impressive-copper-bvl5o5dr.edgeone.app/1086268.jpg',
+      size: 'full',
+      aspectRatio: '20:13',
+      aspectMode: 'cover'
+    },
+    body: {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        { type: 'text', text: 'สนับสนุนเซิร์ฟเวอร์', weight: 'bold', size: 'md', wrap: true },
+        { type: 'text', text: days, weight: 'bold', size: 'xxl', color: '#06C755', margin: 'md' },
+        { type: 'text', text: price, weight: 'bold', size: 'xl', margin: 'sm' },
+        { type: 'text', text: desc, size: 'sm', color: '#888888', wrap: true, margin: 'md' },
+        { type: 'separator', margin: 'lg' },
+        { type: 'text', text: 'หลังโอนแล้ว ส่งสลิปเพื่อยืนยัน', size: 'xs', color: '#666666', wrap: true, margin: 'lg' },
+        { type: 'text', text: 'ชื่อผู้สนับสนุนต้องตรงกับผู้สมัครเท่านั้น', size: 'xxs', color: '#FF5555', wrap: true, margin: 'sm' }
+      ]
+    },
+    footer: {
+      type: 'box',
+      layout: 'vertical',
+      spacing: 'sm',
+      contents: [
+        {
+          type: 'button',
+          style: 'primary',
+          height: 'sm',
+          action: {
+            type: 'uri',
+            label: '📸 ส่งสลิป',
+            uri: 'https://line.me/ti/p/mVmD-ncfvU'
+          }
+        },
+        {
+          type: 'button',
+          style: 'secondary',
+          height: 'sm',
+          action: {
+            type: 'uri',
+            label: '📂 ช่องทาง',
+            uri: 'https://impressive-copper-bvl5o5dr.edgeone.app/1086268.jpg'
+          }
+        }
+      ]
+    }
+  };
+}
+
 async function handleText(event) {
   const userId = event.source.userId;
   const text = (event.message.text || '').trim();
@@ -5686,35 +5740,24 @@ if (/^dis%/i.test(text)) {
 }
 
   if (
-text === '#สนับสนุน' ||
-text === 'สนับสนุน' ||
-text === '#donate'
+  text === '#สนับสนุน' ||
+  text === 'สนับสนุน' ||
+  text === '#donate'
 ) {
-
-return reply(event.replyToken, {
-type:'text',
-text:
-`📂แพ็คเกจสนับสนุน
-
-💠 30 วัน — 499 บาท
-💠 90 วัน — 1299 บาท
-💠 180 วัน — 2500 บาท
-💠 365 วัน — 4999 บาท
-
-━━━━━━━━━━━━━━
-
-📂 ช่องทางสนับสนุน
-
-🏦 ธนาคาร : กสิกร
-💳 เลขบัญชี : 2238457753
-👤 ชื่อบัญชี : ทัตเทพ
-
-━━━━━━━━━━━━━━
-
-หลังโอนแล้ว
-📸 ส่งสลิปเพื่อยืนยัน`
-});
-  }
+  return reply(event.replyToken, {
+    type: 'flex',
+    altText: 'แพ็คเกจสนับสนุนเซิร์ฟเวอร์',
+    contents: {
+      type: 'carousel',
+      contents: [
+        packageBubble('30 วัน', '499 บาท', 'เหมาะสำหรับทดลองใช้งาน'),
+        packageBubble('90 วัน', '1299 บาท', 'คุ้มกว่ารายเดือน'),
+        packageBubble('180 วัน', '2500 บาท', 'แพ็กเกจยอดนิยม'),
+        packageBubble('365 วัน', '4999 บาท', 'คุ้มที่สุดระยะยาว')
+      ]
+    }
+  });
+}
 
 if(/^อนุญาติดีแทค#/.test(text)){
 
