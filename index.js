@@ -5644,77 +5644,116 @@ margin: 'md'
 };
 }
 
-function packageBubble(days, price) {
-return {
-type: 'bubble',
-size: 'mega',
-hero: {
-type: 'image',
-url: 'https://impressive-copper-bvl5o5dr.edgeone.app/1086268.jpg',
-size: 'full',
-aspectRatio: '1:1',
-aspectMode: 'fit'
-},
-body: {
-type: 'box',
-layout: 'vertical',
-contents: [
-{
-type: 'text',
-text: 'สนับสนุนเซิร์ฟเวอร์',
-weight: 'bold',
-size: 'lg',
-align: 'center'
-},
-{
-type: 'text',
-text: days,
-weight: 'bold',
-size: '3xl',
-color: '#06C755',
-align: 'center',
-margin: 'lg'
-},
-{
-type: 'text',
-text: price,
-weight: 'bold',
-size: 'xxl',
-align: 'center',
-margin: 'md'
-},
-{
-type: 'separator',
-margin: 'xl'
-},
-{
-type: 'text',
-text: 'ชื่อผู้สนับสนุนต้องตรงกับผู้สมัครเท่านั้น',
-size: 'xs',
-color: '#FF5555',
-wrap: true,
-align: 'center',
-margin: 'lg'
-}
-]
-},
-footer: {
-type: 'box',
-layout: 'vertical',
-contents: [
-{
-type: 'button',
-style: 'primary',
-height: 'md',
-action: {
-type: 'uri',
-label: '📸 แจ้งสลิปสนับสนุน',
-uri: 'https://line.me/ti/p/mVmD-ncfvU'
-}
-}
-]
-}
-};
+function packageBubble(days, price, badgeText = '') {
+  const isPopular = badgeText !== '';
+
+  return {
+    type: 'bubble',
+    size: 'mega',
+    hero: {
+      type: 'image',
+      url: 'https://impressive-copper-bvl5o5dr.edgeone.app/1086268.jpg',
+      size: 'full',
+      aspectRatio: '1:1',
+      aspectMode: 'fit'
+    },
+    body: {
+      type: 'box',
+      layout: 'vertical',
+      backgroundColor: '#0B1F16',
+      paddingAll: '20px',
+      contents: [
+        {
+          type: 'text',
+          text: isPopular ? badgeText : 'PREMIUM SUPPORT',
+          weight: 'bold',
+          size: 'xs',
+          color: isPopular ? '#FFD700' : '#7CFFB2',
+          align: 'center'
+        },
+        {
+          type: 'text',
+          text: 'สนับสนุนเซิร์ฟเวอร์',
+          weight: 'bold',
+          size: 'lg',
+          color: '#FFFFFF',
+          align: 'center',
+          margin: 'md'
+        },
+        {
+          type: 'text',
+          text: days,
+          weight: 'bold',
+          size: '4xl',
+          color: '#06C755',
+          align: 'center',
+          margin: 'lg'
+        },
+        {
+          type: 'box',
+          layout: 'vertical',
+          backgroundColor: '#102E20',
+          cornerRadius: 'lg',
+          paddingAll: '14px',
+          margin: 'md',
+          contents: [
+            {
+              type: 'text',
+              text: price,
+              weight: 'bold',
+              size: 'xxl',
+              color: '#FFD700',
+              align: 'center'
+            }
+          ]
+        },
+        {
+          type: 'separator',
+          margin: 'xl',
+          color: '#2D5A3F'
+        },
+        {
+          type: 'text',
+          text: 'ชื่อผู้สนับสนุนต้องตรงกับผู้สมัครเท่านั้น',
+          size: 'xs',
+          color: '#FFB3B3',
+          wrap: true,
+          align: 'center',
+          margin: 'lg'
+        }
+      ]
+    },
+    footer: {
+      type: 'box',
+      layout: 'vertical',
+      backgroundColor: '#0B1F16',
+      paddingAll: '16px',
+      contents: [
+        {
+          type: 'button',
+          style: 'primary',
+          height: 'md',
+          color: '#06C755',
+          action: {
+            type: 'uri',
+            label: '📸 แจ้งสลิปสนับสนุน',
+            uri: 'https://line.me/ti/p/mVmD-ncfvU'
+          }
+        }
+      ]
+    },
+    styles: {
+      hero: {
+        backgroundColor: '#FFFFFF'
+      },
+      body: {
+        backgroundColor: '#0B1F16'
+      },
+      footer: {
+        backgroundColor: '#0B1F16'
+      }
+    }
+  };
 }
 
 async function handleText(event) {
@@ -5771,8 +5810,8 @@ if (/^dis%/i.test(text)) {
       contents: [
   packageBubble('30 วัน', '499 บาท'),
   packageBubble('90 วัน', '1299 บาท'),
-  packageBubble('180 วัน', '2500 บาท'),
-  packageBubble('365 วัน', '4999 บาท')
+  packageBubble('180 วัน', '2500 บาท', '🔥 ยอดนิยม'),
+  packageBubble('365 วัน', '4999 บาท', '⭐ คุ้มที่สุด')
 ]
     }
   });
