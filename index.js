@@ -252,7 +252,10 @@ app.post('/webhook', line.middleware(config), async (req, res) => {
     }
     res.json({ success: true });
   } catch (err) {
-    console.error('Webhook error:', err?.response?.data || err.message || err);
+    console.error(
+  'Webhook error:',
+  JSON.stringify(err?.response?.data || err.message || err, null, 2)
+);
     res.status(500).end();
   }
 });
