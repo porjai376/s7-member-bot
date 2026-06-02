@@ -4023,7 +4023,7 @@ function buildAdminMenuFlex() {
             action: {
               type: 'postback',
               label: 'สมาชิกทั้งหมด',
-              data: 'admin_members_all',
+              data: 'admin_members_all_1',
               displayText: 'ดูสมาชิกทั้งหมด'
             }
           },
@@ -4579,26 +4579,31 @@ function mapTopupPackage(text) {
   return null;
 }
 
-function buildMembersAllText(db) {
+function buildMembersAllText(db, page = 1) {
   const allMembers = Object.entries(db.members);
   if (!allMembers.length) return 'ยังไม่มีสมาชิกในระบบ';
 
-  const lines = allMembers.slice(0, 50).map(([uid, m], i) => {
+  const perPage = 50;
+  const totalPages = Math.ceil(allMembers.length / perPage);
+  const currentPage = Math.max(1, Math.min(Number(page) || 1, totalPages));
+
+  const start = (currentPage - 1) * perPage;
+  const lines = allMembers.slice(start, start + perPage).map(([uid, m], i) => {
     const statusText =
       m.status === 'approved'
         ? (isExpired(m.expireAt) ? 'หมดอายุ' : 'อนุมัติ')
         : m.status === 'waiting_card'
-          ? 'รอส่งรูป'
-          : m.status === 'pending'
-            ? 'รอตรวจสอบ'
-            : m.status === 'rejected'
-              ? 'ปฏิเสธ'
-              : m.status || '-';
+        ? 'รอสรุป'
+        : m.status === 'pending'
+        ? 'รอตรวจสอบ'
+        : m.status === 'rejected'
+        ? 'ปฏิเสธ'
+        : m.status || '-';
 
-    return `${i + 1}. ${m.fullname || '-'} | ${m.phone || '-'} | ${statusText}`;
+    return `${start + i + 1}. ${m.fullname || '-'} | ${m.phone || '-'} | ${statusText}`;
   });
 
-  return `สมาชิกทั้งหมด (${allMembers.length})\n\n${lines.join('\n')}`;
+  return `สมาชิกทั้งหมด (${allMembers.length}) หน้า ${currentPage}/${totalPages}\n\n${lines.join('\n')}\n\nดูหน้าถัดไป กดพิมพ์: ดูสมาชิกทั้งหมด ${currentPage + 1}`;
 }
 
 function buildMembersExpiredText(db) {
@@ -8643,12 +8648,14 @@ return reply(event.replyToken, {
 
 }
 
-  if (data === 'admin_members_all') {
-    return reply(event.replyToken, {
-      type: 'text',
-      text: buildMembersAllText(db)
-    });
-  }
+  if (data.startsWith('admin_members_all')) {
+  const page = Number(data.split('_').pop()) || 1;
+
+  return reply(event.replyToken, {
+    type: 'text',
+    text: buildMembersAllText(db, page)
+  });
+}
 
  if (data === 'admin_members_pending') {
 
