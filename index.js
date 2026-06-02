@@ -4090,6 +4090,28 @@ function buildAdminMenuFlex() {
 }
 
 function buildMemberStatusFlex(member, statusText) {
+  const expireTime = member.expireAt
+    ? new Date(member.expireAt).getTime()
+    : 0;
+
+  const remainDays = expireTime
+    ? Math.max(
+        0,
+        Math.ceil((expireTime - Date.now()) / (24 * 60 * 60 * 1000))
+      )
+    : 0;
+
+  let statusLabel = statusText || '-';
+  let statusColor = '#16A34A';
+
+  if (remainDays <= 0) {
+    statusLabel = 'หมดอายุแล้ว';
+    statusColor = '#DC2626';
+  } else if (remainDays <= 5) {
+    statusLabel = 'ใกล้หมดอายุ';
+    statusColor = '#F59E0B';
+  }
+
   return {
     type: 'flex',
     altText: 'สิทธิ์วันใช้งาน',
@@ -4104,7 +4126,7 @@ function buildMemberStatusFlex(member, statusText) {
         contents: [
           {
             type: 'text',
-            text: 'สถานะการสมัคร',
+            text: '👑 สิทธิ์วันใช้งาน',
             color: '#FFFFFF',
             weight: 'bold',
             size: 'lg'
@@ -4125,13 +4147,51 @@ function buildMemberStatusFlex(member, statusText) {
         spacing: 'md',
         contents: [
           infoLine('👤 ชื่อ', member.fullname || '-'),
-          infoLine('📌 สถานะ', statusText || '-'),
-          infoLine('📝 วันที่อนุมัติ', safeThaiDate(member.approvedAt)),
-          infoLine('⏳ อายุการใช้งาน', `${member.approvedDays || 0} วัน`),
-          infoLine('⚠️ วันหมดอายุ', safeThaiDate(member.expireAt)),
+
+          {
+            type: 'box',
+            layout: 'vertical',
+            backgroundColor: statusColor,
+            cornerRadius: '8px',
+            paddingAll: '8px',
+            contents: [
+              {
+                type: 'text',
+                text: `📌 ${statusLabel}`,
+                color: '#FFFFFF',
+                weight: 'bold',
+                align: 'center'
+              }
+            ]
+          },
+
+          infoLine(
+            '⏳ วันคงเหลือ',
+            `${remainDays} วัน`
+          ),
+
+          infoLine(
+            '📝 วันที่อนุมัติ',
+            safeThaiDate(member.approvedAt)
+          ),
+
+          infoLine(
+            '⏳ อายุการใช้งาน',
+            `${member.approvedDays || 0} วัน`
+          ),
+
+          infoLine(
+            '⚠️ วันหมดอายุ',
+            safeThaiDate(member.expireAt)
+          ),
+
           infoLine(
             '📅 วันลงทะเบียน',
-            safeThaiDate(member.registeredAt || member.createdAt || member.updatedAt)
+            safeThaiDate(
+              member.registeredAt ||
+              member.createdAt ||
+              member.updatedAt
+            )
           )
         ]
       },
