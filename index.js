@@ -5580,6 +5580,45 @@ if(isNaN(d.getTime())) return dateStr;
 return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()+543}`;
 }
 
+function createCCTVFlex(cameraTime, realTime, diff) {
+  return {
+    type: 'flex',
+    altText: 'ผลการคำนวณเวลา CCTV',
+    contents: {
+      type: 'bubble',
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'md',
+        contents: [
+          {
+            type: 'text',
+            text: '🎥 การคำนวณความต่างของเวลา CCTV',
+            weight: 'bold',
+            size: 'lg'
+          },
+          {
+            type: 'separator'
+          },
+          {
+            type: 'text',
+            text: `⏰ เวลาในกล้อง : ${cameraTime}`
+          },
+          {
+            type: 'text',
+            text: `⌚ เวลาจริง : ${realTime}`
+          },
+          {
+            type: 'text',
+            text: `🕒 เวลาต่างกัน : ${diff}`,
+            weight: 'bold'
+          }
+        ]
+      }
+    }
+  };
+}
+
 async function handleText(event) {
   const userId = event.source.userId;
   const text = (event.message.text || '').trim();
@@ -7570,12 +7609,25 @@ text: newText
   }
 
   if (text.startsWith('cctv%')) {
-    const times = text.replace(/^cctv%/i, '').split(',').map(item => item.trim()).filter(Boolean);
-    if (times.length !== 2) {
-      return reply(event.replyToken, { type: 'text', text: '❌ กรุณาระบุเวลา เช่น cctv%12:00:00, 12:05:30' });
-    }
-    return reply(event.replyToken, { type: 'text', text: calculateCCTVTimeDiff(times[0], times[1]) });
+  const times = text.replace(/^cctv%/i, '')
+    .split(',')
+    .map(item => item.trim())
+    .filter(Boolean);
+
+  if (times.length !== 2) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ กรุณาระบุเวลา เช่น cctv%12:00:00, 12:05:30'
+    });
   }
+
+  const diff = calculateCCTVTimeDiff(times[0], times[1]);
+
+  return reply(
+    event.replyToken,
+    createCCTVFlex(times[0], times[1], diff)
+  );
+}
 
   if (text.startsWith('tisi%')) {
     const licenseId = text.replace(/^tisi%/i, '').trim();
