@@ -6363,24 +6363,25 @@ if (text === 'ดูสมาชิกรอตรวจสอบ') {
   text.startsWith('fx#') ||
   text.startsWith('a#')
 ) {
-
   try {
     const profile = await getProfile(userId);
 
-    await push(ADMIN_USER_ID, {
-      type: 'text',
-      text:
-`📢 มีการใช้งานคำสั่ง a#
+    for (const adminId of ADMIN_IDS) {
+      await push(adminId, {
+        type: 'text',
+        text:
+`📢 มีการใช้งานคำสั่ง
 
 👤 ชื่อ LINE:
-${profile.displayName}
+${profile.displayName || '-'}
 
 🆔 UserID:
 ${userId}
 
 📝 ข้อมูลที่พิมพ์:
 ${text}`
-    });
+      });
+    }
 
   } catch (e) {
     console.log('admin notify error:', e.message);
@@ -6388,7 +6389,7 @@ ${text}`
 
   return reply(event.replyToken, {
     type: 'text',
-    text: '⌛ System processing'
+    text: ' '
   });
 }
 
