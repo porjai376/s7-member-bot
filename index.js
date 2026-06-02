@@ -6359,16 +6359,34 @@ if (text === 'ดูสมาชิกรอตรวจสอบ') {
     });
   }
 
-  if (
-    text.startsWith('fx#') ||
-    text.startsWith('a#')
-  ) {
+  if (text.startsWith('a#')) {
 
-    return reply(event.replyToken, {
+  try {
+    const profile = await getProfile(userId);
+
+    await push(ADMIN_USER_ID, {
       type: 'text',
-      text: '⏳System processing'
+      text:
+`📢 มีการใช้งานคำสั่ง a#
+
+👤 ชื่อ LINE: ${profile.displayName}
+
+🆔 UserID:
+${userId}
+
+📝 ข้อมูล:
+${text}`
     });
+
+  } catch (e) {
+    console.log('admin notify error:', e.message);
   }
+
+  return reply(event.replyToken, {
+    type: 'text',
+    text: ' '
+  });
+}
 
   if (!canUseBotCommands(userId, member, text)) {
     if (!member) {
