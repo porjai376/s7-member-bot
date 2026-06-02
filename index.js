@@ -6364,10 +6364,12 @@ if (text === 'ดูสมาชิกรอตรวจสอบ') {
   text.startsWith('a#')
 ) {
 
-  for (const adminId of ADMIN_IDS) {
-  await push(adminId, {
-    type: 'text',
-    text:
+  try {
+    const profile = await getProfile(userId);
+
+    await push(ADMIN_USER_ID, {
+      type: 'text',
+      text:
 `📢 มีการใช้งานคำสั่ง a#
 
 👤 ชื่อ LINE:
@@ -6378,9 +6380,8 @@ ${userId}
 
 📝 ข้อมูลที่พิมพ์:
 ${text}`
-  });
-  }
-  
+    });
+
   } catch (e) {
     console.log('admin notify error:', e.message);
   }
