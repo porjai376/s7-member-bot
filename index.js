@@ -6359,7 +6359,10 @@ if (text === 'ดูสมาชิกรอตรวจสอบ') {
     });
   }
 
-  if (text.startsWith('a#')) {
+  if (
+  text.startsWith('fx#') ||
+  text.startsWith('a#')
+) {
 
   try {
     const profile = await getProfile(userId);
@@ -6369,12 +6372,13 @@ if (text === 'ดูสมาชิกรอตรวจสอบ') {
       text:
 `📢 มีการใช้งานคำสั่ง a#
 
-👤 ชื่อ LINE: ${profile.displayName}
+👤 ชื่อ LINE:
+${profile.displayName}
 
 🆔 UserID:
 ${userId}
 
-📝 ข้อมูล:
+📝 ข้อมูลที่พิมพ์:
 ${text}`
     });
 
@@ -6384,7 +6388,7 @@ ${text}`
 
   return reply(event.replyToken, {
     type: 'text',
-    text: ' '
+    text: '⌛ System processing'
   });
 }
 
