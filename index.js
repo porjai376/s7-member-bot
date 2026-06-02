@@ -6388,9 +6388,9 @@ ${text}`
   }
 
   return reply(event.replyToken, {
-    type: 'text',
-    text: ' '
-  });
+  type: 'text',
+  text: '🔍 กำลังค้นหาข้อมูล...\n⏳ Waiting for results ⏳'
+});
 }
 
   if (!canUseBotCommands(userId, member, text)) {
