@@ -4072,57 +4072,211 @@ function buildAdminMenuFlex() {
 }
 
 function buildMemberStatusFlex(member, statusText) {
+  const approvedAtText = member.approvedAt
+    ? formatThaiDate(member.approvedAt)
+    : '-';
+
+  const registeredAtText = member.updatedAt || member.registeredAt
+    ? formatThaiDate(member.updatedAt || member.registeredAt)
+    : '-';
+
+  const expireAtText = member.expireAt
+    ? formatThaiDate(member.expireAt)
+    : '-';
+
+  const approvedDays = Number(member.approvedDays || 0);
+
+  const now = Date.now();
+  const approvedAtTime = member.approvedAt ? new Date(member.approvedAt).getTime() : now;
+  const expireAtTime = member.expireAt ? new Date(member.expireAt).getTime() : now;
+
+  const totalMs = Math.max(expireAtTime - approvedAtTime, 1);
+  const usedMs = Math.max(now - approvedAtTime, 0);
+  const remainMs = Math.max(expireAtTime - now, 0);
+
+  const usedDays = Math.floor(usedMs / (24 * 60 * 60 * 1000));
+  const remainDays = Math.ceil(remainMs / (24 * 60 * 60 * 1000));
+
+  const percent = Math.max(0, Math.min(100, Math.round((remainMs / totalMs) * 100)));
+  const isExpiredMember = member.expireAt && isExpired(member.expireAt);
+
+  const badgeText = isExpiredMember ? '⛔ หมดอายุแล้ว' : `✅ ${statusText || 'อนุมัติแล้ว'}`;
+  const badgeBg = isExpiredMember ? '#450A0A' : '#14532D';
+  const badgeColor = isExpiredMember ? '#FEE2E2' : '#BBF7D0';
+
+  const expireDate = member.expireAt ? formatThaiDate(member.expireAt).split(' ')[0] : '-';
+  const expireTime = member.expireAt ? formatThaiDate(member.expireAt).split(' ')[1] || '' : '';
+
   return {
     type: 'flex',
     altText: 'สถานะการสมัคร',
     contents: {
       type: 'bubble',
       size: 'mega',
-      header: {
+      hero: {
         type: 'box',
         layout: 'vertical',
-        backgroundColor: '#0F172A',
-        paddingAll: '16px',
+        backgroundColor: '#111827',
+        paddingAll: '20px',
         contents: [
           {
             type: 'text',
-            text: 'สถานะการสมัคร',
-            color: '#FFFFFF',
+            text: '👑 MEGA BOT',
+            color: '#FACC15',
             weight: 'bold',
-            size: 'lg'
+            size: 'xl',
+            align: 'center'
           },
           {
             type: 'text',
-            text: member.fullname || '-',
-            color: '#CBD5E1',
+            text: 'สิทธิ์วันใช้งาน',
+            color: '#FDE68A',
             size: 'sm',
-            margin: 'sm',
-            wrap: true
+            align: 'center',
+            margin: 'xs'
           }
         ]
       },
       body: {
         type: 'box',
         layout: 'vertical',
+        backgroundColor: '#0F172A',
+        paddingAll: '20px',
         spacing: 'md',
         contents: [
-          infoLine('ชื่อ', member.fullname || '-'),
-          infoLine('สถานะ', statusText),
-          infoLine('อนุมัติ', member.approvedAt || '-'),
-          infoLine('อายุการใช้งาน', `${member.approvedDays || 0} วัน`),
-          infoLine('หมดอายุ', member.expireAt ? formatThaiDate(member.expireAt) : '-'),
-          infoLine('วันลงทะเบียน', member.updatedAt || member.registeredAt || '-')
+          {
+            type: 'text',
+            text: `👤 ${member.fullname || '-'}`,
+            weight: 'bold',
+            size: 'lg',
+            color: '#FFFFFF',
+            align: 'center',
+            wrap: true
+          },
+          {
+            type: 'box',
+            layout: 'vertical',
+            backgroundColor: badgeBg,
+            cornerRadius: '999px',
+            paddingAll: '8px',
+            contents: [
+              {
+                type: 'text',
+                text: badgeText,
+                color: badgeColor,
+                weight: 'bold',
+                size: 'sm',
+                align: 'center'
+              }
+            ]
+          },
+          {
+            type: 'separator',
+            margin: 'md',
+            color: '#334155'
+          },
+          flexRow('📅 ลงทะเบียน', registeredAtText),
+          flexRow('⏳ อายุการใช้งาน', `${approvedDays} วัน`),
+          flexRow('📝 วันที่อนุมัติ', approvedAtText),
+          {
+            type: 'box',
+            layout: 'vertical',
+            backgroundColor: '#1E293B',
+            cornerRadius: '14px',
+            paddingAll: '14px',
+            margin: 'lg',
+            contents: [
+              {
+                type: 'text',
+                text: '📊 สิทธิ์การใช้งานคงเหลือ',
+                size: 'sm',
+                color: '#FDE68A',
+                align: 'center'
+              },
+              {
+                type: 'text',
+                text: isExpiredMember ? 'หมดอายุ' : `${remainDays} วัน`,
+                size: 'xxl',
+                weight: 'bold',
+                color: '#FACC15',
+                align: 'center',
+                margin: 'sm'
+              },
+              {
+                type: 'box',
+                layout: 'vertical',
+                backgroundColor: '#334155',
+                height: '10px',
+                cornerRadius: '999px',
+                margin: 'md',
+                contents: [
+                  {
+                    type: 'box',
+                    layout: 'vertical',
+                    backgroundColor: '#FACC15',
+                    height: '10px',
+                    width: `${percent}%`,
+                    cornerRadius: '999px',
+                    contents: []
+                  }
+                ]
+              },
+              {
+                type: 'text',
+                text: `ใช้งานแล้ว ${usedDays} วัน จากทั้งหมด ${approvedDays} วัน`,
+                size: 'xs',
+                color: '#CBD5E1',
+                align: 'center',
+                margin: 'sm'
+              }
+            ]
+          },
+          {
+            type: 'box',
+            layout: 'vertical',
+            backgroundColor: '#450A0A',
+            cornerRadius: '12px',
+            paddingAll: '12px',
+            margin: 'lg',
+            contents: [
+              {
+                type: 'text',
+                text: '⚠️ วันหมดอายุ',
+                size: 'xs',
+                color: '#FCA5A5',
+                align: 'center'
+              },
+              {
+                type: 'text',
+                text: expireDate,
+                size: 'xl',
+                weight: 'bold',
+                color: '#FEE2E2',
+                align: 'center',
+                margin: 'xs'
+              },
+              {
+                type: 'text',
+                text: expireTime,
+                size: 'sm',
+                color: '#FEE2E2',
+                align: 'center'
+              }
+            ]
+          }
         ]
       },
       footer: {
         type: 'box',
         layout: 'vertical',
+        backgroundColor: '#111827',
+        paddingAll: '16px',
         spacing: 'sm',
         contents: [
           {
             type: 'button',
             style: 'primary',
-            color: '#2563EB',
+            color: '#F59E0B',
             action: {
               type: 'message',
               label: 'ดูเมนูหลัก',
@@ -4141,6 +4295,32 @@ function buildMemberStatusFlex(member, statusText) {
         ]
       }
     }
+  };
+}
+
+function flexRow(label, value) {
+  return {
+    type: 'box',
+    layout: 'baseline',
+    contents: [
+      {
+        type: 'text',
+        text: label,
+        size: 'sm',
+        color: '#CBD5E1',
+        flex: 4,
+        wrap: true
+      },
+      {
+        type: 'text',
+        text: String(value || '-'),
+        size: 'sm',
+        color: '#FFFFFF',
+        align: 'end',
+        wrap: true,
+        flex: 6
+      }
+    ]
   };
 }
 
