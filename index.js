@@ -4640,7 +4640,7 @@ function buildMembersPendingText(db) {
   return `สมาชิกที่รอตรวจสอบ (${pending.length})\n\n${lines.join('\n')}`;
 }
 
-function buildMembersExpiringSoonText(db, days = 5) {
+function buildMembersExpiringSoonText(db, days = 5, page = 1) {
   const now = Date.now();
   const end = now + days * 24 * 60 * 60 * 1000;
 
@@ -4655,11 +4655,22 @@ function buildMembersExpiringSoonText(db, days = 5) {
 
   if (!members.length) return `ไม่มีสมาชิกใกล้หมดอายุใน ${days} วัน`;
 
-  const lines = members.map(([uid, m], i) =>
-    `${i + 1}. ${m.fullname || '-'} | ${m.phone || '-'} | หมดอายุ: ${formatThaiDate(m.expireAt)}`
+  const perPage = 50;
+  const totalPages = Math.ceil(members.length / perPage);
+  const currentPage = Math.max(1, Math.min(Number(page) || 1, totalPages));
+  const start = (currentPage - 1) * perPage;
+
+  const lines = members.slice(start, start + perPage).map(([uid, m], i) =>
+    `${start + i + 1}. ${m.fullname || '-'} | ${m.phone || '-'} | หมดอายุ: ${formatThaiDate(m.expireAt)}`
   );
 
-  return `สมาชิกใกล้หมดอายุใน ${days} วัน (${members.length})\n\n${lines.join('\n')}`;
+  const nextText = currentPage < totalPages
+    ? `\n\nดูหน้าถัดไป: สมาชิกใกล้หมดอายุ ${currentPage + 1}`
+    : `\n\nจบรายการแล้ว`;
+
+  return limitLineMessage(
+    `สมาชิกใกล้หมดอายุใน ${days} วัน (${members.length}) หน้า ${currentPage}/${totalPages}\n\n${lines.join('\n')}${nextText}`
+  );
 }
 
 function buildTopupPendingText(db) {
@@ -5807,10 +5818,12 @@ if (text.startsWith('ดูสมาชิกทั้งหมด')) {
   });
 }
 
-if (text === 'สมาชิกใกล้หมดอายุ') {
+if (text.startsWith('สมาชิกใกล้หมดอายุ')) {
+  const page = Number(text.split(/\s+/)[1]) || 1;
+
   return reply(event.replyToken, {
     type: 'text',
-    text: buildMembersExpiringSoonText(db, 5)
+    text: buildMembersExpiringSoonText(db, 5, page)
   });
 }
 
