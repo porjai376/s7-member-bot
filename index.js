@@ -3605,23 +3605,23 @@ function menuSection(title, lines) {
     cornerRadius: '12px',
     paddingAll: '12px',
     contents: [
-      {
-        type: 'text',
-        text: title,
-        weight: 'bold',
-        size: 'md',
-        color: '#111827',
-        wrap: true
-      },
-      ...lines.map((line) => ({
-        type: 'text',
-        text: line,
-        size: 'sm',
-        color: '#374151',
-        wrap: true,
-        margin: 'sm'
-      }))
-    ]
+  {
+    type: 'text',
+    text: title,
+    weight: 'bold',
+    size: 'md',
+    color: '#111827',
+    wrap: true
+  },
+  ...lines.map(line => ({
+    type: 'text',
+    text: line,
+    size: 'sm',
+    color: '#374151',
+    wrap: true,
+    margin: 'sm'
+  }))
+]
   };
 }
 
