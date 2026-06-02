@@ -338,6 +338,23 @@ function formatThaiDate(date) {
   });
 }
 
+function safeThaiDate(value) {
+  if (!value) return '-';
+
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
+
+  return d.toLocaleString('th-TH', {
+    timeZone: 'Asia/Bangkok',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
+}
+
 function formatThaiDateOnly(date) {
   if (!date) return 'ไม่ระบุ';
   const parsed = new Date(date);
@@ -4108,36 +4125,13 @@ function buildMemberStatusFlex(member, statusText) {
         spacing: 'md',
         contents: [
           infoLine('👤 ชื่อ', member.fullname || '-'),
-
-          infoLine(
-            '📌 สถานะ',
-            statusText || '-'
-          ),
-
-          infoLine(
-            '📝 วันที่อนุมัติ',
-            member.approvedAt
-              ? formatThaiDate(member.approvedAt)
-              : '-'
-          ),
-
-          infoLine(
-            '⏳ อายุการใช้งาน',
-            `${member.approvedDays || 0} วัน`
-          ),
-
-          infoLine(
-            '⚠️ วันหมดอายุ',
-            member.expireAt
-              ? formatThaiDate(member.expireAt)
-              : '-'
-          ),
-
+          infoLine('📌 สถานะ', statusText || '-'),
+          infoLine('📝 วันที่อนุมัติ', safeThaiDate(member.approvedAt)),
+          infoLine('⏳ อายุการใช้งาน', `${member.approvedDays || 0} วัน`),
+          infoLine('⚠️ วันหมดอายุ', safeThaiDate(member.expireAt)),
           infoLine(
             '📅 วันลงทะเบียน',
-            member.updatedAt || member.registeredAt
-              ? formatThaiDate(member.updatedAt || member.registeredAt)
-              : '-'
+            safeThaiDate(member.registeredAt || member.createdAt || member.updatedAt)
           )
         ]
       },
