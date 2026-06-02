@@ -936,7 +936,7 @@ visits.forEach((visit, idx) => {
   msg += `├ Browser: ${visit.browser || '-'}\n`;
   msg += `├ Platform: ${visit.platform || '-'}\n`;
   msg += `├ Referer: ${visit.referer || '-'}\n`;
-  
+
   if (visit.lat && visit.lng) {
     msg += `├ พิกัด: ${visit.lat},${visit.lng}\n`;
     msg += `╰ Google map: https://www.google.com/maps?q=${visit.lat},${visit.lng}\n\n`;
@@ -4640,6 +4640,28 @@ function buildMembersPendingText(db) {
   return `สมาชิกที่รอตรวจสอบ (${pending.length})\n\n${lines.join('\n')}`;
 }
 
+function buildMembersExpiringSoonText(db, days = 5) {
+  const now = Date.now();
+  const end = now + days * 24 * 60 * 60 * 1000;
+
+  const members = Object.entries(db.members)
+    .filter(([_, m]) =>
+      m.status === 'approved' &&
+      m.expireAt &&
+      !isExpired(m.expireAt) &&
+      new Date(m.expireAt).getTime() <= end
+    )
+    .sort((a, b) => new Date(a[1].expireAt) - new Date(b[1].expireAt));
+
+  if (!members.length) return `ไม่มีสมาชิกใกล้หมดอายุใน ${days} วัน`;
+
+  const lines = members.map(([uid, m], i) =>
+    `${i + 1}. ${m.fullname || '-'} | ${m.phone || '-'} | หมดอายุ: ${formatThaiDate(m.expireAt)}`
+  );
+
+  return `สมาชิกใกล้หมดอายุใน ${days} วัน (${members.length})\n\n${lines.join('\n')}`;
+}
+
 function buildTopupPendingText(db) {
   const pendingTopups = Object.entries(db.topups || {}).filter(([_, t]) =>
     t.status === 'pending_review'
@@ -5782,6 +5804,13 @@ if (text.startsWith('ดูสมาชิกทั้งหมด')) {
   return reply(event.replyToken, {
     type: 'text',
     text: buildMembersAllText(db, page)
+  });
+}
+
+if (text === 'สมาชิกใกล้หมดอายุ') {
+  return reply(event.replyToken, {
+    type: 'text',
+    text: buildMembersExpiringSoonText(db, 5)
   });
 }
 
