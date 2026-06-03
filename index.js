@@ -6389,7 +6389,7 @@ ${text}`
 
   return reply(event.replyToken, {
   type: 'text',
-  text: '🔍 กำลังค้นหาข้อมูล...\n⏳ Waiting for results ⏳'
+  text: '🔍คำสั่งปรับปรุงค้นหาใหม่ภายหลัง...\n⏳command updates⏳'
 });
 }
 
