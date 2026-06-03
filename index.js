@@ -4709,6 +4709,52 @@ function buildMembersExpiredText(db) {
   return `สมาชิกหมดอายุ (${expired.length})\n\n${lines.join('\n')}`;
 }
 
+function buildMembersExpiringSoonText(db, page = 1) {
+  const now = Date.now();
+  const maxDays = 3;
+  const perPage = 50;
+
+  const members = Object.entries(db.members || {})
+    .filter(([uid, m]) => {
+      if (m.status !== 'approved') return false;
+      if (!m.expireAt) return false;
+
+      const expireTime = new Date(m.expireAt).getTime();
+      if (Number.isNaN(expireTime)) return false;
+
+      const remainDays = Math.ceil((expireTime - now) / (24 * 60 * 60 * 1000));
+
+      return remainDays >= 0 && remainDays <= maxDays;
+    })
+    .map(([uid, m]) => {
+      const expireTime = new Date(m.expireAt).getTime();
+      const remainDays = Math.ceil((expireTime - now) / (24 * 60 * 60 * 1000));
+
+      return { uid, ...m, remainDays };
+    })
+    .sort((a, b) => a.remainDays - b.remainDays);
+
+  if (!members.length) {
+    return 'ไม่มีสมาชิกใกล้หมดอายุใน 3 วัน';
+  }
+
+  const totalPages = Math.ceil(members.length / perPage);
+  const currentPage = Math.max(1, Math.min(Number(page) || 1, totalPages));
+  const start = (currentPage - 1) * perPage;
+
+  const lines = members.slice(start, start + perPage).map((m, i) =>
+    `${start + i + 1}. ${m.fullname || '-'} | ${m.phone || '-'} | เหลือ ${m.remainDays} วัน | หมดอายุ: ${formatThaiDate(m.expireAt)}`
+  );
+
+  const nextText = currentPage < totalPages
+    ? `\n\nดูหน้าถัดไป: สมาชิกใกล้หมดอายุ ${currentPage + 1}`
+    : '\n\nจบรายการแล้ว';
+
+  return limitLineMessage(
+    `สมาชิกใกล้หมดอายุใน 3 วัน (${members.length}) หน้า ${currentPage}/${totalPages}\n\n${lines.join('\n')}${nextText}`
+  );
+}
+
 function buildMembersPendingText(db) {
   const pending = Object.entries(db.members).filter(([_, m]) => m.status === 'pending');
 
@@ -5863,6 +5909,15 @@ if (text.startsWith('ดูสมาชิกทั้งหมด')) {
   return reply(event.replyToken, {
     type: 'text',
     text: buildMembersAllText(db, page)
+  });
+}
+
+if (text.startsWith('สมาชิกใกล้หมดอายุ')) {
+  const page = Number(text.split(/\s+/)[1]) || 1;
+
+  return reply(event.replyToken, {
+    type: 'text',
+    text: buildMembersExpiringSoonText(db, page)
   });
 }
 
