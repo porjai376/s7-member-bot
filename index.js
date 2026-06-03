@@ -261,6 +261,9 @@ app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
 
+setInterval(notifyMemberExpiryAlerts, 60 * 60 * 1000);
+setTimeout(notifyMemberExpiryAlerts, 10 * 1000);
+
 function ensureStorage() {
   if (!fs.existsSync(UPLOAD_DIR)) {
     fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -4753,6 +4756,78 @@ function buildMembersExpiringSoonText(db, page = 1) {
   return limitLineMessage(
     `สมาชิกใกล้หมดอายุใน 3 วัน (${members.length}) หน้า ${currentPage}/${totalPages}\n\n${lines.join('\n')}${nextText}`
   );
+}
+
+function getRemainDays(expireAt) {
+  if (!expireAt) return null;
+
+  const expireTime = new Date(expireAt).getTime();
+  if (Number.isNaN(expireTime)) return null;
+
+  return Math.ceil((expireTime - Date.now()) / (24 * 60 * 60 * 1000));
+}
+
+async function notifyMemberExpiryAlerts() {
+  const db = loadDB();
+  let changed = false;
+
+  for (const [userId, member] of Object.entries(db.members || {})) {
+    if (member.status !== 'approved') continue;
+    if (!member.expireAt) continue;
+
+    const remainDays = getRemainDays(member.expireAt);
+    if (remainDays === null) continue;
+
+    try {
+      if (remainDays === 3 && !member.notifyExpire3Day) {
+        await push(userId, {
+          type: 'text',
+          text:
+`⏰ สิทธิ์ใช้งานของท่านจะหมดอายุในอีก 3 วัน
+
+กรุณาติดต่อแอดมินเพื่อต่ออายุสมาชิก
+เพื่อรักษาสิทธิ์ของท่าน 🙏`
+        });
+
+        member.notifyExpire3Day = true;
+        changed = true;
+      }
+
+      if (remainDays === 1 && !member.notifyExpire1Day) {
+        await push(userId, {
+          type: 'text',
+          text:
+`⚠️ สิทธิ์ใช้งานของท่านจะหมดอายุภายใน 24 ชั่วโมง
+
+กรุณาติดต่อแอดมินเพื่อต่ออายุสมาชิก
+เพื่อไม่ให้การใช้งานสะดุด 🙏`
+        });
+
+        member.notifyExpire1Day = true;
+        changed = true;
+      }
+
+      if (remainDays <= 0 && !member.expiredNotified) {
+        await push(userId, {
+          type: 'text',
+          text:
+`📅 วันใช้งานของท่านหมดอายุแล้ว 📅
+
+ติดต่อแอดมินเพื่อทำการต่ออายุใช้งาน
+
+เพื่อรักษาสิทธิ์ของท่าน 🙏`
+        });
+
+        member.expiredNotified = true;
+        changed = true;
+      }
+
+    } catch (e) {
+      console.log('expiry notify error:', userId, e.message);
+    }
+  }
+
+  if (changed) saveDB(db);
 }
 
 function buildMembersPendingText(db) {
