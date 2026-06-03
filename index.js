@@ -1655,6 +1655,15 @@ async function fetchSearchApiRaw(params) {
   return res;
 }
 
+async function fetchPrisonerApi(params) {
+  const first = await fetchSearchApiRaw(params);
+  const hasRows = Array.isArray(first?.data?.content) || Array.isArray(first?.content);
+  if (first?.success || hasRows) return first;
+
+  await new Promise(resolve => setTimeout(resolve, 700));
+  return fetchSearchApiRaw(params);
+}
+
 async function fetchNhsoRightApi(citizenId) {
   const { data: res } = await axios.get(SEARCH_API_BASE, {
     params: { nh: citizenId, key: SEARCH_API_KEY },
@@ -3229,14 +3238,27 @@ function formatPrisonerAddress(item) {
   return addrParts.join(' ') || '-';
 }
 
+function getPrisonerContent(data) {
+  if (Array.isArray(data?.content)) return data.content;
+  if (Array.isArray(data?.data?.content)) return data.data.content;
+  if (Array.isArray(data?.data)) return data.data;
+  if (Array.isArray(data)) return data;
+  return [];
+}
+
 function formatPrisonerRecords(data, input, isRemand = false) {
-  const content = Array.isArray(data?.content) ? data.content : [];
+  const content = getPrisonerContent(data);
   const label = isRemand ? 'ผู้ต้องขัง (ยังไม่พิพากษา)' : 'ผู้ต้องขัง';
+  if (data?.success === false && !content.length) {
+    return `❌ ${data.message || `ไม่พบข้อมูล${label} สำหรับ "${input}"`}`;
+  }
   if (!content.length) return `❌ ไม่พบข้อมูล${label} สำหรับ "${input}"`;
 
   let msg = `👮‍♂️ ข้อมูล${label}: ${input}\n====================\n`;
   content.forEach((item, idx) => {
     const sex = item.sex === 'MALE' ? 'ชาย' : item.sex === 'FEMALE' ? 'หญิง' : item.sex || '-';
+    const fatherName = `${item.fatherPrefix || ''}${item.fatherFirstName || '-'} ${item.fatherLastName || ''}`.trim();
+    const motherName = `${item.motherPrefix || ''}${item.motherFirstName || '-'} ${item.motherLastName || ''}`.trim();
 
     if (isRemand) {
       msg += `[${idx + 1}]\n`;
@@ -3264,9 +3286,6 @@ function formatPrisonerRecords(data, input, isRemand = false) {
       msg += `--------------------\n`;
       return;
     }
-
-    const fatherName = `${item.fatherPrefix || ''}${item.fatherFirstName || '-'} ${item.fatherLastName || ''}`.trim();
-    const motherName = `${item.motherPrefix || ''}${item.motherFirstName || '-'} ${item.motherLastName || ''}`.trim();
 
     msg += `[${idx + 1}]\n`;
     msg += `┌● ชื่อ-สกุล: ${item.firstName || '-'} ${item.lastName || '-'}\n`;
@@ -8026,7 +8045,7 @@ text: newText
       return reply(event.replyToken, { type: 'text', text: '❌กรุณาระบุเลขบัตรประชาชน เช่น psi#1234567890123' });
     }
     try {
-      const data = await fetchPEAApi({ psi: input });
+      const data = await fetchPrisonerApi({ psi: input });
       const result = formatPrisonerRecords(data, input, false);
       return reply(event.replyToken, { type: 'text', text: result });
     } catch (err) {
@@ -8041,7 +8060,7 @@ text: newText
       return reply(event.replyToken, { type: 'text', text: '❌กรุณาระบุเลขบัตรประชาชน เช่น ps#1234567890123' });
     }
     try {
-      const data = await fetchPEAApi({ ps: input });
+      const data = await fetchPrisonerApi({ ps: input });
       const result = formatPrisonerRecords(data, input, true);
       return reply(event.replyToken, { type: 'text', text: result });
     } catch (err) {
