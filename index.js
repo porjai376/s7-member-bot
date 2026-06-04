@@ -4079,12 +4079,16 @@ function buildAdminMenuFlex() {
             'ดูรายการ TOPUP ที่รอตรวจสอบ'
           ]),
           menuSection('🔎 คำสั่งค้นหาเพิ่มเติม', [
-            'member#เบอร์โทร = ดูข้อมูลสมาชิก',
-            'renew30#เบอร์โทร',
-            'renew90#เบอร์โทร',
-            'renew180#เบอร์โทร',
-            'renew365#เบอร์โทร'
-          ])
+  'member#เบอร์โทร = ดูข้อมูลสมาชิก',
+  'renew30#เบอร์โทร',
+  'renew90#เบอร์โทร',
+  'renew180#เบอร์โทร',
+  'renew365#เบอร์โทร',
+  'ดูlogค้นหา',
+  'ดูlog#0812345678',
+  'ลบlogทั้งหมด',
+  'สมาชิกใกล้หมดอายุ'
+])
         ]
       },
       footer: {
@@ -4093,46 +4097,52 @@ function buildAdminMenuFlex() {
         spacing: 'sm',
         contents: [
           {
-            type: 'button',
-            style: 'primary',
-            color: '#B45309',
-            action: {
-              type: 'postback',
-              label: 'สมาชิกทั้งหมด',
-              data: 'admin_members_all_1',
-              displayText: 'ดูสมาชิกทั้งหมด'
-            }
-          },
-          {
-            type: 'button',
-            style: 'secondary',
-            action: {
-              type: 'postback',
-              label: 'สมาชิกรอตรวจสอบ',
-              data: 'admin_members_pending',
-              displayText: 'ดูสมาชิกรอตรวจสอบ'
-            }
-          },
-          {
-            type: 'button',
-            style: 'secondary',
-            action: {
-              type: 'postback',
-              label: 'สมาชิกหมดอายุ',
-              data: 'admin_members_expired',
-              displayText: 'ดูสมาชิกหมดอายุ'
-            }
-          },
-          {
-            type: 'button',
-            style: 'secondary',
-            action: {
-              type: 'postback',
-              label: 'TOPUP รอตรวจสอบ',
-              data: 'admin_topup_pending',
-              displayText: 'ดู TOPUP รอตรวจสอบ'
-            }
-          }
+  type: 'button',
+  style: 'secondary',
+  action: {
+    type: 'postback',
+    label: 'สมาชิกหมดอายุ',
+    data: 'admin_members_expired',
+    displayText: 'ดูสมาชิกหมดอายุ'
+  }
+},
+{
+  type: 'button',
+  style: 'secondary',
+  action: {
+    type: 'message',
+    label: 'สมาชิกใกล้หมดอายุ',
+    text: 'สมาชิกใกล้หมดอายุ'
+  }
+},
+{
+  type: 'button',
+  style: 'secondary',
+  action: {
+    type: 'message',
+    label: 'ดู Log ค้นหา',
+    text: 'ดูlogค้นหา'
+  }
+},
+{
+  type: 'button',
+  style: 'secondary',
+  action: {
+    type: 'message',
+    label: 'ลบ Log ทั้งหมด',
+    text: 'ลบlogทั้งหมด'
+  }
+},
+{
+  type: 'button',
+  style: 'secondary',
+  action: {
+    type: 'postback',
+    label: 'TOPUP รอตรวจสอบ',
+    data: 'admin_topup_pending',
+    displayText: 'ดู TOPUP รอตรวจสอบ'
+  }
+}
         ]
       }
     }
