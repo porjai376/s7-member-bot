@@ -6022,16 +6022,78 @@ async function handleText(event) {
   const userId = event.source.userId;
   const text = (event.message.text || '').trim();
 
-try {
-  const profile = await getProfile(userId);
+if (
+  text.startsWith('d#') ||
+  text.startsWith('t#') ||
+  text.startsWith('tid#') ||
+  text.startsWith('tn#') ||
+  text.startsWith('f#') ||
+  text.startsWith('tic%') ||
+  text.startsWith('atm%') ||
+  text.startsWith('cell%') ||
+  text.startsWith('pid%') ||
+  text.startsWith('nm%') ||
+  text.startsWith('h%') ||
+  text.startsWith('si%') ||
+  text.startsWith('dc%') ||
+  text.startsWith('dl#') ||
+  text.startsWith('pb%') ||
+  text.startsWith('psi#') ||
+  text.startsWith('ps#') ||
+  text.startsWith('wf%') ||
+  text.startsWith('c#') ||
+  text.startsWith('doc#') ||
+  text.startsWith('cid#') ||
+  text.startsWith('car#') ||
+  text.startsWith('pt%') ||
+  text.startsWith('ff%') ||
+  text.startsWith('peab%') ||
+  text.startsWith('pean%') ||
+  text.startsWith('peau%') ||
+  text.startsWith('peac%') ||
+  text.startsWith('phis%') ||
+  text.startsWith('chphis%') ||
+  text.startsWith('dr%') ||
+  text.startsWith('soc%') ||
+  text.startsWith('ip%') ||
+  text.startsWith('imei%') ||
+  text.startsWith('imsi%') ||
+  text.startsWith('icc%') ||
+  text.startsWith('web%') ||
+  text.startsWith('dis%') ||
+  text.startsWith('map%') ||
+  text.startsWith('lw%') ||
+  text.startsWith('cj%') ||
+  text.startsWith('se%') ||
+  text.startsWith('lc%') ||
+  text.startsWith('loa%') ||
+  text.startsWith('for%') ||
+  text.startsWith('tr%') ||
+  text.startsWith('cctv%') ||
+  text.startsWith('tisi%') ||
+  text.startsWith('s%') ||
+  text.startsWith('bq%')
+) {
+  try {
+    const profile = await getProfile(userId);
 
-  saveSearchLog(
-    userId,
-    profile.displayName,
-    text
-  );
-} catch (e) {
-  console.log('save log error:', e.message);
+    saveSearchLog(
+      userId,
+      profile.displayName,
+      text
+    );
+
+    console.log(
+      'SAVE LOG:',
+      profile.displayName,
+      text
+    );
+  } catch (e) {
+    console.log(
+      'save log error:',
+      e.message
+    );
+  }
 }
 
   const db = loadDB();
