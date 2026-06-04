@@ -6512,34 +6512,10 @@ if (text === 'ดูสมาชิกรอตรวจสอบ') {
   text.startsWith('fx#') ||
   text.startsWith('a#')
 ) {
-  try {
-    const profile = await getProfile(userId);
-
-    for (const adminId of ADMIN_IDS) {
-      await push(adminId, {
-        type: 'text',
-        text:
-`📢 มีการใช้งานคำสั่ง
-
-👤 ชื่อ LINE:
-${profile.displayName || '-'}
-
-🆔 UserID:
-${userId}
-
-📝 ข้อมูลที่พิมพ์:
-${text}`
-      });
-    }
-
-  } catch (e) {
-    console.log('admin notify error:', e.message);
-  }
-
   return reply(event.replyToken, {
-  type: 'text',
-  text: '🔍คำสั่งปรับปรุงค้นหาใหม่ภายหลัง...\n⏳command updates⏳'
-});
+    type: 'text',
+    text: '🔍คำสั่งปรับปรุงค้นหาใหม่ภายหลัง...\n⏳command updates⏳'
+  });
 }
 
   if (!canUseBotCommands(userId, member, text)) {
