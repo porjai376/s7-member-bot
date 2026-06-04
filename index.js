@@ -6144,6 +6144,35 @@ if (text.startsWith('ดูlog')) {
   });
 }
 
+if (text === 'ลบlogทั้งหมด') {
+
+  if (!isAdmin(userId)) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ คำสั่งนี้ใช้ได้เฉพาะแอดมิน'
+    });
+  }
+
+  try {
+    fs.writeFileSync(
+      SEARCH_LOG_FILE,
+      JSON.stringify([], null, 2),
+      'utf8'
+    );
+
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '✅ ลบ Log ทั้งหมดเรียบร้อยแล้ว'
+    });
+
+  } catch (err) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ เกิดข้อผิดพลาดในการลบ Log'
+    });
+  }
+}
+
 if (text.startsWith('ดูสมาชิกทั้งหมด')) {
   const page = Number(text.split(/\s+/)[1]) || 1;
 
