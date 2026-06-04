@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 const SEARCH_LOG_FILE = path.join(__dirname, 'search_logs.json');
+const supportSlipSessions = {};
 const cheerio = require('cheerio');
 const FormData = require('form-data');
 const https = require('https');
@@ -6007,10 +6008,10 @@ function packageBubble(days, price, badgeText = '') {
           height: 'md',
           color: '#06C755',
           action: {
-            type: 'uri',
-            label: '📸 แจ้งสลิปสนับสนุน',
-            uri: 'https://line.me/ti/p/mVmD-ncfvU'
-          }
+  type: 'message',
+  label: 'แจ้งสลิปสนับสนุน',
+  text: 'แจ้งสลิปสนับสนุน'
+}
         }
       ]
     },
@@ -6108,6 +6109,18 @@ if (
 
   const db = loadDB();
   const member = db.members?.[userId];
+
+if (text === 'แจ้งสลิปสนับสนุน') {
+  supportSlipSessions[userId] = {
+    step: 'waiting_slip',
+    createdAt: Date.now()
+  };
+
+  return reply(event.replyToken, {
+    type: 'text',
+    text: '📸 กรุณาส่งภาพสลิปสนับสนุนเข้ามาในแชทนี้ได้เลยครับ'
+  });
+}
 
 if (text.startsWith('ดูlog')) {
   if (!isAdmin(userId)) {
@@ -8699,6 +8712,56 @@ async function handleImage(event) {
   const db = loadDB();
   const member = db.members[userId];
   const topup = db.topups?.[userId];
+  
+  if (supportSlipSessions[userId]?.step === 'waiting_slip') {
+  try {
+    const profile = await getProfile(userId);
+
+    const fileName = `support_${userId}_${Date.now()}.jpg`;
+    const savePath = path.join(UPLOAD_DIR, fileName);
+
+    await downloadLineImage(
+      event.message.id,
+      savePath
+    );
+
+    delete supportSlipSessions[userId];
+
+    for (const adminId of ADMIN_IDS) {
+      await push(adminId, [
+        {
+          type: 'text',
+          text:
+`📩 มีสมาชิกส่งสลิปสนับสนุน
+
+👤 ชื่อ LINE:
+${profile.displayName || '-'}
+
+🆔 UID:
+${userId}`
+        },
+        {
+          type: 'image',
+          originalContentUrl: `${BASE_URL}/uploads/${fileName}`,
+          previewImageUrl: `${BASE_URL}/uploads/${fileName}`
+        }
+      ]);
+    }
+
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '✅ ได้รับสลิปสนับสนุนแล้วครับ\nขอบคุณสำหรับการสนับสนุนครับ 🙏'
+    });
+
+  } catch (err) {
+    console.log('support slip upload error:', err.message);
+
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ บันทึกสลิปสนับสนุนไม่สำเร็จ กรุณาลองใหม่อีกครั้ง'
+    });
+  }
+}
   
 if (
 topup &&
