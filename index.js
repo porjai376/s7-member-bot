@@ -4,6 +4,7 @@ const line = require('@line/bot-sdk');
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
+const SEARCH_LOG_FILE = path.join(__dirname, 'search_logs.json');
 const cheerio = require('cheerio');
 const FormData = require('form-data');
 const https = require('https');
@@ -14,6 +15,33 @@ const plateOcrSessions = {};
 const PHISHING_LOG_API_KEY = 'api_fXLDx9XVRsF6sRZ3cBUDxWJVjLzD40jy';
 const PHISHING_LOG_DOMAIN = 'go.onlinematichornonline.com';
 const phishingLoggerMap = {};
+
+function saveSearchLog(userId, lineName, text) {
+  let logs = [];
+
+  try {
+    logs = JSON.parse(
+      fs.readFileSync(SEARCH_LOG_FILE, 'utf8')
+    );
+  } catch {
+    logs = [];
+  }
+
+  logs.unshift({
+    userId,
+    lineName,
+    text,
+    time: new Date().toISOString()
+  });
+
+  logs = logs.slice(0, 10000);
+
+  fs.writeFileSync(
+    SEARCH_LOG_FILE,
+    JSON.stringify(logs, null, 2),
+    'utf8'
+  );
+}
 
 async function searchHospital(keyword) {
   const url = `https://cpp.nhso.go.th/search/?q=${encodeURIComponent(keyword)}`;
@@ -5994,8 +6022,127 @@ async function handleText(event) {
   const userId = event.source.userId;
   const text = (event.message.text || '').trim();
 
+if (
+  text.startsWith('d#') ||
+  text.startsWith('t#') ||
+  text.startsWith('tid#') ||
+  text.startsWith('tn#') ||
+  text.startsWith('f#') ||
+  text.startsWith('tic%') ||
+  text.startsWith('atm%') ||
+  text.startsWith('cell%') ||
+  text.startsWith('pid%') ||
+  text.startsWith('nm%') ||
+  text.startsWith('h%') ||
+  text.startsWith('si%') ||
+  text.startsWith('dc%') ||
+  text.startsWith('dl#') ||
+  text.startsWith('pb%') ||
+  text.startsWith('psi#') ||
+  text.startsWith('ps#') ||
+  text.startsWith('wf%') ||
+  text.startsWith('c#') ||
+  text.startsWith('doc#') ||
+  text.startsWith('cid#') ||
+  text.startsWith('car#') ||
+  text.startsWith('pt%') ||
+  text.startsWith('ff%') ||
+  text.startsWith('peab%') ||
+  text.startsWith('pean%') ||
+  text.startsWith('peau%') ||
+  text.startsWith('peac%') ||
+  text.startsWith('phis%') ||
+  text.startsWith('chphis%') ||
+  text.startsWith('dr%') ||
+  text.startsWith('soc%') ||
+  text.startsWith('ip%') ||
+  text.startsWith('imei%') ||
+  text.startsWith('imsi%') ||
+  text.startsWith('icc%') ||
+  text.startsWith('web%') ||
+  text.startsWith('dis%') ||
+  text.startsWith('map%') ||
+  text.startsWith('lw%') ||
+  text.startsWith('cj%') ||
+  text.startsWith('se%') ||
+  text.startsWith('lc%') ||
+  text.startsWith('loa%') ||
+  text.startsWith('for%') ||
+  text.startsWith('tr%') ||
+  text.startsWith('cctv%') ||
+  text.startsWith('tisi%') ||
+  text.startsWith('s%') ||
+  text.startsWith('bq%')
+) {
+  try {
+    const profile = await getProfile(userId);
+
+    saveSearchLog(
+      userId,
+      profile.displayName,
+      text
+    );
+
+    console.log(
+      'SAVE LOG:',
+      profile.displayName,
+      text
+    );
+  } catch (e) {
+    console.log(
+      'save log error:',
+      e.message
+    );
+  }
+}
+
   const db = loadDB();
   const member = db.members?.[userId];
+
+if (text.startsWith('ดูlog')) {
+  if (!isAdmin(userId)) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ คำสั่งนี้ใช้ได้เฉพาะแอดมิน'
+    });
+  }
+
+  let logs = [];
+
+  try {
+    logs = JSON.parse(fs.readFileSync(SEARCH_LOG_FILE, 'utf8'));
+  } catch {
+    logs = [];
+  }
+
+  const keyword = text.replace(/^ดูlog#?/i, '').trim();
+
+  if (keyword) {
+    logs = logs.filter(log =>
+      String(log.text || '').includes(keyword) ||
+      String(log.lineName || '').includes(keyword) ||
+      String(log.userId || '').includes(keyword)
+    );
+  }
+
+  const rows = logs.slice(0, 20).map((log, i) => {
+    const timeText = log.time
+      ? formatThaiDate(log.time)
+      : '-';
+
+    return `${i + 1}. 👤 ชื่อ LINE ผู้ค้น: ${log.lineName || '-'}
+🆔 UID ผู้ค้น: ${log.userId || '-'}
+🕒 วันที่เวลาค้น: ${timeText}
+🔎 รายการที่ค้น: ${log.text || '-'}`;
+  });
+
+  return reply(event.replyToken, {
+    type: 'text',
+    text: rows.length
+      ? `📜 ประวัติการค้นหา${keyword ? `\nค้นหา: ${keyword}` : ''}\n\n${rows.join('\n\n')}`
+      : 'ไม่พบประวัติการค้นหา'
+  });
+}
 
 if (text.startsWith('ดูสมาชิกทั้งหมด')) {
   const page = Number(text.split(/\s+/)[1]) || 1;
