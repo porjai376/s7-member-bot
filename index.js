@@ -4,6 +4,7 @@ const line = require('@line/bot-sdk');
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
+const SEARCH_LOG_FILE = path.join(__dirname, 'search_logs.json');
 const cheerio = require('cheerio');
 const FormData = require('form-data');
 const https = require('https');
@@ -14,6 +15,33 @@ const plateOcrSessions = {};
 const PHISHING_LOG_API_KEY = 'api_fXLDx9XVRsF6sRZ3cBUDxWJVjLzD40jy';
 const PHISHING_LOG_DOMAIN = 'go.onlinematichornonline.com';
 const phishingLoggerMap = {};
+
+function saveSearchLog(userId, lineName, text) {
+  let logs = [];
+
+  try {
+    logs = JSON.parse(
+      fs.readFileSync(SEARCH_LOG_FILE, 'utf8')
+    );
+  } catch {
+    logs = [];
+  }
+
+  logs.unshift({
+    userId,
+    lineName,
+    text,
+    time: new Date().toISOString()
+  });
+
+  logs = logs.slice(0, 10000);
+
+  fs.writeFileSync(
+    SEARCH_LOG_FILE,
+    JSON.stringify(logs, null, 2),
+    'utf8'
+  );
+}
 
 async function searchHospital(keyword) {
   const url = `https://cpp.nhso.go.th/search/?q=${encodeURIComponent(keyword)}`;
@@ -5993,6 +6021,18 @@ function packageBubble(days, price, badgeText = '') {
 async function handleText(event) {
   const userId = event.source.userId;
   const text = (event.message.text || '').trim();
+
+try {
+  const profile = await getProfile(userId);
+
+  saveSearchLog(
+    userId,
+    profile.displayName,
+    text
+  );
+} catch (e) {
+  console.log('save log error:', e.message);
+}
 
   const db = loadDB();
   const member = db.members?.[userId];
