@@ -6017,12 +6017,30 @@ function packageBubble(days, price, badgeText = '') {
     type: 'bubble',
     size: 'mega',
     hero: {
-      type: 'image',
-      url: 'https://impressive-copper-bvl5o5dr.edgeone.app/1086268.jpg',
-      size: 'full',
-      aspectRatio: '1:1',
-      aspectMode: 'fit'
+  type: 'box',
+  layout: 'vertical',
+  backgroundColor: '#0B0F14',
+  paddingAll: '20px',
+  contents: [
+    {
+      type: 'text',
+      text: '🏦 ธนาคาร : กสิกร',
+      color: '#FFFFFF',
+      weight: 'bold',
+      size: 'md',
+      align: 'center'
     },
+    {
+      type: 'text',
+      text: '💳 เลขบัญชี : 2238457753',
+      color: '#FFD700',
+      weight: 'bold',
+      size: 'lg',
+      align: 'center',
+      margin: 'md'
+    }
+  ]
+},
     body: {
       type: 'box',
       layout: 'vertical',
