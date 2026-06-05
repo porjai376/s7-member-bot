@@ -5185,13 +5185,13 @@ color:'#334155'
 },
 
 {
-  type: 'text',
-  text: '🏦 ธนาคาร : กสิกร\n\n💳 เลขบัญชี : 2238457753',
-  wrap: true,
-  align: 'center',
-  margin: 'lg',
-  size: 'md',
-  color: '#FFFFFF'
+type:'text',
+text:'🏦 ธนาคาร : กสิกร\n\n💳 เลขบัญชี : 2238457753',
+wrap:true,
+align:'center',
+margin:'lg',
+size:'sm',
+color:'#E2E8F0'
 },
 
 {
