@@ -6379,6 +6379,34 @@ if (/^dis%/i.test(text)) {
   });
 }
 
+if (text === 'สนับสนุน4999') {
+  return reply(event.replyToken, {
+    type: 'flex',
+    altText: 'แพ็คเกจสนับสนุน 12 เดือน',
+    contents: packageBubble('365 วัน', '4999 บาท', '⭐ คุ้มที่สุด')
+  });
+}
+
+if (
+  text === '#สนับสนุน' ||
+  text === 'สนับสนุน' ||
+  text === '#donate'
+) {
+  return reply(event.replyToken, {
+    type: 'flex',
+    altText: 'แพ็คเกจสนับสนุนเซิร์ฟเวอร์',
+    contents: {
+      type: 'carousel',
+      contents: [
+        packageBubble('30 วัน', '499 บาท'),
+        packageBubble('90 วัน', '1299 บาท'),
+        packageBubble('180 วัน', '2500 บาท', '🔥 ยอดนิยม'),
+        packageBubble('365 วัน', '4999 บาท', '⭐ คุ้มที่สุด')
+      ]
+    }
+  });
+}
+
 if(/^อนุญาติดีแทค#/.test(text)){
 
 const phone=text.replace(/^อนุญาติดีแทค#/,'').trim();
