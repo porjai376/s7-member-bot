@@ -4917,6 +4917,50 @@ function buildMembersExpiringSoonText(db, page = 1) {
   );
 }
 
+function buildPendingMembersText(db, page = 1) {
+
+  const members = Object.entries(db.members || {})
+    .filter(([_, m]) => m.status === 'pending');
+
+  const perPage = 20;
+  const start = (page - 1) * perPage;
+
+  const pageMembers = members.slice(
+    start,
+    start + perPage
+  );
+
+  if (!pageMembers.length) {
+    return '❌ ไม่พบสมาชิกรอตรวจสอบ';
+  }
+
+  let msg =
+`📋 สมาชิกรอตรวจสอบ
+หน้า ${page}
+
+`;
+
+  pageMembers.forEach(([uid, m], i) => {
+
+    msg +=
+`${start + i + 1}. ${m.fullname || '-'}
+📱 ${m.phone || '-'}
+📅 ${m.registeredAt || '-'}
+🆔 ${uid}
+
+`;
+  });
+
+  const totalPages =
+    Math.ceil(members.length / perPage);
+
+  msg +=
+`\nทั้งหมด ${members.length} คน
+หน้า ${page}/${totalPages}`;
+
+  return msg;
+}
+
 function getRemainDays(expireAt) {
   if (!expireAt) return null;
 
@@ -6798,7 +6842,8 @@ if (db.bMode?.[userId]) {
   });
 }
 
-if (text === 'ดูสมาชิกรอตรวจสอบ') {
+if (text.startsWith('ดูสมาชิกรอตรวจสอบ')) {
+
   if (!isAdmin(userId)) {
     return reply(event.replyToken, {
       type: 'text',
@@ -6806,9 +6851,14 @@ if (text === 'ดูสมาชิกรอตรวจสอบ') {
     });
   }
 
-  return reply(event.replyToken, buildPendingMembersFlex(db));
-}
+  const page =
+    Number(text.split(/\s+/)[1]) || 1;
 
+  return reply(event.replyToken, {
+    type: 'text',
+    text: buildPendingMembersText(db, page)
+  });
+}
   const cancelMatch = text.match(/^ยกเลิกสมาชิก#(.+)$/);
 
   if (cancelMatch) {
