@@ -4189,7 +4189,8 @@ function buildAdminMenuFlex() {
   'ดูlogค้นหา',
   'ดูlog#0812345678',
   'ลบlogทั้งหมด',
-  'สมาชิกใกล้หมดอายุ'
+  'สมาชิกใกล้หมดอายุ',
+  'ดูสมาชิกรอตรวจสอบ'
 ])
         ]
       },
@@ -4223,7 +4224,7 @@ function buildAdminMenuFlex() {
   action: {
     type: 'message',
     label: 'ดู Log ค้นหา',
-    text: 'ดูlogค้นหา'
+    text: 'ดูlog'
   }
 },
 {
