@@ -4,6 +4,7 @@ const line = require('@line/bot-sdk');
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
+const GOOGLE_GEO_API_KEY = process.env.GOOGLE_GEO_API_KEY;
 const SEARCH_LOG_FILE = path.join(__dirname, 'search_logs.json');
 const supportSlipSessions = {};
 const cheerio = require('cheerio');
@@ -42,6 +43,24 @@ function saveSearchLog(userId, lineName, text) {
     JSON.stringify(logs, null, 2),
     'utf8'
   );
+}
+
+async function googleCellGeo(mcc, mnc, lac, cid) {
+  const res = await axios.post(
+    `https://www.googleapis.com/geolocation/v1/geolocate?key=${GOOGLE_GEO_API_KEY}`,
+    {
+      cellTowers: [
+        {
+          mobileCountryCode: Number(mcc),
+          mobileNetworkCode: Number(mnc),
+          locationAreaCode: Number(lac),
+          cellId: Number(cid)
+        }
+      ]
+    }
+  );
+
+  return res.data;
 }
 
 async function searchHospital(keyword) {
@@ -6400,6 +6419,62 @@ if (/^dis%/i.test(text)) {
       text: '❌ รูปแบบไม่ถูกต้อง\nตัวอย่าง:\ndis%16.462991566703394,102.64543023829752/16.174215621798133,102.72808867876172'
     });
   }
+
+if (text.startsWith('geo%')) {
+
+  const raw = text.replace('geo%', '').trim();
+  const [mcc, mnc, lac, cid] = raw.split(',').map(x => x.trim());
+
+  if (!mcc || !mnc || !lac || !cid) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ รูปแบบไม่ถูกต้อง\nตัวอย่าง:\ngeo%520,4,5609,1631'
+    });
+  }
+
+  try {
+
+    const data = await googleCellGeo(
+      mcc,
+      mnc,
+      lac,
+      cid
+    );
+
+    return reply(event.replyToken, {
+      type: 'text',
+      text:
+`📍 GOOGLE GEOLOCATION
+
+MCC : ${mcc}
+MNC : ${mnc}
+LAC : ${lac}
+CID : ${cid}
+
+Latitude : ${data.location.lat}
+Longitude : ${data.location.lng}
+
+Accuracy : ${data.accuracy} เมตร
+
+🌍 Google Maps
+https://maps.google.com/?q=${data.location.lat},${data.location.lng}`
+    });
+
+  } catch (err) {
+
+    console.log(
+      'GOOGLE GEO ERROR:',
+      err.response?.data || err.message
+    );
+
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ ไม่สามารถค้นหาพิกัดได้'
+    });
+
+  }
+
+}
 
   const start = parts[0].split(',').map(v => v.trim());
   const end = parts[1].split(',').map(v => v.trim());
