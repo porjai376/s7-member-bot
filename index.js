@@ -3857,7 +3857,9 @@ function buildMenuCarouselFlex() {
   '⚠️ d# ใช้งานได้เฉพาะเวลา 08:30-23:59 น.',
   '• 📙t#เบอร์ → REG TRUE',
   '• 📙tid#เลขบัตร → REG TRUE',
-  '• 📙tn#ชื่อ-นามสกุล → REG TRUE'
+  '• 📙tn#ชื่อ-นามสกุล → REG TRUE',
+  '⚠️ ระบบ TRUE อาจไม่สามารถค้นหาได้บางรายการ',
+  '🙏 ขออภัยในความไม่สะดวก'
 ]),
               menuSection('📦 ระบบขนส่ง', [
                 '• f#เบอร์โทร → พัสดุทั่วไป',
@@ -4105,9 +4107,11 @@ function buildMenuCarouselFlex() {
                 '• 35 บรรทุกส่วนบุคคล'
               ]),
               menuSection('⚠️ คำสั่งที่มีการปรับปรุง', [
-                '• a#',
-                '• fx#'
-              ])
+  '🟡 a#',
+  '🟡 fx#',
+  '🟡 h%',
+  '🟡 pid%'
+])
             ]
           },
           footer: buildMenuFooter()
