@@ -6420,62 +6420,6 @@ if (/^dis%/i.test(text)) {
     });
   }
 
-if (text.startsWith('geo%')) {
-
-  const raw = text.replace('geo%', '').trim();
-  const [mcc, mnc, lac, cid] = raw.split(',').map(x => x.trim());
-
-  if (!mcc || !mnc || !lac || !cid) {
-    return reply(event.replyToken, {
-      type: 'text',
-      text: '❌ รูปแบบไม่ถูกต้อง\nตัวอย่าง:\ngeo%520,4,5609,1631'
-    });
-  }
-
-  try {
-
-    const data = await googleCellGeo(
-      mcc,
-      mnc,
-      lac,
-      cid
-    );
-
-    return reply(event.replyToken, {
-      type: 'text',
-      text:
-`📍 GOOGLE GEOLOCATION
-
-MCC : ${mcc}
-MNC : ${mnc}
-LAC : ${lac}
-CID : ${cid}
-
-Latitude : ${data.location.lat}
-Longitude : ${data.location.lng}
-
-Accuracy : ${data.accuracy} เมตร
-
-🌍 Google Maps
-https://maps.google.com/?q=${data.location.lat},${data.location.lng}`
-    });
-
-  } catch (err) {
-
-    console.log(
-      'GOOGLE GEO ERROR:',
-      err.response?.data || err.message
-    );
-
-    return reply(event.replyToken, {
-      type: 'text',
-      text: '❌ ไม่สามารถค้นหาพิกัดได้'
-    });
-
-  }
-
-}
-
   const start = parts[0].split(',').map(v => v.trim());
   const end = parts[1].split(',').map(v => v.trim());
 
@@ -7000,6 +6944,50 @@ if (text.startsWith('ดูสมาชิกรอตรวจสอบ')) {
     type: 'text',
     text: '🔍คำสั่งปรับปรุงค้นหาใหม่ภายหลัง...\n⏳command updates⏳'
   });
+}
+
+if (text.startsWith('geo%')) {
+  console.log('GEO COMMAND:', text);
+
+  const raw = text.replace('geo%', '').trim();
+  const [mcc, mnc, lac, cid] = raw.split(',').map(x => x.trim());
+
+  if (!mcc || !mnc || !lac || !cid) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ รูปแบบไม่ถูกต้อง\nตัวอย่าง:\ngeo%520,4,5609,1631'
+    });
+  }
+
+  try {
+    const data = await googleCellGeo(mcc, mnc, lac, cid);
+
+    return reply(event.replyToken, {
+      type: 'text',
+      text:
+`📍 GOOGLE GEOLOCATION
+
+MCC : ${mcc}
+MNC : ${mnc}
+LAC : ${lac}
+CID : ${cid}
+
+Latitude : ${data.location.lat}
+Longitude : ${data.location.lng}
+Accuracy : ${data.accuracy} เมตร
+
+🌍 Google Maps
+https://maps.google.com/?q=${data.location.lat},${data.location.lng}`
+    });
+
+  } catch (err) {
+    console.log('GOOGLE GEO ERROR:', err.response?.data || err.message);
+
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ ไม่สามารถค้นหาพิกัดได้\nกรุณาตรวจสอบ API KEY หรือข้อมูล MCC/MNC/LAC/CID'
+    });
+  }
 }
 
   if (!canUseBotCommands(userId, member, text)) {
