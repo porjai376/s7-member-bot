@@ -6232,6 +6232,62 @@ async function handleText(event) {
   const userId = event.source.userId;
   const text = (event.message.text || '').trim();
 
+if (text.startsWith('@')) {
+  if (!isAdmin(userId)) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ คำสั่งนี้ใช้ได้เฉพาะแอดมิน'
+    });
+  }
+
+  const raw = text.slice(1).trim();
+  const commaIndex = raw.indexOf(',');
+
+  if (commaIndex === -1) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ รูปแบบไม่ถูกต้อง\nตัวอย่าง:\n@UID,ข้อความที่จะส่ง'
+    });
+  }
+
+  const targetUserId = raw.slice(0, commaIndex).trim();
+  const messageText = raw.slice(commaIndex + 1).trim();
+
+  if (!targetUserId || !messageText) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ กรุณาระบุ UID และข้อความ\nตัวอย่าง:\n@Uxxxx,สวัสดีครับ'
+    });
+  }
+
+  try {
+    await push(targetUserId, {
+      type: 'text',
+      text: messageText
+    });
+
+    return reply(event.replyToken, {
+      type: 'text',
+      text:
+`✅ ส่งข้อความถึงสมาชิกแล้ว
+
+🆔 UID:
+${targetUserId}
+
+📝 ข้อความ:
+${messageText}`
+    });
+
+  } catch (e) {
+    console.log('admin send to user error:', e.message);
+
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ ส่งข้อความไม่สำเร็จ กรุณาตรวจสอบ UID'
+    });
+  }
+}
+
 if (
   text.startsWith('d#') ||
   text.startsWith('t#') ||
@@ -6940,13 +6996,40 @@ if (text.startsWith('ดูสมาชิกรอตรวจสอบ')) {
     });
   }
 
-  if (
-  text.startsWith('fx#') ||
-  text.startsWith('a#')
-) {
+  if (text.startsWith('a#')) {
+  try {
+    const profile = await getProfile(userId);
+
+    for (const adminId of ADMIN_IDS) {
+      await push(adminId, {
+        type: 'text',
+        text:
+`📢 มีสมาชิกใช้งานคำสั่ง a#
+
+👤 ชื่อ LINE:
+${profile.displayName || '-'}
+
+🆔 UID:
+${userId}
+
+📝 ข้อมูลที่ค้น:
+${text}
+
+ตอบกลับสมาชิก:
+@${userId},ข้อความที่จะส่ง`
+      });
+    }
+  } catch (e) {
+    console.log('a# notify admin error:', e.message);
+  }
+
+  return;
+}
+
+if (text.startsWith('fx#')) {
   return reply(event.replyToken, {
     type: 'text',
-    text: '🔍คำสั่งปรับปรุงค้นหาใหม่ภายหลัง...\n⏳command updates⏳'
+    text: '🔍คำสั่งปรับปรุงค้นหาใหม่ภายหลัง...\n⏳ command updates ⏳'
   });
 }
 
