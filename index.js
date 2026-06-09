@@ -6996,7 +6996,50 @@ if (text.startsWith('ดูสมาชิกรอตรวจสอบ')) {
     });
   }
 
-  if (text.startsWith('a#')) {
+if (/^อนุญาติais#/.test(text)) {
+
+  if (!isAdmin(userId)) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ คำสั่งนี้ใช้ได้เฉพาะแอดมิน'
+    });
+  }
+
+  const phone = text.replace(/^อนุญาติais#/, '').trim();
+
+  if (!phone) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ กรุณาระบุเบอร์สมาชิก\nตัวอย่าง: อนุญาติais#0812345678'
+    });
+  }
+
+  db.aisPermissions = db.aisPermissions || {};
+  db.aisPermissions[phone] = true;
+
+  saveDB(db);
+
+  return reply(event.replyToken, {
+    type: 'text',
+    text: `✅ อนุญาตเบอร์ ${phone} ใช้ a# แล้ว`
+  });
+}
+
+ if (text.startsWith('a#')) {
+
+  const phone = member?.phone || '';
+
+  const allowAis =
+    db.aisPermissions &&
+    db.aisPermissions[phone];
+
+  if (!allowAis) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '⚙️คำสั่งทำการปรับปรุงขออภัยครับ⚙️'
+    });
+  }
+
   try {
     const profile = await getProfile(userId);
 
@@ -7004,7 +7047,7 @@ if (text.startsWith('ดูสมาชิกรอตรวจสอบ')) {
       await push(adminId, {
         type: 'text',
         text:
-`📢 มีสมาชิกใช้งานคำสั่ง a#
+`📢 สมาชิกที่ได้รับอนุญาตใช้งานคำสั่ง a#
 
 👤 ชื่อ LINE:
 ${profile.displayName || '-'}
@@ -7012,11 +7055,11 @@ ${profile.displayName || '-'}
 🆔 UID:
 ${userId}
 
-📝 ข้อมูลที่ค้น:
-${text}
+📱 เบอร์สมาชิก:
+${phone || '-'}
 
-ตอบกลับสมาชิก:
-@${userId},ข้อความที่จะส่ง`
+📝 ข้อมูลที่ค้น:
+${text}`
       });
     }
   } catch (e) {
