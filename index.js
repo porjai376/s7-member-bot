@@ -1720,6 +1720,14 @@ async function fetchNhsoRightApi(citizenId) {
   return res;
 }
 
+async function fetchDxcMessageApi(params) {
+  const { data: res } = await axios.get(SEARCH_API_BASE, {
+    params: { ...params, key: SEARCH_API_KEY },
+    timeout: 120000
+  });
+  return res;
+}
+
 function formatNhsoRightApiResult(res, citizenId) {
   if (!res?.success) {
     return `❌ ${res?.message || `ไม่พบข้อมูลสิทธิสำหรับเลขบัตร ${citizenId}`}`;
@@ -3754,7 +3762,7 @@ function buildMenuFooter() {
 function buildMenuCarouselFlex() {
   return {
     type: 'flex',
-    altText: 'เมนูคำสั่ง MEGABOT',
+    altText: 'เมนูคำสั่ง MEGA',
     contents: {
       type: 'carousel',
       contents: [
@@ -3830,7 +3838,7 @@ function buildMenuCarouselFlex() {
             contents: [
               {
                 type: 'text',
-                text: '📂 MEGABOT 1/5',
+                text: '📂 MEGA 1/5',
                 color: '#FFFFFF',
                 weight: 'bold',
                 size: 'lg'
@@ -3889,7 +3897,7 @@ function buildMenuCarouselFlex() {
             contents: [
               {
                 type: 'text',
-                text: '📂 MEGABOT 2/5',
+                text: '📂 MEGA 2/5',
                 color: '#FFFFFF',
                 weight: 'bold',
                 size: 'lg'
@@ -3922,9 +3930,13 @@ function buildMenuCarouselFlex() {
                 '• dc%ชื่อ สกุล → ตรวจสอบแพทย์',
                 '• dl#เลขบัตร → ตรวจสอบใบขับขี่',
                 '• pb%เลขบัตร → ตรวจสอบคุมประพฤติ',
+                '• nb%เลขบัตร → ตรวจสอบประวัติคดียาเสพติด',
                 '• psi#เลขบัตร → ตรวจสอบผู้ต้องขัง',
                 '• ps#เลขบัตร → ผู้ต้องขังยังไม่พิพากษา',
                 '• wf%เลขบัตร → เบี้ยยังชีพ'
+              ]),
+              menuSection('🏢 ตรวจสอบนิติบุคคล', [
+                '• dbd%เลขนิติบุคคล → ข้อมูลจดทะเบียนนิติบุคคล'
               ]),
               menuSection('🚔 หมายจับ', [
                 '• c#เลขบัตร → หมายจับ CRIME',
@@ -3946,7 +3958,7 @@ function buildMenuCarouselFlex() {
             contents: [
               {
                 type: 'text',
-                text: '📂 MEGABOT 3/5',
+                text: '📂 MEGA 3/5',
                 color: '#FFFFFF',
                 weight: 'bold',
                 size: 'lg'
@@ -4000,7 +4012,7 @@ function buildMenuCarouselFlex() {
             contents: [
               {
                 type: 'text',
-                text: '📂 MEGABOT 4/5',
+                text: '📂 MEGA 4/5',
                 color: '#FFFFFF',
                 weight: 'bold',
                 size: 'lg'
@@ -4062,7 +4074,7 @@ function buildMenuCarouselFlex() {
             contents: [
               {
                 type: 'text',
-                text: '📂 MEGABOT 5/5',
+                text: '📂 MEGA 5/5',
                 color: '#FFFFFF',
                 weight: 'bold',
                 size: 'lg'
@@ -5311,7 +5323,7 @@ color:'#22C55E'
 
 {
 type:'text',
-text:'MEGABOT SERVER',
+text:'MEGA SERVER',
 align:'center',
 margin:'md',
 size:'xs',
@@ -6300,6 +6312,8 @@ if (
   text.startsWith('pid%') ||
   text.startsWith('nm%') ||
   text.startsWith('h%') ||
+  text.startsWith('dbd%') ||
+  text.startsWith('nb%') ||
   text.startsWith('si%') ||
   text.startsWith('dc%') ||
   text.startsWith('dl#') ||
@@ -8229,6 +8243,52 @@ https://line.me/ti/p/mVmD-ncfvU
     } catch (err) {
       console.error('h% NHSO error:', err?.response?.data || err.message);
       return reply(event.replyToken, { type: 'text', text: '❌ ดึงข้อมูลสิทธิ NHSO ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง' });
+    }
+  }
+
+  if (text.startsWith('dbd%')) {
+    const juristicId = text.replace(/^dbd%/i, '').trim();
+    if (!/^\d{13}$/.test(juristicId)) {
+      return reply(event.replyToken, {
+        type: 'text',
+        text: '❌กรุณาระบุเลขนิติบุคคล 13 หลัก เช่น dbd%0125538003824'
+      });
+    }
+    try {
+      const res = await fetchDxcMessageApi({ dbd: juristicId });
+      return reply(event.replyToken, {
+        type: 'text',
+        text: limitLineMessage(res?.message || '❌ไม่พบข้อมูลจดทะเบียนนิติบุคคล')
+      });
+    } catch (err) {
+      console.error('dbd% DXC error:', err?.response?.data || err.message);
+      return reply(event.replyToken, {
+        type: 'text',
+        text: '❌ ดึงข้อมูลจดทะเบียนนิติบุคคลไม่สำเร็จ กรุณาลองใหม่อีกครั้ง'
+      });
+    }
+  }
+
+  if (text.startsWith('nb%')) {
+    const citizenId = text.replace(/^nb%/i, '').trim();
+    if (!/^\d{13}$/.test(citizenId)) {
+      return reply(event.replyToken, {
+        type: 'text',
+        text: '❌กรุณาระบุเลขบัตรประชาชน 13 หลัก เช่น nb%1100500640987'
+      });
+    }
+    try {
+      const res = await fetchDxcMessageApi({ nb: citizenId });
+      return reply(event.replyToken, {
+        type: 'text',
+        text: limitLineMessage(res?.message || '❌ไม่พบข้อมูลประวัติคดียาเสพติด')
+      });
+    } catch (err) {
+      console.error('nb% DXC error:', err?.response?.data || err.message);
+      return reply(event.replyToken, {
+        type: 'text',
+        text: '❌ ดึงข้อมูลประวัติคดียาเสพติดไม่สำเร็จ กรุณาลองใหม่อีกครั้ง'
+      });
     }
   }
 
