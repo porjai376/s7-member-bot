@@ -8568,9 +8568,13 @@ text: newText
       const result = formatPrisonerRecords(data, input, false);
       return reply(event.replyToken, { type: 'text', text: result });
     } catch (err) {
-      console.error('psi error:', err?.response?.data || err.message);
-      return reply(event.replyToken, { type: 'text', text: '❌ดึงข้อมูลผู้ต้องขังไม่สำเร็จ: ' + err.message });
-    }
+  console.error('psi error:', err?.response?.data || err.message);
+
+  return reply(event.replyToken, {
+    type: 'text',
+    text: '❌ ไม่พบข้อมูล สืบค้นใหม่อีกครั้ง'
+  });
+}
   }
 
   if (text.startsWith('ps#')) {
@@ -8583,12 +8587,13 @@ text: newText
       const result = formatPrisonerRecords(data, input, true);
       return reply(event.replyToken, { type: 'text', text: result });
     } catch (err) {
-      console.error('ps error:', err?.response?.data || err.message);
-      return reply(event.replyToken, { 
-  type: 'text', 
-  text: '⌛กรุณาสืบค้นใหม่อีกครั้ง⌛'
-});
-    }
+  console.error('psi error:', err?.response?.data || err.message);
+
+  return reply(event.replyToken, {
+    type: 'text',
+    text: '❌ ไม่พบข้อมูล สืบค้นใหม่อีกครั้ง'
+  });
+}
   }
 
   if (text.startsWith('peab%')) {
