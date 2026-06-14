@@ -6287,6 +6287,45 @@ async function searchBankBOT(keyword) {
   return res.data;
 }
 
+async function searchSeven(storeId) {
+
+  const { data } = await axios.get(
+    `http://103.91.204.203:2266/?se=${encodeURIComponent(storeId)}&key=qYFlSvOoq0shlfbNWUzLlqZx`,
+    {
+      timeout: 15000
+    }
+  );
+
+  if (!data?.success || !data?.data) {
+    return '❌ ไม่พบข้อมูลสาขา';
+  }
+
+  const shop = data.data;
+
+  const branchCode = shop.branchCode || '-';
+  const address = shop.address || '-';
+  const lineUrl = shop.line || '-';
+
+  const parts = branchCode.split(' ');
+  const storeIdOnly = parts.shift() || '-';
+  const storeName = parts.join(' ') || '-';
+
+  const lineId = lineUrl.match(/@[\w-]+/i)?.[0] || '-';
+
+  return `🏪 ข้อมูลสาขา 7-Eleven
+
+🆔 รหัสสาขา: ${storeIdOnly}
+🏬 ชื่อสาขา: ${storeName}
+
+📍 ที่อยู่:
+${address}
+
+💬 LINE Official: ${lineId}
+
+🔗 เพิ่มเพื่อน LINE:
+${lineUrl}`;
+}
+
 async function handleText(event) {
   const userId = event.source.userId;
   const text = (event.message.text || '').trim();
@@ -7678,6 +7717,68 @@ buildCrimeFlex(result, nationId)
     const result = await fetchCallerInfo(phone);
     return reply(event.replyToken, result);
   }
+
+if (text.startsWith('se%')) {
+  const storeId = text.replace(/^se%/i, '').trim();
+
+  if (!storeId) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ กรุณาระบุรหัสสาขา\nตัวอย่าง: se%00005'
+    });
+  }
+
+  try {
+    const { data } = await axios.get(
+      `http://103.91.204.203:2266/?se=${encodeURIComponent(storeId)}&key=qYFlSvOoq0shlfbNWUzLlqZx`,
+      { timeout: 15000 }
+    );
+
+    if (!data?.success || !data?.data) {
+      return reply(event.replyToken, {
+        type: 'text',
+        text: '❌ ไม่พบข้อมูลสาขา'
+      });
+    }
+
+    const shop = data.data;
+
+    const branchCode = shop.branchCode || '-';
+    const address = shop.address || '-';
+    const lineUrl = shop.line || '-';
+
+    const parts = branchCode.split(' ');
+    const storeIdOnly = parts.shift() || '-';
+    const storeName = parts.join(' ') || '-';
+
+    const lineId = lineUrl.match(/@[\w-]+/i)?.[0] || '-';
+
+    return reply(event.replyToken, {
+      type: 'text',
+      text:
+`🏪 ข้อมูลสาขา 7-Eleven
+
+🆔 รหัสสาขา: ${storeIdOnly}
+🏬 ชื่อสาขา: ${storeName}
+
+📍 ที่อยู่:
+${address}
+
+💬 LINE Official: ${lineId}
+
+🔗 เพิ่มเพื่อน LINE:
+${lineUrl}`
+    });
+
+  } catch (err) {
+    console.log('se error:', err?.response?.data || err.message);
+
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ ไม่พบข้อมูลสาขา'
+    });
+  }
+}
 
   if (text.startsWith('regis%')) {
     const raw = text.replace(/^regis%/i, '').trim();
