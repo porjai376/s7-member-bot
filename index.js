@@ -7111,11 +7111,77 @@ ${text}`
   return;
 }
 
-if (text.startsWith('fx#')) {
+if (/^อนุญาตfx#/.test(text)) {
+
+  if (!isAdmin(userId)) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ คำสั่งนี้ใช้ได้เฉพาะแอดมิน'
+    });
+  }
+
+  const phone = text.replace(/^อนุญาตfx#/, '').trim();
+
+  if (!phone) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ กรุณาระบุเบอร์สมาชิก\nตัวอย่าง: อนุญาตfx#0812345678'
+    });
+  }
+
+  db.fxPermissions = db.fxPermissions || {};
+  db.fxPermissions[phone] = true;
+
+  saveDB(db);
+
   return reply(event.replyToken, {
     type: 'text',
-    text: '🔍คำสั่งปรับปรุงค้นหาใหม่ภายหลัง...\n⏳ command updates ⏳'
+    text: `✅ อนุญาตเบอร์ ${phone} ใช้ fx# แล้ว`
   });
+}
+
+if (text.startsWith('fx#')) {
+
+  const phone = member?.phone || '';
+
+  const allowFx =
+    db.fxPermissions &&
+    db.fxPermissions[phone];
+
+  if (!allowFx) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '⚙️คำสั่งทำการปรับปรุงขออภัยครับ⚙️'
+    });
+  }
+
+  try {
+    const profile = await getProfile(userId);
+
+    for (const adminId of ADMIN_IDS) {
+      await push(adminId, {
+        type: 'text',
+        text:
+`📢 สมาชิกที่ได้รับอนุญาตใช้งานคำสั่ง fx#
+
+👤 ชื่อ LINE:
+${profile.displayName || '-'}
+
+🆔 UID:
+${userId}
+
+📱 เบอร์สมาชิก:
+${phone || '-'}
+
+📝 ข้อมูลที่ค้น:
+${text}`
+      });
+    }
+  } catch (e) {
+    console.log('fx# notify admin error:', e.message);
+  }
+
+  return;
 }
 
 if (text.startsWith('geo%')) {
