@@ -6238,6 +6238,29 @@ function packageBubble(days, price, badgeText = '') {
   };
 }
 
+function formatBankBOT(data, keyword) {
+  if (!data?.success || !data?.results?.length) {
+    return '❌ ไม่พบข้อมูล สืบค้นใหม่อีกครั้ง';
+  }
+
+  let msg = `🏦 ผลการค้นหา: ${keyword}\n`;
+  msg += `- - - - - - - - - -\n`;
+
+  data.results.forEach((item, index) => {
+    msg += `
+รายการ ${index + 1}
+🏦 ธนาคาร: ${item.institutionNameThai || '-'}
+🔢 รหัสธนาคาร: ${item.bankCode || '-'}
+📋 สถานะ: ${item.closeDate || '-'}
+📍 ที่อยู่: ${item.institutionAddressThai || '-'}
+☎️ โทร: ${item.telephone || '-'}
+🌐 เว็บไซต์: ${item.institutionUrl || '-'}
+- - - - - - - - - -`;
+  });
+
+  return msg.trim();
+}
+
 async function searchBankBOT(keyword) {
   const key = String(keyword || '').trim();
 
