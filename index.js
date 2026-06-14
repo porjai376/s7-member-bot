@@ -3875,9 +3875,7 @@ function buildMenuCarouselFlex() {
                 '• tic%เลขพัสดุ → ภาพรับพัสดุ'
               ]),
               menuSection('🏦 ธนาคาร / ATM', [
-                '• bn%ชื่อธนาคาร → ค้นหาธนาคาร',
-                '• bc%รหัสสาขา → สาขาธนาคาร',
-                '• bk%เลขบัญชี → บัญชีธนาคาร',
+                '• bn%ชื่อธนาคาร/รหัสสาขา → ค้นหาข้อมูลธนาคาร',
                 '• atm%รหัสตู้ → จุดติดตั้ง ATM',
                 '• cell%LAC,CID → พิกัด Cell'
               ])
@@ -6240,6 +6238,32 @@ function packageBubble(days, price, badgeText = '') {
   };
 }
 
+async function searchBankBOT(keyword) {
+  const key = String(keyword || '').trim();
+
+  const isBankCode = /^\d{3,4}$/.test(key);
+  const searchValue = isBankCode
+    ? key.padStart(4, '0')
+    : key;
+
+  const encoded = encodeURIComponent(searchValue);
+
+  const url =
+    'https://www.bot.or.th/content/bot/th/fi-list/jcr:content/root/container/involvepartyopenlist.InvolvePartyOpenListingResultsBank.10.p0.BANK_CODE.inst0.paysys0.status0.' +
+    encoded +
+    '.ascending.json';
+
+  const res = await axios.get(url, {
+    timeout: 15000,
+    headers: {
+      'User-Agent': 'Mozilla/5.0',
+      'Accept': 'application/json'
+    }
+  });
+
+  return res.data;
+}
+
 async function handleText(event) {
   const userId = event.source.userId;
   const text = (event.message.text || '').trim();
@@ -8319,6 +8343,35 @@ https://line.me/ti/p/mVmD-ncfvU
       return reply(event.replyToken, { type: 'text', text: '❌ดึงข้อมูล ATM ไม่สำเร็จ: ' + err.message });
     }
   }
+
+if (text.startsWith('bn%')) {
+  const keyword = text.replace(/^bn%/, '').trim();
+
+  if (!keyword) {
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ กรุณาระบุชื่อธนาคารหรือรหัสธนาคาร\nตัวอย่าง: bn%กสิกร หรือ bn%0004'
+    });
+  }
+
+  try {
+    const data = await searchBankBOT(keyword);
+    const result = formatBankBOT(data, keyword);
+
+    return reply(event.replyToken, {
+      type: 'text',
+      text: result
+    });
+
+  } catch (err) {
+    console.error('bn% BOT error:', err?.response?.data || err.message);
+
+    return reply(event.replyToken, {
+      type: 'text',
+      text: '❌ ไม่พบข้อมูล สืบค้นใหม่อีกครั้ง'
+    });
+  }
+}
 
 if (text.startsWith('#')) {
 
