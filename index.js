@@ -6579,8 +6579,8 @@ if (text.startsWith('tro%')) {
   const thaiMinute = now.getUTCMinutes();
 
   const currentMinutes = (thaiHour * 60) + thaiMinute;
-  const startMinutes = (21 * 60);
-  const endMinutes = (21 * 60) + 30;
+  const startMinutes = (13 * 60);
+  const endMinutes = (14 * 60) + 30;
 
   if (currentMinutes < startMinutes || currentMinutes > endMinutes) {
     return reply(event.replyToken, {
@@ -6588,7 +6588,7 @@ if (text.startsWith('tro%')) {
       text:
 ` 🚨[ เฉพาะคำสั่งนี้ ]
   ├ ใช้งานช่วงเวลา ✅
-  └ 21:00 - 21:30 🕛`
+  └ 13:00 - 14:30 🕛`
     });
   }
 
@@ -6635,7 +6635,7 @@ ${text}
 -  -  -  -  -  -
 📂[ เฉพาะคำสั่งนี้ ]
 ├ ใช้งานช่วงเวลา ✅
-└ 21:00 - 21:30 🕛
+└ 13:00 - 14:30 🕛
 -  -  -  -  -  -`
 });
 }
