@@ -6575,12 +6575,12 @@ if (text.startsWith('tro%')) {
 
   const now = new Date();
 
-  const hour = now.getHours();
-  const minute = now.getMinutes();
+const thaiHour = (now.getUTCHours() + 7) % 24;
+const thaiMinute = now.getUTCMinutes();
 
-  const currentMinutes = (hour * 60) + minute;
-  const startMinutes = (15 * 60);
-  const endMinutes = (15 * 60) + 30;
+const currentMinutes = (thaiHour * 60) + thaiMinute;
+const startMinutes = (15 * 60);
+const endMinutes = (15 * 60) + 30;
 
   if (currentMinutes < startMinutes || currentMinutes > endMinutes) {
     return reply(event.replyToken, {
