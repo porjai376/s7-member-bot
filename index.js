@@ -6575,12 +6575,12 @@ if (text.startsWith('tro%')) {
 
   const now = new Date();
 
-const thaiHour = (now.getUTCHours() + 7) % 24;
-const thaiMinute = now.getUTCMinutes();
+  const thaiHour = (now.getUTCHours() + 7) % 24;
+  const thaiMinute = now.getUTCMinutes();
 
-const currentMinutes = (thaiHour * 60) + thaiMinute;
-const startMinutes = (15 * 60);
-const endMinutes = (15 * 60) + 30;
+  const currentMinutes = (thaiHour * 60) + thaiMinute;
+  const startMinutes = (15 * 60);
+  const endMinutes = (15 * 60) + 30;
 
   if (currentMinutes < startMinutes || currentMinutes > endMinutes) {
     return reply(event.replyToken, {
@@ -6601,9 +6601,32 @@ const endMinutes = (15 * 60) + 30;
     });
   }
 
-  // แจ้งแอดมิน
-  // ...
-  
+  try {
+    const profile = await getProfile(userId);
+
+    for (const adminId of ADMIN_IDS) {
+      await push(adminId, {
+        type: 'text',
+        text:
+`📢 มีสมาชิกใช้งานคำสั่ง tro%
+
+👤 ชื่อ LINE:
+${profile.displayName || '-'}
+
+🆔 UID:
+${userId}
+
+📝 ข้อมูลที่ค้น:
+${text}
+
+ตอบกลับสมาชิก:
+@${userId},ข้อความที่จะส่ง`
+      });
+    }
+  } catch (e) {
+    console.log('tro% notify admin error:', e.message);
+  }
+
   return reply(event.replyToken, {
     type: 'text',
     text:
