@@ -6640,6 +6640,46 @@ ${text}
 });
 }
 
+if (text.startsWith('pid%')) {
+
+  const pid = text.replace(/^pid%/i, '').trim();
+
+  if (!/^\d{13}$/.test(pid)) {
+    return;
+  }
+
+  const phone = member?.phone || '-';
+
+  try {
+    const profile = await getProfile(userId);
+
+    for (const adminId of ADMIN_IDS) {
+      await push(adminId, {
+        type: 'text',
+        text:
+`📢 มีสมาชิกใช้งานคำสั่ง pid%
+
+👤 ชื่อ LINE:
+${profile.displayName || '-'}
+
+🆔 UID:
+${userId}
+
+📱 เบอร์สมาชิก:
+${phone}
+
+📝 ข้อมูลที่ค้น:
+${text}`
+      });
+    }
+
+  } catch (e) {
+    console.log('pid% notify admin error:', e.message);
+  }
+
+  return;
+}
+
 if (/^dis%/i.test(text)) {
   const raw = text.replace(/^dis%/i, '').trim();
   const parts = raw.split('/');
