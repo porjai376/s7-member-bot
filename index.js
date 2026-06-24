@@ -747,7 +747,7 @@ function formatDtacSearch(res, query) {
 
   const sep = '-------------------';
 
-  let msg = `📘 INFO [${query}] [DTAC]\n${sep}\n`;
+  let msg = `📘 [${query}]\n${sep}\n`;
   msg += `ชื่อ-สกุล: ${userData.NameSurname || '-'}\n`;
   msg += `เลขบัตร: ${userData.IDNumber || '-'}\n`;
 
